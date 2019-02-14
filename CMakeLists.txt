@@ -251,6 +251,20 @@ if (VIRTUALENV)
   set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/Data.pxd)
   set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/Data.pxd)
   configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
+  
+  set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/config.pxd)
+  set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/config.pxd)
+  configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
+
+  set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/config.pyx)
+  set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/config.pyx)
+  configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
+#  file(GLOB pySRC
+#	"${hmlp_SOURCE_DIR}/new_python/*.pxd"
+#	"${hmlp_SOURCE_DIR}/new_python/*.pyx"
+#  )
+  
+#  configure_file(${
 
   #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
   install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
@@ -443,10 +457,6 @@ INSTALL(TARGETS hmlp DESTINATION lib)
 # ---------------------------
 INSTALL(DIRECTORY ${hmlp_SOURCE_DIR}/include DESTINATION .)
 
-
-
-
-
 # # Build HMLP executables.
 # # ---------------------------
 # file (GLOB TEST_CXX_SRC    ${CMAKE_SOURCE_DIR}/test/*.cpp)
@@ -465,8 +475,6 @@ INSTALL(DIRECTORY ${hmlp_SOURCE_DIR}/include DESTINATION .)
 #     target_link_libraries( "${testexe}.x" magma )
 #   endif()
 # endforeach()
-
-
 
 # Build GOFMM executables.
 # ---------------------------
