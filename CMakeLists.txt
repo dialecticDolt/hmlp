@@ -94,7 +94,8 @@ IF("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
   MESSAGE(WARNING "You may need to install OpenMP. [e.g. brew install libomp]") 
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -O3 -Xpreprocessor -fopenmp -L/usr/local/opt/libomp/lib -lomp")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -fPIC -D_POSIX_C_SOURCE=200112L")
-  SET(HMLP_PYTHON_CFLAGS "-O3 -fopenmp -arch x86_64 -m64")
+  SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64")
+  SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mlk=parallel")
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -fopenmp -lm")
 ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
   # ---[ GCC/G++
@@ -112,7 +113,11 @@ ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -O3 -qopenmp -m64")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -Wall -pedantic -fPIC -D_POSIX_C_SOURCE=200112L")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -DUSE_INTEL")
-  SET(HMLP_PYTHON_CFLAGS     "-std=c++11 -O3 -qopenmp -arch x86_64 -m64")
+  #SET(HMLP_PYTHON_CFLAGS     "-std=c++11 -O3 -qopenmp -arch x86_64 -m64")
+  
+  SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64")
+  SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mlk=parallel")
+
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -qopenmp -lm")
 ELSE()
   MESSAGE(FATAL_ERROR "Unsupported compiler type ${CMAKE_C_COMPILER_ID}")
@@ -218,23 +223,41 @@ endif()
 
 # ---[ Python support
 find_program(VIRTUALENV "virtualenv")
-
+if(NOT VIRTUALENV)
+	MESSAGE(WARNING "virtualenv not found. Not attempting to build cython version of GOFMM.")
+endif()
 
 if (VIRTUALENV)
-	set(INSTA_SH_IN ${hmlp_SOURCE_DIR}/python/install.in.sh)
-	set(INSTA_SH    ${CMAKE_BINARY_DIR}/python/install.sh)
-	configure_file(${INSTA_SH_IN} ${INSTA_SH})
-  set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/python/setup.in.py)
-  set(SETUP_PY    ${CMAKE_BINARY_DIR}/python/setup.py)
+  set(INSTA_SH_IN ${hmlp_SOURCE_DIR}/python/install.in.sh)
+  set(INSTA_SH    ${CMAKE_BINARY_DIR}/python/install.sh)
+  configure_file(${INSTA_SH_IN} ${INSTA_SH})
+ 
+  set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/new_python/setup.in.py)
+  set(SETUP_PY    ${CMAKE_BINARY_DIR}/new_python/setup.py)
   configure_file(${SETUP_PY_IN} ${SETUP_PY})
+ 
   set(HMLP_PYX_IN ${hmlp_SOURCE_DIR}/python/hmlp.py)
   set(HMLP_PYX    ${CMAKE_BINARY_DIR}/python/hmlp.pyx)
   configure_file(${HMLP_PYX_IN} ${HMLP_PYX})
+ 
   set(GOFMM_PYX_IN ${hmlp_SOURCE_DIR}/python/gofmm.py)
   set(GOFMM_PYX    ${CMAKE_BINARY_DIR}/python/gofmm.pyx)
   configure_file(${GOFMM_PYX_IN} ${GOFMM_PYX})
-	## Create a Virtualenv environment for Python 2.7. 
-	install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/python)")
+
+  set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/PyData.pyx)
+  set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/PyData.pyx)
+  configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
+
+  set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/Data.pxd)
+  set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/Data.pxd)
+  configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
+
+  #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
+  install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
+  set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python2)
+  set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip)
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install cython)")
+  
 	## Jump to the virtual environment.
 	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
 	## Active the virtual environment (bash shell).
@@ -248,7 +271,7 @@ if (VIRTUALENV)
 	
 
 	#install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix=${CMAKE_BINARY_DIR})")
-  #install(CODE "execute_process(COMMAND CC=${CMAKE_C_COMPILER} ${PYTHON} ${SETUP_PY} build_ext -i)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python2  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
 endif()
 
 
