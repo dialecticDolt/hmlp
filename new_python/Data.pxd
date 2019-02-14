@@ -14,25 +14,36 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/Data.hpp" namespace "hmlp":
         # initialize by size
         Data(size_t m,size_t n) except + 
     
-        # initialize by filename
-        #Data(size_t, size_t, string) except +
+        # read from filename
+        void read(size_t m , size_t n, string &filename)
+        
+        # read from filename
+        void write(string &filename)
 
         # copy constructor -- TODO
 
 
         # write to file --TODO
+        
+        # get row size
+        size_t row()
+        
+        # get col size
+        size_t col()
    
+        # get total size
+        size_t size()
    
         # resize
         void resize(size_t m, size_t n)
     
     
         # Get entry i,j
-        #T getvalue(size_t i, size_t j)
+        T getvalue(size_t i, size_t j)
     
     
-        # set val -- TODO how to handle templates??
-        #void setvalue(size_t i, size_t j,T v)
+        # set val
+        void setvalue(size_t i, size_t j,T v)
     
     
         # randomize

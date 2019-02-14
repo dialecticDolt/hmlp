@@ -40,11 +40,11 @@ inc_dirs = inc_dirs + ['${CMAKE_SOURCE_DIR}/frame']
 inc_dirs = inc_dirs + ['${CMAKE_SOURCE_DIR}/frame/base']
 inc_dirs = inc_dirs + ['${CMAKE_SOURCE_DIR}/frame/primitives']
 inc_dirs = inc_dirs + ['${CMAKE_SOURCE_DIR}/frame/containers']
-print inc_dirs
+print(inc_dirs)
 
 # hmlp library directory
 lib_dirs = ['${CMAKE_BINARY_DIR}/lib']
-print lib_dirs
+print(lib_dirs)
 
 # the c++ extension module
 extension_mod_hmlp = Extension( 
