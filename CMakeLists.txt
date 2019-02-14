@@ -104,7 +104,7 @@ ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -fPIC -D_POSIX_C_SOURCE=200112L")
   # ---[ Line and branch coverage analysis.
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -fprofile-arcs -ftest-coverage -fPIC")
-  #SET(HMLP_CFLAGS "${HMLP_CFLAGS} -coverage -fPIC")
+  #SET(HMLP_CFLAGS "${HMLP_CFLAGS} -coverage -fPIC")#
   SET(HMLP_PYTHON_CFLAGS "-O3 -fopenmp -arch x86_64 -m64")
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -fopenmp -lm")
 ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
@@ -228,45 +228,58 @@ if(NOT VIRTUALENV)
 endif()
 
 if (VIRTUALENV)
-  set(INSTA_SH_IN ${hmlp_SOURCE_DIR}/python/install.in.sh)
-  set(INSTA_SH    ${CMAKE_BINARY_DIR}/python/install.sh)
-  configure_file(${INSTA_SH_IN} ${INSTA_SH})
+  #set(INSTA_SH_IN ${hmlp_SOURCE_DIR}/python/install.in.sh)
+  #set(INSTA_SH    ${CMAKE_BINARY_DIR}/python/install.sh)
+  #senfigure_file(${INSTA_SH_IN} ${INSTA_SH})
  
-  set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/new_python/setup.in.py)
-  set(SETUP_PY    ${CMAKE_BINARY_DIR}/new_python/setup.py)
-  configure_file(${SETUP_PY_IN} ${SETUP_PY})
+  #set(HMLP_PYX_IN ${hmlp_SOURCE_DIR}/python/hmlp.py)
+  #set(HMLP_PYX    ${CMAKE_BINARY_DIR}/python/hmlp.pyx)
+  #configure_file(${HMLP_PYX_IN} ${HMLP_PYX})
  
-  set(HMLP_PYX_IN ${hmlp_SOURCE_DIR}/python/hmlp.py)
-  set(HMLP_PYX    ${CMAKE_BINARY_DIR}/python/hmlp.pyx)
-  configure_file(${HMLP_PYX_IN} ${HMLP_PYX})
- 
-  set(GOFMM_PYX_IN ${hmlp_SOURCE_DIR}/python/gofmm.py)
-  set(GOFMM_PYX    ${CMAKE_BINARY_DIR}/python/gofmm.pyx)
-  configure_file(${GOFMM_PYX_IN} ${GOFMM_PYX})
+  #set(GOFMM_PYX_IN ${hmlp_SOURCE_DIR}/python/gofmm.py)
+  #set(GOFMM_PYX    ${CMAKE_BINARY_DIR}/python/gofmm.pyx)
+  #configure_file(${GOFMM_PYX_IN} ${GOFMM_PYX})
 
-  set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/PyData.pyx)
-  set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/PyData.pyx)
-  configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
-
-  set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/Data.pxd)
-  set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/Data.pxd)
-  configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
   
-  set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/config.pxd)
-  set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/config.pxd)
-  configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
-
-  set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/config.pyx)
-  set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/config.pyx)
-  configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
-#  file(GLOB pySRC
-#	"${hmlp_SOURCE_DIR}/new_python/*.pxd"
-#	"${hmlp_SOURCE_DIR}/new_python/*.pyx"
-#  )
+  set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/new_python)
+  set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/new_python)
+  set(SETUP_PY    ${PYTHON_BUILD_DIR}/setup.py)
+  file(GLOB pySRCs RELATIVE ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py)
+  foreach(pyFILE ${pySRCs})
+    set(pyFILE_PATH ${PYTHON_SRC_DIR}/${pyFILE})
+    if(NOT IS_DIRECTORY ${pyFILE_PATH})
+      message(STATUS "Configuring file ${pyFILE}")
+      configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/${pyFILE})
+    endif()
+  endforeach()
   
-  set(TEST_SCRIPT_IN ${hmlp_SOURCE_DIR}/new_python/test_interface.py)
-  set(TEST_SCRIPT ${CMAKE_BINARY_DIR}/new_python/test_interface.py)
-  configure_file(${TEST_SCRIPT_IN} ${TEST_SCRIPT})
+  
+  
+  #set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/new_python/setup.in.py)
+  #set(SETUP_PY    ${CMAKE_BINARY_DIR}/new_python/setup.py)
+  #configure_file(${SETUP_PY_IN} ${SETUP_PY})
+ 
+  #set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/PyData.pyx)
+  #set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/PyData.pyx)
+  #configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
+
+  #set(DATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/Data.pxd)
+  #set(DATA_PXD ${CMAKE_BINARY_DIR}/new_python/Data.pxd)
+  #configure_file(${DATA_PXD_IN} ${DATA_PXD})
+  #
+  #set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/config.pxd)
+  #set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/config.pxd)
+  #configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
+
+  #set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/pyconfig.pyx)
+  #set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/pyconfig.pyx)
+  #configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
+  #
+  #set(TEST_SCRIPT_IN ${hmlp_SOURCE_DIR}/new_python/test_interface.py)
+  #set(TEST_SCRIPT ${CMAKE_BINARY_DIR}/new_python/test_interface.py)
+  #configure_file(${TEST_SCRIPT_IN} ${TEST_SCRIPT})
 
   #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
   install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
