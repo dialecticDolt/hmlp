@@ -95,7 +95,7 @@ IF("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -O3 -Xpreprocessor -fopenmp -L/usr/local/opt/libomp/lib -lomp")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -fPIC -D_POSIX_C_SOURCE=200112L")
   SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64")
-  SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mlk=parallel")
+  SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mkl=parallel")
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -fopenmp -lm")
 ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
   # ---[ GCC/G++
@@ -251,6 +251,10 @@ if (VIRTUALENV)
   set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/Data.pxd)
   set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/Data.pxd)
   configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
+  
+  set(TEST_SCRIPT_IN ${hmlp_SOURCE_DIR}/new_python/test_interface.py)
+  set(TEST_SCRIPT ${CMAKE_BINARY_DIR}/new_python/test_interface.py)
+  configure_file(${TEST_SCRIPT_IN} ${TEST_SCRIPT})
 
   #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
   install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
