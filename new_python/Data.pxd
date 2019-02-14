@@ -46,8 +46,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/Data.hpp" namespace "hmlp":
         void setvalue(size_t i, size_t j,T v)
     
     
-        # randomize
-        #void rand()
+        # randomize uniform on interval [a b]
+        void rand(T a, T b)
 
     
     # end cppclass Data[T]
