@@ -257,6 +257,7 @@ if (VIRTUALENV)
   set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python2)
   set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip)
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install cython)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install numpy)")
   
 	## Jump to the virtual environment.
 	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
