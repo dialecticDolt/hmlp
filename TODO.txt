@@ -1,0 +1,32 @@
+ ______   ___       ___     ___  
+|      | /   \     |   \   /   \ 
+|      ||     |    |    \ |     |
+|_|  |_||  O  |    |  D  ||  O  |
+  |  |  |     |    |     ||     |
+  |  |  |     |    |     ||     |
+  |__|   \___/     |_____| \___/ 
+                                 
+
+========================================
+
+SHORT TERM:
+- Make wrappers for:
+	- Data         (Sameer)
+	- SPDMatrx     (Sameer)
+	- centersplit  (Will)
+	- randomsplit  (Will)
+	- tree
+	- Compress/Evaluate
+
+- Make python classes to wrap c_enums (hmlpError, kernel_s, DistanceMetrc), edit .pyx to take these in and convert (Will)
+
+- Figure out how to have CMakeList.txt glob all pyx and pxd files and configure them
+- Automate generation of setup.py to include all extensions (i.e. "pyconfig.pyx", "PyData.pyx", etc)
+OR
+- Just merge the files together once we get all the pieces working
+
+LONGER TERM:
+
+- Decide and implement interface for custom kernels
+- Make wrapper for Factorize
+- Distributed and GPU implementations
