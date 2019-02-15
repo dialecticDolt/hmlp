@@ -6,13 +6,11 @@ cdef class PyData:
     def __cinit__(self,size_t m = 0,size_t n = 0):
         self.c_data = Data[float](m,n)
 	
-	# TODO -- can we specify type info for filename?
-    cpdef read(self, size_t m, size_t n, filename):
-        self.c_data.read(m, n,filename)
+    cpdef read(self, size_t m, size_t n, str filename):
+        self.c_data.read(m, n,filename.encode())
     
-	# TODO -- can we specify type info for filename?
-    cpdef write(self, size_t m, size_t n, filename):
-        self.c_data.write(filename)
+    cpdef write(self,str filename):
+        self.c_data.write(filename.encode())
 
     cpdef row(self):
         return self.c_data.row()
@@ -28,4 +26,9 @@ cdef class PyData:
     
     cpdef setvalue(self,size_t m, size_t n, float v):
         self.c_data.setvalue(m,n,v)
+    
+    cpdef rand(self,float a, float b ):
+        self.c_data.rand(a,b)
 
+    # TODO pass in numpy and make a data object?? try with [:]
+    # not sure it is necessary, so going to leave this for later
