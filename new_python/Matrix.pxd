@@ -31,7 +31,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
 ## end extern from.
 
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm":
-        struct centersplit:
-                pass
-        struct randomsplit:
-                pass
+        cdef struct centersplit:
+            SPDMatrix[float] *Kptr
+
+        cdef struct randomsplit:
+            SPDMatrix[float] *Kprt
