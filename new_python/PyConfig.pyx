@@ -1,22 +1,24 @@
-from config cimport *
+from Config cimport *
 
 cdef class PyConfig:
-	cdef Configuration[float] c_config
-	string metric_type
+	cdef Configuration[float]* c_config
+	cpdef str metric_t
+	
 
-	def __cinit__(self, string metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
-		self.metric_type = metric_type
+	def __cinit__(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
+		self.metric_t = metric_type
 		if(metric_type == "GEOMETRY_DISTANCE"):
-			m = 0
+			m = int(0)
 		elif(metric_type == "KERNEL_DISTANCE"):
-			m = 1
+			m = int(1)
 		elif(metric_type == "ANGLE_DISTANCE"):
-			m = 2
+			m = int(2)
 		elif(metric_type == "USER_DISTANCE"):
-			m = 3
-		self.c_config = Configuration[float](m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
+			m = int(3)
+		self.c_config = new Configuration[float](m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
 	
 	def getMetricType(self):
+		#return metric_t
 		return self.c_config.MetricType()
 	
 	def getProblemSize(self):

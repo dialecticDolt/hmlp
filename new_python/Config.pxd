@@ -41,7 +41,6 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm":
 		#constructors
 		Configuration() except +
 		Configuration(DistanceMetric, int, int, int, int, float, float, bool) except +
-		~Configuration()		
 		#getters
 		DistanceMetric MetricType()
 		int ProblemSize()

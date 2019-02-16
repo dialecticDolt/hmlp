@@ -1,4 +1,4 @@
-from splitter cimport *
+from Splitters cimport *
 
 cdef class centerSplit:
 	cdef centersplit c_csplit
