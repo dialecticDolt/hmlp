@@ -18,8 +18,7 @@ cdef class PyConfig:
 		self.c_config = new Configuration[float](m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
 	
 	def getMetricType(self):
-		#return metric_t
-		return self.c_config.MetricType()
+		return self.metric_t
 	
 	def getProblemSize(self):
 		return self.c_config.ProblemSize()

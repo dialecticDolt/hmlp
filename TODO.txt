@@ -11,12 +11,13 @@
 
 SHORT TERM:
 - Make wrappers for:
-	- tree
-	- Compress (Will)/Evaluate
+	- Compress (Will) 
+		- Currently stuck on figuring out Data<Pair[float, int]>
+		- Make python def for tree (can I just use cpdef or does it break the template?)
 
-- Add a unit test for HMLPError
+	- Evaluate
+
 - Automate generation of setup.py to include all extensions (i.e. "pyconfig.pyx", "PyData.pyx", etc)
-- Make it so if CMAKE finds a python bin, skip setting up the virtual env
 
 LONGER TERM:
 

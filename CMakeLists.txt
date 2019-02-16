@@ -286,12 +286,14 @@ if (VIRTUALENV)
   #configure_file(${TEST_SCRIPT_IN} ${TEST_SCRIPT})
 
   #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
+  
+IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
   install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
   set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python2)
   set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip)
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install cython)")
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install numpy)")
-  
+endif()  
 	## Jump to the virtual environment.
 	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
 	## Active the virtual environment (bash shell).
