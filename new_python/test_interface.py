@@ -1,4 +1,5 @@
 from PyData import PyData
+import pyconfig
 import unittest
 import os
 import numpy as np
@@ -101,6 +102,25 @@ class PyDataTesting(unittest.TestCase):
 
 
 
+class PyConfigTesting(unittest.TestCase):
+
+	def test_initialization(self):
+		#metric = "USER_DISTANCE";
+		metric = 0;
+		problem_size = 10000
+		leaf_node_size = 64
+		neighbor_size = 32
+		maximum_rank = 20
+		tolerance = 1e-5
+		budget = 2e-1
+		secure_accuracy = True;
+		tc = pyconfig.PyConfig(metric, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
+		self.assertEqual(metric, tc.getMetricType())
+		
+		self.assertEqual(problem_size, tc.getProblemSize())
+		self.assertEqual(leaf_node_size, tc.getLeafNodeSise())
+		
+>>>>>>> 73a4f63b1c6de9924b609e221da4ec110b6dd5ff
 
 if __name__=='__main__':
     unittest.main()
