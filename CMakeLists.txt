@@ -116,7 +116,7 @@ ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
   #SET(HMLP_PYTHON_CFLAGS     "-std=c++11 -O3 -qopenmp -arch x86_64 -m64")
   
   SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64")
-  SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mlk=parallel")
+  SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mkl=parallel")
 
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -qopenmp -lm")
 ELSE()
