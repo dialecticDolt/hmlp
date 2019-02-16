@@ -1,5 +1,5 @@
 import PyData
-import pyconfig
+import PyConfig
 import unittest
 import os
 
@@ -79,8 +79,8 @@ class PyDataTesting(unittest.TestCase):
 class PyConfigTesting(unittest.TestCase):
 
 	def test_initialization(self):
-		#metric = "USER_DISTANCE";
-		metric = 0;
+		metric = "USER_DISTANCE";
+		#metric = 0;
 		problem_size = 10000
 		leaf_node_size = 64
 		neighbor_size = 32
