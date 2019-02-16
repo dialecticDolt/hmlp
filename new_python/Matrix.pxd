@@ -27,5 +27,11 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
         # num cols
         size_t col()
 
-    ## end cppclass SPDMatrix[T]
+   ## end cppclass SPDMatrix[T]
 ## end extern from.
+
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm":
+        struct centersplit:
+                pass
+        struct randomsplit:
+                pass
