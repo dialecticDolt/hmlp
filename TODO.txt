@@ -11,19 +11,12 @@
 
 SHORT TERM:
 - Make wrappers for:
-	- Data         (Sameer)
-	- SPDMatrx     (Sameer)
-	- centersplit  (Will)
-	- randomsplit  (Will)
 	- tree
-	- Compress/Evaluate
+	- Compress (Will)/Evaluate
 
-- Make python classes to wrap c_enums (hmlpError, kernel_s, DistanceMetrc), edit .pyx to take these in and convert (Will)
-
-- Figure out how to have CMakeList.txt glob all pyx and pxd files and configure them
+- Add a unit test for HMLPError
 - Automate generation of setup.py to include all extensions (i.e. "pyconfig.pyx", "PyData.pyx", etc)
-OR
-- Just merge the files together once we get all the pieces working
+- Make it so if CMAKE finds a python bin, skip setting up the virtual env
 
 LONGER TERM:
 
