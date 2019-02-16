@@ -1,5 +1,5 @@
 from Data cimport Data
-#cimport as numpy as np
+cimport numpy as np
 from cython.operator cimport dereference as deref
 
 
@@ -38,16 +38,33 @@ cdef class PyData:
     # not sure it is necessary, so going to leave this for later
 
     # TODO access submatrix through inputting numpy vectors
-    #cpdef submatrix(self,np.ndarray[np.int, ndim=1] I not None,
-    #        np.ndarray[np.int,ndim=1] J not None):
+    def submatrix(self,np.ndarray[np.intp_t, ndim=1] I not None,
+        np.ndarray[np.intp_t,ndim=1] J not None):
 
-    #    # get sizes, initialize new PyData
-    #    size_t ni = I.size()
-    #    size_t nj = J.size()
-    #    PyData sub = PyData(ni,nj)
+        # define memory views?
+        cdef np.intp_t [:] Iview = I
+        cdef np.intp_t [:] Jview = J
 
-    #    # call c_data's sub func
-    #    sub.c_data = self.c_data(I,J)
 
-    #    # return sub
-    #    return sub
+        cdef size_t ci,cj
+
+        # get sizes, initialize new PyData
+        cdef size_t ni = <size_t> I.size
+        cdef size_t nj = <size_t> J.size
+        cdef Data[float]* subdata = new Data[float](ni,nj)
+        cdef float tmp
+
+        # begin loops
+        for ci in range(ni):
+            for cj in range(nj):
+                tmp = self.c_data.getvalue( <size_t> Iview[ci], <size_t> Jview[cj] )
+                subdata.setvalue(<size_t> ci,<size_t> cj,tmp)
+
+        # new Pydata object
+        cpdef PyData sub = PyData(ni,nj)
+
+        # call c_data's sub func
+        sub.c_data = subdata
+
+        # return sub
+        return sub

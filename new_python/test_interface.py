@@ -1,12 +1,14 @@
 import PyData
 import PyConfig
+from PyData import PyData
 import unittest
 import os
+import numpy as np
 
 class PyDataTesting(unittest.TestCase):
     # test get/set
     def test_getset(self):
-        pd = PyData.PyData(7,8)
+        pd = PyData(7,8)
 
         # set value 
         pd.setvalue(2,4,2.5) # choosing numbers representable in base 2
@@ -18,13 +20,13 @@ class PyDataTesting(unittest.TestCase):
 
     # test initialization
     def test_initialization(self):
-        pd = PyData.PyData(10,15)
+        pd = PyData(10,15)
         self.assertEqual(pd.row(),10)
         self.assertEqual(pd.col(),15)
 
     # test null init
     def test_null(self):
-        pd = PyData.PyData()
+        pd = PyData()
         self.assertEqual(pd.row(),0)
         self.assertEqual(pd.col(),0)
 
@@ -33,7 +35,7 @@ class PyDataTesting(unittest.TestCase):
     def test_rand(self):
         # initialize
         m = 100
-        pd = PyData.PyData(m,2)
+        pd = PyData(m,2)
 
         # call rand
         pd.rand(0.5,1.5)
@@ -55,7 +57,7 @@ class PyDataTesting(unittest.TestCase):
     def test_saveload(self):
         m = 5
         # initialize
-        pd = PyData.PyData(m,m)
+        pd = PyData(m,m)
 
         # set value 
         pd.setvalue(2,4,2.5) # choosing numbers representable in base 2
@@ -66,7 +68,7 @@ class PyDataTesting(unittest.TestCase):
         pd.write(filenm)
 
         # load
-        pd2 = PyData.PyData(m,m)
+        pd2 = PyData(m,m)
         pd2.read(m,m,filenm)
         os.remove(filenm)
 
@@ -76,10 +78,34 @@ class PyDataTesting(unittest.TestCase):
             for j in range(m):
                 self.assertEqual( pd.getvalue(i,j), pd2.getvalue(i,j) )
 
-class PyConfigTesting(unittest.TestCase):
 
+    # test submatrix functionality of data class
+    def test_submatrix(self):
+        # large matrix
+        m = 10
+        pd = PyData(m,m)
+        pd.rand(0.5,1.5)
+
+        # sub matrix indices
+        s = 5
+        I = np.arange(5,dtype=np.intp) + 3
+
+        # get actual submatrix
+        sub_pd = pd.submatrix(I,I)
+
+        # loop over indices and check
+        for i in range(s):
+            for j in range(s):
+                sub_val = sub_pd.getvalue(i,j)
+                tru_val = pd.getvalue(I[i], I[j])
+                self.assertEqual(sub_val,tru_val)
+        
+
+
+
+class PyConfigTesting(unittest.TestCase):
 	def test_initialization(self):
-		metric = "USER_DISTANCE";
+		metric = "USER_DISTANCE"
 		#metric = 0;
 		problem_size = 10000
 		leaf_node_size = 64
@@ -87,14 +113,13 @@ class PyConfigTesting(unittest.TestCase):
 		maximum_rank = 20
 		tolerance = 1e-5
 		budget = 2e-1
-		secure_accuracy = True;
+		secure_accuracy = True
 		tc = pyconfig.PyConfig(metric, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
 		self.assertEqual(metric, tc.getMetricType())
 		
 		self.assertEqual(problem_size, tc.getProblemSize())
 		self.assertEqual(leaf_node_size, tc.getLeafNodeSise())
 		
-
 if __name__=='__main__':
     unittest.main()
 
