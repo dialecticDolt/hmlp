@@ -48,8 +48,8 @@ print(lib_dirs)
 
 # the c++ extension module
 extension_mod_hmlp = Extension( 
-  "pyconfig", 
-  sources = ['${CMAKE_BINARY_DIR}/new_python/pyconfig.pyx'],
+  "PyConfig", 
+  sources = ['${CMAKE_BINARY_DIR}/new_python/PyConfig.pyx'],
   language="c++",
   include_dirs = inc_dirs,
   libraries = ['hmlp'],
