@@ -1,4 +1,4 @@
-from Matrix cimport SPDMatrix, centersplit, randomsplit, Tree
+from Matrix cimport SPDMatrix, centersplit, randomsplit, Tree, dTree_t, sTree_t
 from Matrix cimport Compress as c_compress
 from Data cimport Data
 from Config cimport *
@@ -136,13 +136,21 @@ cdef class PySPDMatrix:
     cpdef getvalue(self,size_t m, size_t n):
         return self.c_matrix[0](m,n)
 
-cdef class PyTree:
-    cdef Tree* c_tree
+#cdef class PyTree:
+#    cdef Tree* c_tree
+#    def __cinit__(self):
+#        self.c_tree = new Tree()
+#    cdef copy(self, Tree *treeptr):
+#        del self.c_tree
+#        self.c_tree = treeptr
+
+cdef class sPyTree:
+    cdef sTree_t* c_stree
     def __cinit__(self):
-        self.c_tree = new Tree()
-    cdef copy(self, Tree *treeptr):
-        del self.c_tree
-        self.c_tree = treeptr
+         self.c_stree = new sTree_t()
+    cdef copy(self, sTree_t *treeptr):
+         del self.c_stree
+         self.c_stree = treeptr
 
 #def compress(PySPDMatrix py_matrix, PyData py_data, PyConfig py_config):
 #    cdef centersplit c_csplit
@@ -154,7 +162,7 @@ cdef class PyTree:
 #   return py_tree
 
 def compress(PySPDMatrix py_matrix, float stol, float budget, int m, int k, int s):
-     py_tree = PyTree()
-     py_tree.copy(c_compress(py_matrix.c_matrix, stol, budget, m, k, s)
+     py_tree = sPyTree()
+     py_tree.copy(c_compress(py_matrix.c_matrix, stol, budget, m, k, s))
      return py_tree
 
