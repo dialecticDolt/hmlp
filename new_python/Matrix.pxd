@@ -2,6 +2,8 @@
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.pair cimport pair
+from Data cimport Data
+from Config cimport Configuration
 
 ## Import dense SPDMatrix<T> from hmlp::SPDMatrix<T>.
 cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace "hmlp":
@@ -30,15 +32,19 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
 ## end extern from.
 
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "tree":
-	cdef cppclass Tree:
+	cpdef cppclass Tree:
 		pass
 
 
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm":
-	cdef struct centersplit:
-		SPDMatrix[float] *Kptr
+	cdef struct centersplit[SPDMatrix, int, float]:
+		SPDMatrix[float]* Kptr
 
-	cdef struct randomsplit:
-		SPDMatrix[float] *Kprt
-	
-	
+	cdef struct randomsplit[SPDMatrix, int, float]:
+		SPDMatrix[float]* Kptr
+	#Try: Working with prototype *Compress
+	*Compress(SPDMatrix[float]*, double, double)
+	#This one is so heavily templated I'm not sure how to handle it
+	#Tree *Compress(SPDMatrix[float]*, Data[float], centersplit, randomsplit, Configuration[float]*)
+	#This might be the better way
+	#Tree *Compress(SPDMatrix[float]*, Data[pair[float, int]], centersplit, randomsplit, Configuration[float]*)
