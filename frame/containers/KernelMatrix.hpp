@@ -55,6 +55,11 @@ struct kernel_s
 {
   kernel_type type;
 
+
+  /** setters and getters for python (issues with name "type" */
+  void SetKernelType(kernel_type kt){type = kt;};
+  kernel_type GetKernelType(){return type;};
+
   /** Compute a single inner product. */
   static inline T innerProduct( const TP* x, const TP* y, size_t d )
   {
