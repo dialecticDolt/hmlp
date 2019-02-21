@@ -1,4 +1,4 @@
-from Matrix cimport SPDMatrix, centersplit, randomsplit, Tree, dTree_t, sTree_t
+from Matrix cimport *
 from Matrix cimport Compress as c_compress
 from Data cimport Data
 from Config cimport *
@@ -116,8 +116,9 @@ cdef class PyData:
 
 cdef class PySPDMatrix:
     cdef SPDMatrix[float]* c_matrix
-
-    # constructor
+    #TODO: Add option to make double precision matrix. 
+    #cdef SPDMatrix[double]* dc_matrix
+    
     def __cinit__(self,size_t m = 0,size_t n = 0):
        self.c_matrix = new SPDMatrix[float](m,n)
     
@@ -136,6 +137,10 @@ cdef class PySPDMatrix:
     cpdef getvalue(self,size_t m, size_t n):
         return self.c_matrix[0](m,n)
 
+    def randspd(self, float a, float b):
+        self.c_matrix.randspd(a, b)
+
+#This would need to be templated on setup and nodetype
 #cdef class PyTree:
 #    cdef Tree* c_tree
 #    def __cinit__(self):
@@ -144,6 +149,7 @@ cdef class PySPDMatrix:
 #        del self.c_tree
 #        self.c_tree = treeptr
 
+#These are single and double precision wrappers for Tree
 cdef class sPyTree:
     cdef sTree_t* c_stree
     def __cinit__(self):
@@ -152,17 +158,56 @@ cdef class sPyTree:
          del self.c_stree
          self.c_stree = treeptr
 
-#def compress(PySPDMatrix py_matrix, PyData py_data, PyConfig py_config):
-#    cdef centersplit c_csplit
-#    cdef randomsplit c_rsplit
-#    c_csplit.Kptr = py_matrix.c_matrix
-#    c_rsplit.Kptr = py_matrix.c_matrix
-#    py_tree = PyTree()
-#    py_tree.copy(c_compress(py_matrix.c_matrix, deref(py_data.c_data), c_csplit, c_rsplit, py_config.c_config))
-#   return py_tree
+cdef class dPyTree:
+    cdef dTree_t* c_dtree
+    def __cinit__(self):
+         self.c_dtree = new dTree_t()
+    cdef copy(self, dTree_t *treeptr):
+         del self.c_dtree
+         self.c_dtree = treeptr
 
-def compress(PySPDMatrix py_matrix, float stol, float budget, int m, int k, int s):
-     py_tree = sPyTree()
-     py_tree.copy(c_compress(py_matrix.c_matrix, stol, budget, m, k, s))
-     return py_tree
+
+#PyMatrix will serve the same functionality (&more) 
+#Keep single and double precision SPDMatrix wrappers just in case
+cdef class sPySPDMatrix:
+    cdef sSPDMatrix_t *c_matrix
+ 	
+    def __cinit(self):
+       self.c_matrix = new sSPDMatrix_t()
+
+    def row(self):
+        return self.c_matrix.row()
+
+    def col(self):
+        return self.c_matrix.col()
+
+    def size(self):
+        return self.c_matrix.row() * self.c_matrix.col()
+
+    def getvalue(self,size_t i):
+        return self.getvalue(i)
+
+cdef class dPySPDMatrix:
+    cdef dSPDMatrix_t *c_matrix
+
+    def __cinit(self):
+       self.c_matrix = new dSPDMatrix_t()
+
+    def row(self):
+        return self.c_matrix.row()
+
+    def col(self):
+        return self.c_matrix.col()
+
+    def size(self):
+        return self.c_matrix.row() * self.c_matrix.col()
+
+    def getvalue(self,size_t i):
+        return self.getvalue(i)
+
+def compress(PySPDMatrix py_matrix, float stol, float budget):
+    py_tree = sPyTree()
+    py_tree.copy(c_compress(deref(py_matrix.c_matrix), stol, budget))
+    return py_tree
+
 
