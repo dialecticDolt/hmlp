@@ -4,6 +4,11 @@ from libcpp.string cimport string
 from libcpp.pair cimport pair
 from Data cimport Data
 
+# useful for splitter templating
+cdef extern from *:
+    ctypedef int two "2"
+
+
 ## Import dense SPDMatrix<T> from hmlp::SPDMatrix<T>.
 cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace "hmlp":
     cdef cppclass SPDMatrix[T]:
@@ -30,17 +35,6 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
     ## end cppclass SPDMatrix[T]
 ## end extern from.
 
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "tree":
-    cdef cppclass Tree:
-        pass
-
-
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm":
-    cdef struct centersplit:
-        SPDMatrix[float] *Kptr
-
-    cdef struct randomsplit:
-        SPDMatrix[float] *Kptr
 
 ## Import KernelMatrix from hmlp::KernelMatrix<T>
 cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp":
@@ -104,3 +98,34 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         # return dimension
         size_t dim()
 
+## tree.hpp import Tree
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "hmlp::tree":
+    cdef cppclass Tree[SETUP,NODEDATA]:
+        pass
+
+
+## gofmm.hpp import compress essentials 
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
+    cdef cppclass centersplit[SPDMATRIX, int, T]:
+        SPDMATRIX *Kptr
+
+    cdef cppclass randomsplit[SPDMATRIX,int,T]:
+        SPDMATRIX *Kptr
+
+    # setup 
+    cdef cppclass Setup[SPDMATRIX,SPLITTER,T]:
+        pass
+
+    # nodedata
+    cdef cppclass NodeData[T]:
+        pass
+
+
+    ## Import base compress function
+    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ]*Compress[T,SPDMATRIX]( SPDMATRIX &K, 
+            T stol, T budget,size_t m, size_t k, size_t s)
+
+
+    # Try to import more complex Compress?
+    #cdef Tree[ Setup[ SPDMatrix[T], centersplit, T], NodeData[T] ] * 
+    #Compress( SPDMatrix[T] &K, T stol T budget,size_t m, size_t k, size_t s)

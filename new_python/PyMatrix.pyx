@@ -1,4 +1,6 @@
 from Matrix cimport * 
+from cython.operator cimport dereference as deref
+
 
 cdef class PySPDMatrix:
     cdef SPDMatrix[float]* c_matrix
@@ -56,6 +58,8 @@ cdef class PyKernel:
             m = int(8)
         elif(kstring == "USER_DEFINE"):
             m = int(9)
+        else:
+            raise ValueError("Kernel type not found.")
 
         return m
     
@@ -67,4 +71,25 @@ cdef class PyKernel:
 #    def __cinit__(self, size_t m = 0, size_t n = 0, str source_file = None, str target_file = None):
 #        # read in sources, targets if availaible
 #    
+
+
+# GoFMM setup
+
+
+
+
+
+# GOFMM tree
+cdef class PyTreeSPD:
+    cdef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]* c_tree
+
+    # Initializer test
+    def __cinit__(self):
+        self.c_tree = new Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]()
+
+    # GOFMM compress
+    def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s):
+        # call real life compress
+        self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
+                stol, budget, m, k, s)
 
