@@ -296,6 +296,7 @@ IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
   set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip)
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install cython)")
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install numpy)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install mpi4py)")
 endif()  
 	## Jump to the virtual environment.
 	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
