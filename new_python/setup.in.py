@@ -119,3 +119,21 @@ extension_mod_matrix = Extension(
 
 setup(
   ext_modules = cythonize([extension_mod_matrix]) )
+
+
+extension_mod_matrix = Extension( 
+  "pympi", 
+  sources = ['${CMAKE_BINARY_DIR}/new_python/pympi.pyx','${CMAKE_SOURCE_DIR}/new_python/mpi_stats.cpp'],
+  language="c++",
+  include_dirs = inc_dirs,
+  libraries = ['hmlp'],
+  library_dirs = lib_dirs,
+  #runtime_library_dirs = lib_dirs,
+  extra_compile_args=["${HMLP_PYTHON_CFLAGS} -DHMLP_USE_MPI"],
+  #extra_compile_args=["-fopenmp", "-O3", "-std=c++11",
+  #	"-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"],
+  extra_link_args=["${HMLP_PYTHON_LINKER_FLAGS}"]
+)
+
+setup(
+  ext_modules = cythonize([extension_mod_matrix]) )
