@@ -3,11 +3,14 @@ from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.pair cimport pair
 from Data cimport Data
+from libcpp cimport bool
 
 # useful for splitter templating
 cdef extern from *:
     ctypedef int two "2"
 
+cdef extern from *:
+    ctypedef bool verdad "true"
 
 ## Import dense SPDMatrix<T> from hmlp::SPDMatrix<T>.
 cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace "hmlp":
@@ -31,6 +34,9 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
 
         # num cols
         size_t col()
+
+        # random generation
+        void randspd(T a, T b)
 
     ## end cppclass SPDMatrix[T]
 ## end extern from.

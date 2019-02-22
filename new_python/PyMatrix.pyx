@@ -24,6 +24,9 @@ cdef class PySPDMatrix:
     cpdef getvalue(self,size_t m, size_t n):
         return self.c_matrix[0](m,n)
 
+    cpdef randspd(self, float a, float b):
+        self.c_matrix.randspd(a,b)
+
 
 cdef class PyKernel:
     cdef kernel_s[float,float]* c_kernel
