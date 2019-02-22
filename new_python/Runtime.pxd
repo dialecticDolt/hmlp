@@ -12,7 +12,7 @@ cdef extern from "${PROJECT_SOURCE_DIR}/include/hmlp.h":
         HMLP_ERROR_NOT_SUPPORTED,
         HMLP_ERROR_INTERNAL_ERROR
 
-    cdef hmlpError_t hmlp_init()
+    cdef hmlpError_t hmlp_init() # Does not actually initialize mpi 
     cdef hmlpError_t hmlp_init(int * argc, char *** argv)
 
     cdef hmlpError_t hmlp_set_num_workers( int n_worker )
