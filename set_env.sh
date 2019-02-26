@@ -4,8 +4,8 @@
 ## ======================================
 
 ## Make sure CC and CXX are set properly in your system.
-export CC=${CC}
-export CXX=${CXX}
+export CC=${MPICC}
+export CXX=${MPICXX}
 
 ## Whether use BLAS or not?
 export HMLP_USE_BLAS=true
@@ -116,6 +116,7 @@ echo "===================================================================="
 if [ -z ${MKLROOT+x} ]; 
 then echo "Variable MKLROOT is unset (REQUIRED by intel compilers)"; 
 else echo "Variable MKLROOT is set to '$MKLROOT'";
+export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so
 fi
 echo "===================================================================="
 echo ""

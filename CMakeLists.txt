@@ -225,7 +225,7 @@ endif()
 
 
 # ---[ Python support
-find_program(VIRTUALENV "virtualenv")
+find_program(VIRTUALENV "virtualenv-3")
 if(NOT VIRTUALENV)
 	MESSAGE(WARNING "virtualenv not found. Not attempting to build cython version of GOFMM.")
 endif()
@@ -291,12 +291,12 @@ if (VIRTUALENV)
   #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
   
 IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
-  install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
-  set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python2)
-  set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip)
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install cython)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install numpy)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install mpi4py)")
+  install(CODE "execute_process(COMMAND virtualenv-3 --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
+  set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python3)
+  set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip3)
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install cython)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install numpy==1.11.3)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install mpi4py)")
 endif()  
 	## Jump to the virtual environment.
 	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
@@ -311,7 +311,7 @@ endif()
 	
 
 	#install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix=${CMAKE_BINARY_DIR})")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python3  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
 endif()
 
 
