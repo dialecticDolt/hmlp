@@ -116,6 +116,7 @@ echo "===================================================================="
 if [ -z ${MKLROOT+x} ]; 
 then echo "Variable MKLROOT is unset (REQUIRED by intel compilers)"; 
 else echo "Variable MKLROOT is set to '$MKLROOT'";
+export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so
 fi
 echo "===================================================================="
 echo ""
