@@ -2,6 +2,7 @@ from PyGOFMM import *
 import unittest
 import os
 import numpy as np
+from mpi4py import MPI
 
 class PyDataTesting(unittest.TestCase):
     # test get/set
@@ -148,11 +149,15 @@ class MatrixRoutineTesting(unittest.TestCase):
 	def test_compress(self):
 		m = 1000
 		n = 1000
-		testM = PySPDMatrix(m, n)
+		prt = PyRuntime()
+        prt.init()
+        print("Initialized\n")
+        testM = PySPDMatrix(m, n)
 		testM.randspd(0.0, 1.0)
 		stol = 0.001
 		budget = 0.1
-		Ctree = compress(testM, stol, budget)	
+		Ctree = compress(testM, stol, budget)
+        prt.finalize()	
 	
 if __name__=='__main__':
     unittest.main()
