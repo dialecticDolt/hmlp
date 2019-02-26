@@ -120,7 +120,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
 
 
     ## Import base compress function
-    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ]*Compress[T,SPDMATRIX]( SPDMATRIX &K, 
+    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ] *Compress[T,SPDMATRIX]( SPDMATRIX &K, 
             T stol, T budget,size_t m, size_t k, size_t s)
 
 
@@ -160,10 +160,10 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
         SPDMatrix[float]* Kptr
     
     #Working prototype *Compress
-    sTree_t *Compress(sSPDMatrix_t*, float, float)
-    dTree_t *Compress(dSPDMatrix_t&, double, double)
-    dTree_t *Compress(SPDMatrix[double]&, double, double)
-    sTree_t *Compress(SPDMatrix[float]&, float, float)  
+    #sTree_t *Compress(sSPDMatrix_t*, float, float)
+    #dTree_t *Compress(dSPDMatrix_t&, double, double)
+    #dTree_t *Compress(SPDMatrix[double]&, double, double)
+    #sTree_t *Compress(SPDMatrix[float]&, float, float)  
     #TODO: Add more configuration options (Take in config object). Write C++ code to apply configuration. 
     
 

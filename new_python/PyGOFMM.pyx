@@ -307,9 +307,9 @@ cdef class dPySPDMatrix:
     def getvalue(self,size_t i):
         return self.getvalue(i)
 
-def compress(PySPDMatrix py_matrix, float stol, float budget):
-    py_tree = sPyTree()
-    py_tree.copy(c_compress(deref(py_matrix.c_matrix), stol, budget))
-    return py_tree
+#def compress(PySPDMatrix py_matrix, float stol, float budget):
+#    py_tree = sPyTree()
+#    py_tree.copy(c_compress(deref(py_matrix.c_matrix), stol, budget))
+#    return py_tree
 
 

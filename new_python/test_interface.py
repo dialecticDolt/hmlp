@@ -103,62 +103,62 @@ class PyDataTesting(unittest.TestCase):
 
 
 class PyConfigTesting(unittest.TestCase):
-	def test_initialization(self):
-		metric = "USER_DISTANCE"
-		#metric = 0;
-		problem_size = 10000
-		leaf_node_size = 64
-		neighbor_size = 32
-		maximum_rank = 20
-		tolerance = 1e-5
-		budget = 2e-1
-		secure_accuracy = True
-		tc = PyConfig(metric, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
-		self.assertEqual(metric, tc.getMetricType())
-		
-		self.assertEqual(problem_size, tc.getProblemSize())
-		self.assertEqual(leaf_node_size, tc.getLeafNodeSize())
+    def test_initialization(self):
+        metric = "USER_DISTANCE"
+        #metric = 0;
+        problem_size = 10000
+        leaf_node_size = 64
+        neighbor_size = 32
+        maximum_rank = 20
+        tolerance = 1e-5
+        budget = 2e-1
+        secure_accuracy = True
+        tc = PyConfig(metric, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
+        self.assertEqual(metric, tc.getMetricType())
+        
+        self.assertEqual(problem_size, tc.getProblemSize())
+        self.assertEqual(leaf_node_size, tc.getLeafNodeSize())
 
 class MatrixRoutineTesting(unittest.TestCase):
-	def test_SPDMatrix(self):
-		m = 2000;
-		n = 2000;
-		precision = "FLOAT"; #not used
-		testM = PySPDMatrix(m, n);
-		self.assertEqual(m, testM.row())
-		self.assertEqual(n, testM.col())
-		self.assertEqual(m*n, testM.size())
-		self.assertEqual(0.0, testM.getvalue(10, 10))
-		self.assertEqual(0.0, testM.getvalue(m-1, n-2))
-		
-		testM.randspd(0.0, 1.0)
-		self.assertEqual(m, testM.row())
-                self.assertEqual(n, testM.col())
-		
-		#check symmetry
-		self.assertEqual(testM.getvalue(40, 50), testM.getvalue(50, 40))
+    def test_SPDMatrix(self):
+        m = 2000;
+        n = 2000;
+        precision = "FLOAT"; #not used
+        testM = PySPDMatrix(m, n);
+        self.assertEqual(m, testM.row())
+        self.assertEqual(n, testM.col())
+        self.assertEqual(m*n, testM.size())
+        self.assertEqual(0.0, testM.getvalue(10, 10))
+        self.assertEqual(0.0, testM.getvalue(m-1, n-2))
+        
+        testM.randspd(0.0, 1.0)
+        self.assertEqual(m, testM.row())
+        self.assertEqual(n, testM.col())
+        
+        #check symmetry
+        self.assertEqual(testM.getvalue(40, 50), testM.getvalue(50, 40))
 
-		#check diagonally dominant
-		#row_sum = 0.0
-		#for i in range(m):
-		#	for j in range(n):
-		#		if(i!=j):
-		#			row_sum += testM.getvalue(i, j)
-		#	self.assertTrue(testM.getvalue(i, i) >= row_sum, msg="Diagonal Dominance Failed. [A(i, i) RowSum(i)] = {}".format([testM.getvalue(i, i), row_sum]))
-		
-	def test_compress(self):
-		m = 1000
-		n = 1000
-		prt = PyRuntime()
+        #check diagonally dominant
+        #row_sum = 0.0
+        #for i in range(m):
+        #   for j in range(n):
+        #       if(i!=j):
+        #           row_sum += testM.getvalue(i, j)
+        #   self.assertTrue(testM.getvalue(i, i) >= row_sum, msg="Diagonal Dominance Failed. [A(i, i) RowSum(i)] = {}".format([testM.getvalue(i, i), row_sum]))
+        
+    def test_compress(self):
+        m = 1000
+        n = 1000
+        prt = PyRuntime()
         prt.init()
         print("Initialized\n")
-        testM = PySPDMatrix(m, n)
-		testM.randspd(0.0, 1.0)
-		stol = 0.001
-		budget = 0.1
-		Ctree = compress(testM, stol, budget)
-        prt.finalize()	
-	
+        #testM = PySPDMatrix(m, n)
+        #testM.randspd(0.0, 1.0)
+        stol = 0.001
+        budget = 0.1
+        #Ctree = compress(testM, stol, budget)
+        prt.finalize()  
+        
 if __name__=='__main__':
     unittest.main()
 
