@@ -181,6 +181,67 @@ cdef class PySPDMatrix:
     def randspd(self, float a, float b):
         self.c_matrix.randspd(a, b)
 
+cdef class PyKernel:
+    cdef kernel_s[float,float]* c_kernel
+
+    # constructor 
+    def __cinit__(self,str kstring="GAUSSIAN"):
+       self.c_kernel = new kernel_s[float,float]()
+       k_enum = PyKernel.GetKernelTypeEnum(kstring)
+       self.c_kernel.SetKernelType(k_enum)
+
+    # static method for handling enum
+    @staticmethod
+    def GetKernelTypeEnum(str kstring):
+        if(kstring == "GAUSSIAN"):
+            m = int(0)
+        elif(kstring == "SIGMOID"):
+            m = int(1)
+        elif(kstring == "POLYNOMIAL"):
+            m = int(2)
+        elif(kstring == "LAPLACE"):
+            m = int(3)
+        elif(kstring == "GAUSSIAN_VAR_BANDWIDTH"):
+            m = int(4)
+        elif(kstring == "TANH"):
+            m = int(5)
+        elif(kstring == "QUARTIC"):
+            m = int(6)
+        elif(kstring == "MULTIQUADRATIC"):
+            m = int(7)
+        elif(kstring == "EPANECHNIKOV"):
+            m = int(8)
+        elif(kstring == "USER_DEFINE"):
+            m = int(9)
+        else:
+            raise ValueError("Kernel type not found.")
+
+        return m
+
+
+
+# GOFMM tree
+cdef class PyTreeSPD:
+    cdef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]* c_tree
+
+    # Initializer test
+    def __cinit__(self):
+        self.c_tree = new Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]()
+
+    # GOFMM compress
+    def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s):
+        # call real life compress
+        self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
+                stol, budget, m, k, s)
+
+
+
+
+
+
+
+
+
 #This would need to be templated on setup and nodetype
 #cdef class PyTree:
 #    cdef Tree* c_tree

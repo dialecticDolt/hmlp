@@ -34,10 +34,6 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
     ## end cppclass SPDMatrix[T]
 ## end extern from.
 
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "tree":
-    cpdef cppclass Tree:
-        pass
-
 ## Import KernelMatrix from hmlp::KernelMatrix<T>
 cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp":
     # enum for kernel type
@@ -100,10 +96,10 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         # return dimension
         size_t dim()
 
-## tree.hpp import Tree
-#cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "hmlp::tree":
-#    cdef cppclass Tree[SETUP,NODEDATA]:
-#        pass
+# tree.hpp import Tree
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "hmlp::tree":
+    cdef cppclass Tree[SETUP,NODEDATA]:
+        pass
 
 
 ## gofmm.hpp import compress essentials 

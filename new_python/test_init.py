@@ -16,7 +16,7 @@ pK = PySPDMatrix( 5000,5000)
 pK.randspd(0.0,1.0)
 
 # initalize tree
-pT = PyTreeSPD()
+#pT = PyTreeSPD()
 
 
 # compress matrix
