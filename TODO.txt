@@ -11,15 +11,10 @@
 
 SHORT TERM:
 - Make wrappers for:
-	- Compress (Will) 
-		- Currently stuck on figuring out Data<Pair[float, int]>
-		- Make python def for tree (can I just use cpdef or does it break the template?)
+	- Overload Compress, make different calls, use PyConfig object.
+    
+-There is a bug in Data.setvalue()  It throws a segfault on repeated calls/when looping over the data structure. 
 
-	- Evaluate
-- Write KernelMatrix function (Sameer)
-- Write user defined kernel functionality (Sameer)
-
-- Automate generation of setup.py to include all extensions (i.e. "pyconfig.pyx", "PyData.pyx", etc)
 
 LONGER TERM:
 

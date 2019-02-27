@@ -11,6 +11,12 @@ cdef extern from *:
     ctypedef int two "2"
 
 cdef extern from *:
+    ctypedef bool use_runtime "true"
+    ctypedef bool use_opm_task "false"
+    ctypedef bool nnprune "true"
+    ctypedef bool cache "true"
+
+cdef extern from *:
     ctypedef bool verdad "true"
 
 ## Import dense SPDMatrix<T> from hmlp::SPDMatrix<T>.
@@ -123,6 +129,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
     cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ] *Compress[T,SPDMATRIX]( SPDMATRIX &K, 
             T stol, T budget,size_t m, size_t k, size_t s)
 
+    cdef Data[T] Evaluate[use_runtime, use_omp_task, nnprune, cache, TREE, T](TREE &tr, Data[T] &weights)
 
     # Try to import more complex Compress?
     #cdef Tree[ Setup[ SPDMatrix[T], centersplit, T], NodeData[T] ] * 

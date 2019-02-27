@@ -118,6 +118,10 @@ cdef class PyData:
 
     cpdef rand(self,float a, float b ):
         self.c_data.rand(a,b)
+    
+    cdef copy(self, Data[float] ptr):
+        del self.c_data
+        self.c_data = &ptr
 
     # TODO pass in numpy and make a data object?? try with [:]
     # not sure it is necessary, so going to leave this for later
@@ -234,7 +238,12 @@ cdef class PyTreeSPD:
         self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
                 stol, budget, m, k, s)
 
+    def PyEvaluate(self, PyData w):
+        result = PyData()
+        result.copy(Evaluate[use_runtime, use_opm_task, nnprune, cache, Tree[Setup[SPDMatrix[float], centersplit[SPDMatrix[float], two, float], float], NodeData[float]], float](deref(self.c_tree), deref(w.c_data)))
 
+        return result
+        
 
 
 
