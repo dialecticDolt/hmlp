@@ -11,13 +11,15 @@
 
 SHORT TERM:
 - Make wrappers for:
-	- Overload Compress, make different calls, use PyConfig object.
+	- Overload Compress, make different calls, use PyConfig object. (Will)
     
--There is a bug in Data.setvalue()  It throws a segfault on repeated calls/when looping over the data structure. 
+-There is a bug in Data.setvalue()  It throws a segfault on repeated calls/when looping over the data structure.
+-Try fused types (Will)
+-Make wrapper for Factorize (Sameer)
+-Kernel Matrix Class (Sameer)
 
 
 LONGER TERM:
-
+- Numpy to Data
 - Decide and implement interface for custom kernels
-- Make wrapper for Factorize
 - Distributed and GPU implementations
