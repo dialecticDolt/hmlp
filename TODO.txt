@@ -16,8 +16,6 @@ SHORT TERM:
 -There is a bug in Data.setvalue()  It throws a segfault on repeated calls/when looping over the data structure.
 -Try fused types (Will)
 -Make wrapper for Factorize (Sameer)
--Kernel Matrix Class (Sameer)
-
 
 LONGER TERM:
 - Numpy to Data

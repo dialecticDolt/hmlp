@@ -60,7 +60,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
     cdef cppclass kernel_s[T,TP]:
         # variables
         kernel_type type # TODO is this bad practice?
-        #T scal = 1 # gauss or sigmoid
+        T scal # gauss or sigmoid
         #T cons = 0 # for sigmoid
 
         # set and get

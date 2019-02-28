@@ -4,6 +4,7 @@ from Matrix cimport Compress as c_compress
 from Data cimport Data
 from Config cimport *
 from libcpp.pair cimport pair
+from libc.math cimport sqrt
 from cython.operator cimport dereference as deref
 cimport numpy as np
 
@@ -222,6 +223,45 @@ cdef class PyKernel:
 
         return m
 
+    # Gaussian param set/get
+    def SetBandwidth(self,float _scal):
+        self.c_kernel.scal = -0.5 / (_scal *_scal)
+    
+    def GetBandwidth(self):
+        f = -0.5 / self.c_kernel.scal
+        return sqrt(f)
+
+    def SetScal(self,float _scal):
+        self.c_kernel.scal = _scal
+    
+    def GetScal(self):
+        return self.c_kernel.scal
+
+cdef class PyKernelMatrix:
+    cdef KernelMatrix[float]* c_matrix
+
+    def __cinit__(self,PyData sources,PyKernel kernel,PyData targets = None):
+        # get m, d
+        cdef size_t m,d,n
+        m = sources.col() # sources should be input d x N
+        d = sources.row()
+        n = m
+        
+        # handle non-symmetric case, call constructor
+        if targets is not None:
+            n = targets.col()
+            self.c_matrix = new KernelMatrix[float](m,n,d,deref(kernel.c_kernel),deref(sources.c_data),deref(targets.c_data))
+        else:
+            self.c_matrix = new KernelMatrix[float](m,n,d,deref(kernel.c_kernel),deref(sources.c_data))
+
+    cpdef dim(self):
+        return self.c_matrix.dim()
+    
+    cpdef size(self):
+        return self.c_matrix.dim() * self.c_matrix.dim()
+
+    cpdef getvalue(self,size_t m, size_t n):
+        return self.c_matrix[0](m,n)
 
 
 # GOFMM tree
