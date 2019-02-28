@@ -20,6 +20,8 @@ cdef char ** to_cstring_array(list_str):
         ret[i] = PyUnicode_AsUTF8(list_str[i])
     return ret
 
+
+
 cdef class PyRuntime:
     cpdef int isInit
 
@@ -263,28 +265,37 @@ cdef class PyKernelMatrix:
     cpdef getvalue(self,size_t m, size_t n):
         return self.c_matrix[0](m,n)
 
+# Type defs to make life easier
+#ctypedef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]] spd_float_tree
 
 # GOFMM tree
 cdef class PyTreeSPD:
     cdef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]* c_tree
+    #cdef spd_float_tree* c_tree
 
     # Initializer test
     def __cinit__(self):
         self.c_tree = new Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]()
+        #self.c_tree = new spd_float_tree()
 
     # GOFMM compress
-    def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s):
+    def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s,bool sec_acc=True):
         # call real life compress
         self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
-                stol, budget, m, k, s)
+                stol, budget, m, k, s,sec_acc)
 
     def PyEvaluate(self, PyData w):
         result = PyData()
         result.copy(Evaluate[use_runtime, use_opm_task, nnprune, cache, Tree[Setup[SPDMatrix[float], centersplit[SPDMatrix[float], two, float], float], NodeData[float]], float](deref(self.c_tree), deref(w.c_data)))
 
-        return result
-        
+        #result.copy(Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree), deref(w.c_data)))
 
+        return result
+
+    def PyFactorize(self,float reg):
+        Factorize[float,  Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]]( deref(self.c_tree), reg)
+
+        #Factorize[float,spd_float_tree]( deref(self.c_tree), reg)
 
 
 

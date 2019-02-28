@@ -3,6 +3,7 @@ from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.pair cimport pair
 from Data cimport Data
+from Runtime cimport hmlpError_t
 from libcpp cimport bool
 from Config cimport Configuration
 
@@ -108,6 +109,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "hmlp::tree":
         pass
 
 
+
 ## gofmm.hpp import compress essentials 
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
     cdef cppclass centersplit[SPDMATRIX, int, T]:
@@ -126,10 +128,11 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
 
 
     ## Import base compress function
-    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ] *Compress[T,SPDMATRIX]( SPDMATRIX &K, 
-            T stol, T budget,size_t m, size_t k, size_t s)
+    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ] *Compress[T,SPDMATRIX]( SPDMATRIX, 
+            T, T, size_t, size_t, size_t, bool)
 
     cdef Data[T] Evaluate[use_runtime, use_omp_task, nnprune, cache, TREE, T](TREE &tr, Data[T] &weights)
+
 
     # Try to import more complex Compress?
     #cdef Tree[ Setup[ SPDMatrix[T], centersplit, T], NodeData[T] ] * 
@@ -177,3 +180,9 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
     #This option is so heavily templated I'm not sure how to handle it. (Tree should be templated on setup and nodetype)
     #Tree *Compress(SPDMatrix[float]*, Data[float], centersplit, randomsplit, Configuration[float]*)
     #Tree *Compress(SPDMatrix[float]*, Data[pair[float, int]], centersplit, randomsplit, Configuration[float]*)
+
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/igofmm.hpp" namespace "hmlp::gofmm":
+    cdef hmlpError_t Factorize[T,TREE](TREE , T )
+
+
+
