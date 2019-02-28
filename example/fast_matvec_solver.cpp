@@ -76,7 +76,7 @@ int main( int argc, char *argv[] )
     /** [Step#6] Compute an approximate MATVEC. */
     Data<T> w1( n, nrhs ); w1.randn();
     auto u1 = gofmm::Evaluate( tree1, w1 );
-    if ( secure_accuracy )
+    if ( !secure_accuracy )
     {
       /** [Step#7] Factorization (HSS using ULV). */
       gofmm::Factorize( tree1, lambda ); 
@@ -84,6 +84,8 @@ int main( int argc, char *argv[] )
       auto x1 = u1;
       gofmm::Solve( tree1, x1 ); 
     }
+
+    //gofmm::SelfTesting(tree1,4,100);
 
     /** [Step#1] Create a configuration for kernel matrices. */
     gofmm::Configuration<T> config2( GEOMETRY_DISTANCE, n, m, k, s, stol, budget, secure_accuracy );
@@ -102,7 +104,7 @@ int main( int argc, char *argv[] )
     /** [Step#6] Compute an approximate MATVEC. */
     Data<T> w2( n, nrhs ); w2.randn();
     auto u2 = gofmm::Evaluate( tree2, w2 );
-    if ( secure_accuracy )
+    if ( !secure_accuracy )
     {
       /** [Step#7] Factorization (HSS using ULV). */
       gofmm::Factorize( tree2, lambda ); 
