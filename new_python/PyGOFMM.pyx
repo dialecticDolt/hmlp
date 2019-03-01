@@ -339,11 +339,24 @@ cdef class PyTreeSPD:
         #self.c_tree = new spd_float_tree()
 
     # GOFMM compress
-    def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s,bool sec_acc=True):
-        # call real life compress
-        self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
-                stol, budget, m, k, s,sec_acc)
+    #def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s,bool sec_acc=True):
+    #    # call real life compress
+    #    self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
+    #            stol, budget, m, k, s,sec_acc)
+    
+    #def PyCompress(self, PySPDMatrix K, PyConfig c):
+    #    self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix), c.getTolerance(), c.getBudget(), c.getLeafNodeSize(), c.getNeighborSize(), c.getMaximumRank())
+    
 
+    def PyCompress(self, PySPDMatrix K, PyConfig c):
+        cdef centersplit[SPDMatrix[float], two, float] c_csplit
+        cdef randomsplit[SPDMatrix[float], two, float] c_rsplit
+        cdef Data[pair[float, size_t]] c_NNdata
+        c_csplit.Kptr = K.c_matrix
+        c_rsplit.Kptr = K.c_matrix
+            
+        self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(c.c_config))
+    
     def PyEvaluate(self, PyData w):
         result = PyData()
         result.copy(Evaluate[use_runtime, use_opm_task, nnprune, cache, Tree[Setup[SPDMatrix[float], centersplit[SPDMatrix[float], two, float], float], NodeData[float]], float](deref(self.c_tree), deref(w.c_data)))
