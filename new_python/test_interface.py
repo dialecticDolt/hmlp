@@ -2,6 +2,7 @@ from PyGOFMM import *
 import unittest
 import os
 import numpy as np
+from math import exp
 from mpi4py import MPI
 
 class PyDataTesting(unittest.TestCase):
@@ -145,7 +146,49 @@ class MatrixRoutineTesting(unittest.TestCase):
         #       if(i!=j):
         #           row_sum += testM.getvalue(i, j)
         #   self.assertTrue(testM.getvalue(i, i) >= row_sum, msg="Diagonal Dominance Failed. [A(i, i) RowSum(i)] = {}".format([testM.getvalue(i, i), row_sum]))
-        
+
+    def test_KernelMatrix(self):
+        m = 200
+        n = 150
+        d = 20
+        trn_idx = 10
+        tst_idx = 15
+
+
+        # make data
+        Xtr = PyData(d,m)
+        Xtr.rand(0.0,1.0)
+        Xte = PyData(d,n)
+        Xte.rand(0.0,1.0)
+
+        # make kernel object
+        ks = PyKernel("GAUSSIAN")
+        ks.SetBandwidth(1.0) # results in scaling of -1/2
+
+
+        # Init symmetric kernel
+        KK = PyKernelMatrix(Xtr,ks)
+        Kt = PyKernelMatrix(Xtr,ks,Xte)
+        self.assertEqual(1.0, KK.getvalue(2,2))
+        self.assertEqual(1.0, KK.getvalue(10,10))
+
+        # Test kernels
+        diff_sym = 0.0
+        diff_asym = 0.0
+        for di in range(d):
+            xtr = Xtr.getvalue(di,trn_idx)
+            xtr1 = Xtr.getvalue(di,tst_idx)
+            xte = Xte.getvalue(di,tst_idx)
+            
+            # differences
+            diff_sym += (xtr - xtr1) * (xtr - xtr1)
+            diff_asym += (xtr - xte) * (xtr - xte)
+
+        pyexp_asym = exp(-0.5 * diff_asym)
+        pyexp_sym = exp(-0.5 * diff_sym)
+        self.assertAlmostEqual(pyexp_asym,KK.getvalue(trn_idx,tst_idx))
+        self.assertAlmostEqual(pyexp_sym,Kt.getvalue(trn_idx,tst_idx))
+    
     def test_compress(self):
         m = 1000
         n = 1000
@@ -159,6 +202,7 @@ class MatrixRoutineTesting(unittest.TestCase):
         #Ctree = compress(testM, stol, budget)
         prt.finalize()  
         
+
 if __name__=='__main__':
     unittest.main()
 

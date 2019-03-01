@@ -3520,7 +3520,7 @@ template<typename T, typename SPDMATRIX>
 tree::Tree<
   gofmm::Setup<SPDMATRIX, centersplit<SPDMATRIX, 2, T>, T>, 
   gofmm::NodeData<T>>
-*Compress( SPDMATRIX &K, T stol, T budget, size_t m, size_t k, size_t s )
+*Compress( SPDMATRIX &K, T stol, T budget, size_t m, size_t k, size_t s,bool sec_acc=true)
 {
   using SPLITTER     = centersplit<SPDMATRIX, 2, T>;
   using RKDTSPLITTER = randomsplit<SPDMATRIX, 2, T>;
@@ -3536,7 +3536,8 @@ tree::Tree<
   size_t n = K.row();
 
 	/** creatgin configuration for all user-define arguments */
-	Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget );
+	Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget,sec_acc );
+	//Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget,false );
 
 	/** call the complete interface and return tree_ptr */
   return Compress<SPLITTER, RKDTSPLITTER>
