@@ -98,6 +98,10 @@ cdef class PyData:
     def __cinit__(self,size_t m = 0,size_t n = 0):
         self.c_data = new Data[float](m,n)
 
+    #def __dealloc__( self ):
+    #    self.c_data.clear()
+    #    del self.c_data
+
     cpdef read(self, size_t m, size_t n, str filename):
         self.c_data.read(m, n,filename.encode())
 
@@ -125,6 +129,20 @@ cdef class PyData:
     cdef copy(self, Data[float] ptr):
         del self.c_data
         self.c_data = &ptr
+    
+    cpdef MakeCopy(self):
+
+        # get my data stuff
+        cdef Data[float]* cpy = new Data[float](deref(self.c_data) )
+        
+        # put into python obj
+        cpdef PyData bla = PyData(self.row(), self.col())
+        bla.c_data = cpy
+        return bla 
+
+    cdef deepcopy(self,PyData other):
+        del self.c_data
+        self.c_data = new Data[float]( deref(other.c_data) )
 
     # TODO pass in numpy and make a data object?? try with [:]
     # not sure it is necessary, so going to leave this for later
@@ -285,7 +303,7 @@ cdef class PyTreeSPD:
                 stol, budget, m, k, s,sec_acc)
 
     def PyEvaluate(self, PyData w):
-        result = PyData()
+        result = PyData(w.row(),w.col())
         #result.copy(Evaluate[use_runtime, use_opm_task, nnprune, cache, Tree[Setup[SPDMatrix[float], centersplit[SPDMatrix[float], two, float], float], NodeData[float]], float](deref(self.c_tree), deref(w.c_data)))
 
         result.copy(Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree), deref(w.c_data)))
@@ -297,17 +315,16 @@ cdef class PyTreeSPD:
 
         Factorize[float,spd_float_tree]( deref(self.c_tree), reg)
 
-#    def PySolve(self,PyData w):
-#        # make data copy
-#        result = PyData()
-#        result.c_data = new Data(deref(w.c_data))
-#
-#        # solve
+    def PySolve(self,PyData w):
+        # make data copy
+        #cdef PyData result = w.MakeCopy()
+        #result = PyData(w.row(),w.col())
+        #result.deepcopy(w)
+        #wout = PyData(w.row(),w.col())
 
-
-
-
-
+        # solve
+        Solve[float,spd_float_tree](deref(self.c_tree), deref(w.c_data))
+        return w
 
 
 
