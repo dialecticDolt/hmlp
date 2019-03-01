@@ -6,12 +6,11 @@ from Config cimport *
 from libcpp.pair cimport pair
 from cython.operator cimport dereference as deref
 cimport numpy as np
+from libc.string cimport strcmp
+from libc.stdlib cimport malloc, free
 
 cdef extern from "Python.h":
     char* PyUnicode_AsUTF8(object unicode)
-
-from libc.stdlib cimport malloc, free
-from libc.string cimport strcmp
 
 cdef char ** to_cstring_array(list_str):
     cdef char **ret = <char **>malloc(len(list_str) * sizeof(char *))
@@ -51,7 +50,7 @@ cdef class PyRuntime:
 cdef class PyConfig:
     cdef Configuration[float]* c_config
     cpdef str metric_t
-
+    
     def __cinit__(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
         self.metric_t = metric_type
         if(metric_type == "GEOMETRY_DISTANCE"):
@@ -64,8 +63,58 @@ cdef class PyConfig:
             m = int(3)
         self.c_config = new Configuration[float](m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
 
+    def setAll(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
+        self.metric_t = metric_type
+        if(metric_type == "GEOMETRY_DISTANCE"):
+            m = int(0)
+        elif(metric_type == "KERNEL_DISTANCE"):
+            m = int(1)
+        elif(metric_type == "ANGLE_DISTANCE"):
+            m = int(2)
+        elif(metric_type == "USER_DISTANCE"):
+            m = int(3)
+
+        self.c_config.Set(m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
+
+    #TODO: Add getters and setters for all
+    def setMetricType(self, metric_type):
+        self.metric_t = metric_type
+        if(metric_type == "GEOMETRY_DISTANCE"):
+            m = int(0)
+        elif(metric_type == "KERNEL_DISTANCE"):
+            m = int(1)
+        elif(metric_type == "ANGLE_DISTANCE"):
+            m = int(2)
+        elif(metric_type == "USER_DISTANCE"):
+            m = int(3)
+        self.c_config.Set(m, self.getProblemSize(), self.getLeafNodeSizei(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setNeighborSize(self, int nsize):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), nsize, self.getMaximumRank(), self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setProblemSize(self, int psize):
+        self.c_config.Set(self.c_config.MetricType(), psize, self.getLeafNodeSizei(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setMaximumRank(self, int mrank):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), mrank, self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setTolerance(self, float tol):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), self.getMaximumRank(), tol, self.getBudget(), self.isSecure())
+
+    def setBudget(self, float budget):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), budget, self.isSecure())
+
+    def setSecureAccuracy(self, bool status):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), self.getBudget(), status)
+        
     def getMetricType(self):
         return self.metric_t
+
+    def getMaximumRank(self):
+        return self.c_config.MaximumRank()
+
+    def getNeighborSize(self):
+        return self.c_config.NeighborSize()
 
     def getProblemSize(self):
         return self.c_config.ProblemSize()
@@ -75,6 +124,12 @@ cdef class PyConfig:
 
     def getLeafNodeSize(self):
         return self.c_config.getLeafNodeSize()
+
+    def getTolerance(self):
+        return self.c_config.Tolerance()
+
+    def getBudget(self):
+        return self.c_config.Budget()
 
     def isSymmetric(self):
         return self.c_config.IsSymmetric()
@@ -88,6 +143,11 @@ cdef class PyConfig:
     def setLeafNodeSize(self, int leaf_node_size):
         self.c_config.setLeafNodeSize(leaf_node_size)
 
+    def setAdaptiveRank(self, bool status):
+        self.c_config.setAdaptiveRanks(status)
+
+    def setSymmetry(self, bool status):
+        self.c_config.setSymmetric(status)
 
 cdef class PyData:
     cdef Data[float]* c_data

@@ -219,28 +219,20 @@ class Configuration
 
     Configuration() {};
 
-		Configuration( DistanceMetric metric_type,
-		  size_t problem_size, size_t leaf_node_size, 
-      size_t neighbor_size, size_t maximum_rank, 
+	Configuration( DistanceMetric metric_type,  size_t problem_size, size_t leaf_node_size, size_t neighbor_size, size_t maximum_rank, 
 			T tolerance, T budget, bool secure_accuracy = true ) 
 		{
-		  try
-      {
-        HANDLE_ERROR( Set( metric_type, problem_size, leaf_node_size, 
-          neighbor_size, maximum_rank, tolerance, budget, secure_accuracy ) );
-      }
-      catch ( const exception & e )
-      {
-        cout << e.what() << endl;
-        exit( -1 );
-      }
+		    try{
+                HANDLE_ERROR( Set( metric_type, problem_size, leaf_node_size, 
+                neighbor_size, maximum_rank, tolerance, budget, secure_accuracy ) );
+             }
+            catch ( const exception & e ){
+                cout << e.what() << endl;
+                exit( -1 );
+            }
 		};
 
-		hmlpError_t Set( DistanceMetric metric_type,
-		  size_t problem_size, size_t leaf_node_size, 
-      size_t neighbor_size, size_t maximum_rank, 
-			T tolerance, T budget, bool secure_accuracy ) 
-		{
+	hmlpError_t Set( DistanceMetric metric_type, size_t problem_size, size_t leaf_node_size, size_t neighbor_size, size_t maximum_rank, T tolerance, T budget, bool secure_accuracy ){
 			this->metric_type = metric_type;
 			this->problem_size = problem_size;
 			//this->leaf_node_size_ = leaf_node_size;
@@ -250,7 +242,7 @@ class Configuration
 			this->tolerance = tolerance;
 			this->budget = budget;
 			this->secure_accuracy = secure_accuracy;
-      /* Return with no error. */
+            /* Return with no error. */
 			return HMLP_ERROR_SUCCESS;
 		};
 
@@ -260,12 +252,12 @@ class Configuration
       return HMLP_ERROR_SUCCESS;
     };
 
-		DistanceMetric MetricType() const noexcept 
-		{ 
-		  return metric_type; 
-		};
+	DistanceMetric MetricType() const noexcept 
+	{ 
+	  return metric_type; 
+	};
 
-		size_t ProblemSize() const noexcept { return problem_size; };
+	size_t ProblemSize() const noexcept { return problem_size; };
 
     size_t getMaximumDepth() const noexcept { return maximum_depth_; };
 
@@ -278,29 +270,39 @@ class Configuration
         return HMLP_ERROR_INVALID_VALUE;
       }
       /* Set the value. */
-      leaf_node_size_ = leaf_node_size;
+      this->leaf_node_size_ = leaf_node_size;
       /* Return with no error. */
       return HMLP_ERROR_SUCCESS;
     };
 
-		size_t getLeafNodeSize() const noexcept 
-		{ 
-		  return leaf_node_size_; 
-		};
-
+	size_t getLeafNodeSize() const noexcept 
+	{ 
+	  return leaf_node_size_; 
+	};
+        
 		size_t NeighborSize() const noexcept { return neighbor_size; };
 
 		size_t MaximumRank() const noexcept { return maximum_rank; };
 
 		T Tolerance() const noexcept { return tolerance; };
 
-		T Budget() const noexcept { return budget; };
+	    T Budget() const noexcept { return budget; };
 
-    bool IsSymmetric() const noexcept { return is_symmetric; };
-
-    bool UseAdaptiveRanks() const noexcept { return use_adaptive_ranks; };
-
-    bool SecureAccuracy() const noexcept { return secure_accuracy; };
+        bool IsSymmetric() const noexcept { return is_symmetric; };
+        
+        hmlpError_t setSymmetric(bool status){
+            this->is_symmetric = status;
+            return HMLP_ERROR_SUCCESS;
+        }
+        
+        bool UseAdaptiveRanks() const noexcept { return use_adaptive_ranks; };
+        
+        hmlpError_t setAdaptiveRanks(bool status){
+            this->use_adaptive_ranks = status;
+            return HMLP_ERROR_SUCCESS;
+        }
+        
+        bool SecureAccuracy() const noexcept { return secure_accuracy; };
 
 	private:
 
@@ -310,8 +312,8 @@ class Configuration
 		/** (Default) problem size. */
 		size_t problem_size = 0;
 
-    /** (Default) maximum tree depth. By defaultm we use 4 bits = 0-15 levels. */
-    size_t maximum_depth_ = 15;
+        /** (Default) maximum tree depth. By defaultm we use 4 bits = 0-15 levels. */
+        size_t maximum_depth_ = 15;
 
 		/** (Default) maximum leaf node size. */
 		sizeType leaf_node_size_ = 64;
@@ -328,14 +330,14 @@ class Configuration
 		/** (Default) user computation budget. */
 		T budget = 0.03;
 
-    /** (Default, Advanced) whether the matrix is symmetric. */
-    bool is_symmetric = true;
-
-		/** (Default, Advanced) whether or not using adaptive ranks. */
+        /** (Default, Advanced) whether the matrix is symmetric. */
+        bool is_symmetric = true;
+		
+        /** (Default, Advanced) whether or not using adaptive ranks. */
 		bool use_adaptive_ranks = true;
 
-    /** (Default, Advanced) whether or not securing the accuracy. */
-    bool secure_accuracy = true;
+        /** (Default, Advanced) whether or not securing the accuracy. */
+        bool secure_accuracy = true;
 
 }; /** end class Configuration */
 
