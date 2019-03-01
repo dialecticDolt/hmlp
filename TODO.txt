@@ -10,14 +10,23 @@
 ========================================
 
 SHORT TERM:
+- Soft copy bug (Sameer)
+- Numpy to Data (Sameer)
+- Compute error function (Sameer)
+
+- PyTreeKM or Inherit from Virtual Matrix  (Sameer)
+
 - Make wrappers for:
 	- Overload Compress, make different calls, use PyConfig object. (Will)
-    
--There is a bug in Data.setvalue()  It throws a segfault on repeated calls/when looping over the data structure.
--Try fused types (Will)
--Make wrapper for Factorize (Sameer)
+- Try fused types (Will)
+- Nearest neighbor function (Will)
+
+
+- Define your own kernel -- how to link? (Will)
+- Clean up (Will)
 
 LONGER TERM:
-- Numpy to Data
-- Decide and implement interface for custom kernels
-- Distributed and GPU implementations
+
+-There is a bug in Data.setvalue()  It throws a segfault on repeated calls/when looping over the data structure.
+Could this be related to our soft copy bug?
+- Distributed and GPU implementations, test mpi

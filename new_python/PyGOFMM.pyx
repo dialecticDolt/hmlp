@@ -158,6 +158,10 @@ cdef class PyData:
     def __cinit__(self,size_t m = 0,size_t n = 0):
         self.c_data = new Data[float](m,n)
 
+    #def __dealloc__( self ):
+    #    self.c_data.clear()
+    #    del self.c_data
+
     cpdef read(self, size_t m, size_t n, str filename):
         self.c_data.read(m, n,filename.encode())
 
@@ -185,6 +189,20 @@ cdef class PyData:
     cdef copy(self, Data[float] ptr):
         del self.c_data
         self.c_data = &ptr
+    
+    cpdef MakeCopy(self):
+
+        # get my data stuff
+        cdef Data[float]* cpy = new Data[float](deref(self.c_data) )
+        
+        # put into python obj
+        cpdef PyData bla = PyData(self.row(), self.col())
+        bla.c_data = cpy
+        return bla 
+
+    cdef deepcopy(self,PyData other):
+        del self.c_data
+        self.c_data = new Data[float]( deref(other.c_data) )
 
     # TODO pass in numpy and make a data object?? try with [:]
     # not sure it is necessary, so going to leave this for later
@@ -326,17 +344,17 @@ cdef class PyKernelMatrix:
         return self.c_matrix[0](m,n)
 
 # Type defs to make life easier
-#ctypedef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]] spd_float_tree
+ctypedef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]] spd_float_tree
 
 # GOFMM tree
 cdef class PyTreeSPD:
-    cdef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]* c_tree
-    #cdef spd_float_tree* c_tree
+    #cdef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]* c_tree
+    cdef spd_float_tree* c_tree
 
     # Initializer test
     def __cinit__(self):
-        self.c_tree = new Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]()
-        #self.c_tree = new spd_float_tree()
+        #self.c_tree = new Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]()
+        self.c_tree = new spd_float_tree()
 
     # GOFMM compress
     #def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s,bool sec_acc=True):
@@ -358,19 +376,28 @@ cdef class PyTreeSPD:
         self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(c.c_config))
     
     def PyEvaluate(self, PyData w):
-        result = PyData()
-        result.copy(Evaluate[use_runtime, use_opm_task, nnprune, cache, Tree[Setup[SPDMatrix[float], centersplit[SPDMatrix[float], two, float], float], NodeData[float]], float](deref(self.c_tree), deref(w.c_data)))
+        result = PyData(w.row(),w.col())
+        #result.copy(Evaluate[use_runtime, use_opm_task, nnprune, cache, Tree[Setup[SPDMatrix[float], centersplit[SPDMatrix[float], two, float], float], NodeData[float]], float](deref(self.c_tree), deref(w.c_data)))
 
-        #result.copy(Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree), deref(w.c_data)))
+        result.copy(Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree), deref(w.c_data)))
 
         return result
 
     def PyFactorize(self,float reg):
-        Factorize[float,  Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]]( deref(self.c_tree), reg)
+        #Factorize[float,  Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]]( deref(self.c_tree), reg)
 
-        #Factorize[float,spd_float_tree]( deref(self.c_tree), reg)
+        Factorize[float,spd_float_tree]( deref(self.c_tree), reg)
 
+    def PySolve(self,PyData w):
+        # make data copy
+        #cdef PyData result = w.MakeCopy()
+        #result = PyData(w.row(),w.col())
+        #result.deepcopy(w)
+        #wout = PyData(w.row(),w.col())
 
+        # solve
+        Solve[float,spd_float_tree](deref(self.c_tree), deref(w.c_data))
+        return w
 
 
 

@@ -188,5 +188,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/igofmm.hpp" namespace "hmlp::gofmm":
     cdef hmlpError_t Factorize[T,TREE](TREE , T )
 
+    cdef hmlpError_t Solve[T,TREE](TREE, Data[T])
+    #cdef hmlpError_t Solve[T,TREE](TREE, Data[T],Data[T])
+
 
 
