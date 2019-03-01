@@ -39,7 +39,7 @@ print('Factorized!')
 
 
 # solve
-ww_est = ww.MakeCopy()
+ww_est = uu.MakeCopy()
 pT.PySolve(ww_est)
 
 #print(ww.getvalue(1,0))
