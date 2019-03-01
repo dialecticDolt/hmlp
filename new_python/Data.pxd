@@ -13,17 +13,18 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/Data.hpp" namespace "hmlp":
 
         # initialize by size
         Data(size_t m,size_t n) except + 
+
+        # Copy constructor
+        Data( const Data[T]& ) except +
     
         # read from filename
         void read(size_t m , size_t n, string &filename)
         
-        # read from filename
+        # write to filename
         void write(string &filename)
 
-        # copy constructor -- TODO
-
-
-        # write to file --TODO
+        # clear -- basically the destructor
+        void clear()
         
         # get row size
         size_t row()
