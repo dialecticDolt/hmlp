@@ -351,16 +351,19 @@ cdef class PyTreeSPD:
     #    self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
     #            stol, budget, m, k, s,sec_acc)
     
-    def PyCompress(self, PySPDMatrix K, PyConfig c = None, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, str metric_type="ANGLE_DISTANCE", bool sec_acc=True, bool sym=True, bool adapt_ranks=True):
+    def PyCompress(self, PySPDMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
         cdef centersplit[SPDMatrix[float], two, float] c_csplit
         cdef randomsplit[SPDMatrix[float], two, float] c_rsplit
         cdef Data[pair[float, size_t]] c_NNdata
         c_csplit.Kptr = K.c_matrix
         c_rsplit.Kptr = K.c_matrix
-        conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
-        conf.setSymmetry(sym)
-        conf.setAdaptiveRank(adapt_ranks)
-        self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
+        if(config):
+            self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
+        else:
+            conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
+            conf.setSymmetry(sym)
+            conf.setAdaptiveRank(adapt_ranks)
+            self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
 
    # def PyCompress(self, PySPDMatrix K, PyConfig c):
    #     cdef centersplit[SPDMatrix[float], two, float] c_csplit
