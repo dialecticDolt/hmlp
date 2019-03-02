@@ -48,7 +48,16 @@ cdef class PyRuntime:
     cpdef finalize( self ):
         hmlp_finalize()
                           
-
+def convertMetric(str metric_type):
+   if(metric_type == "GEOMETRY_DISTANCE"):
+      m = int(0)
+   elif(metric_type == "KERNEL_DISTANCE"):
+      m = int(1)
+   elif(metric_type == "ANGLE_DISTANCE"):
+      m = int(2)
+   elif(metric_type == "USER_DISTANCE"):
+      m = int(3)
+   return m
 
 cdef class PyConfig:
     cdef Configuration[float]* c_config
@@ -56,40 +65,21 @@ cdef class PyConfig:
     
     def __cinit__(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
         self.metric_t = metric_type
-        if(metric_type == "GEOMETRY_DISTANCE"):
-            m = int(0)
-        elif(metric_type == "KERNEL_DISTANCE"):
-            m = int(1)
-        elif(metric_type == "ANGLE_DISTANCE"):
-            m = int(2)
-        elif(metric_type == "USER_DISTANCE"):
-            m = int(3)
+        m = convertMetric(metric_type) 
+        m = int(m)
         self.c_config = new Configuration[float](m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
 
     def setAll(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
         self.metric_t = metric_type
-        if(metric_type == "GEOMETRY_DISTANCE"):
-            m = int(0)
-        elif(metric_type == "KERNEL_DISTANCE"):
-            m = int(1)
-        elif(metric_type == "ANGLE_DISTANCE"):
-            m = int(2)
-        elif(metric_type == "USER_DISTANCE"):
-            m = int(3)
-
+        m = convertMetric(metric_type)
+        m = int(m)
         self.c_config.Set(m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
 
     #TODO: Add getters and setters for all
     def setMetricType(self, metric_type):
         self.metric_t = metric_type
-        if(metric_type == "GEOMETRY_DISTANCE"):
-            m = int(0)
-        elif(metric_type == "KERNEL_DISTANCE"):
-            m = int(1)
-        elif(metric_type == "ANGLE_DISTANCE"):
-            m = int(2)
-        elif(metric_type == "USER_DISTANCE"):
-            m = int(3)
+        m = convertMetric(metric_type)
+        m = int(m)
         self.c_config.Set(m, self.getProblemSize(), self.getLeafNodeSizei(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), self.getBudget(), self.isSecure())
 
     def setNeighborSize(self, int nsize):
@@ -357,23 +347,31 @@ cdef class PyTreeSPD:
         self.c_tree = new spd_float_tree()
 
     # GOFMM compress
+    
     #def PyCompress(self,PySPDMatrix K, float stol, float budget, size_t m, size_t k, size_t s,bool sec_acc=True):
     #    # call real life compress
     #    self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix),
     #            stol, budget, m, k, s,sec_acc)
     
-    #def PyCompress(self, PySPDMatrix K, PyConfig c):
-    #    self.c_tree = Compress[float, SPDMatrix[float]](deref(K.c_matrix), c.getTolerance(), c.getBudget(), c.getLeafNodeSize(), c.getNeighborSize(), c.getMaximumRank())
-    
-
-    def PyCompress(self, PySPDMatrix K, PyConfig c):
+    def PyCompress(self, PySPDMatrix K, PyConfig c = None, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, str metric_type="ANGLE_DISTANCE", bool sec_acc=True, bool sym=True, bool adapt_ranks=True):
         cdef centersplit[SPDMatrix[float], two, float] c_csplit
         cdef randomsplit[SPDMatrix[float], two, float] c_rsplit
         cdef Data[pair[float, size_t]] c_NNdata
         c_csplit.Kptr = K.c_matrix
         c_rsplit.Kptr = K.c_matrix
-            
-        self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(c.c_config))
+        conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
+        conf.setSymmetry(sym)
+        conf.setAdaptiveRank(adapt_ranks)
+        self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
+
+   # def PyCompress(self, PySPDMatrix K, PyConfig c):
+   #     cdef centersplit[SPDMatrix[float], two, float] c_csplit
+   #     cdef randomsplit[SPDMatrix[float], two, float] c_rsplit
+   #     cdef Data[pair[float, size_t]] c_NNdata
+   #     c_csplit.Kptr = K.c_matrix
+   #     c_rsplit.Kptr = K.c_matrix
+   #         
+   #     self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(c.c_config))
     
     def PyEvaluate(self, PyData w):
         result = PyData(w.row(),w.col())

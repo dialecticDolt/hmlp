@@ -13,7 +13,7 @@ cdef extern from *:
 
 cdef extern from *:
     ctypedef bool use_runtime "true"
-    ctypedef bool use_opm_task "false"
+    ctypedef bool use_opm_task "true"
     ctypedef bool nnprune "true"
     ctypedef bool cache "true"
 
@@ -126,22 +126,16 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
     cdef cppclass NodeData[T]:
         pass
 
-
-    ## Import base compress function
+    #Compress (Turn into H Matrix)
     cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ] *Compress[T,SPDMATRIX]( SPDMATRIX&, 
             T, T, size_t, size_t, size_t, bool)
-
-    cdef Data[T] Evaluate[use_runtime, use_omp_task, nnprune, cache, TREE, T](TREE &tr, Data[T] &weights)
     
     cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ] *Compress[CSPLIT, RSPLIT, T,SPDMATRIX]( SPDMATRIX&, Data[pair[T, size_t]]&,
             centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&)
 
-
-
-    # Try to import more complex Compress?
-    #cdef Tree[ Setup[ SPDMatrix[T], centersplit, T], NodeData[T] ] * 
-    #Compress( SPDMatrix[T] &K, T stol T budget,size_t m, size_t k, size_t s)
-
+    #Evaluate (Matvec)
+    cdef Data[T] Evaluate[use_runtime, use_omp_task, nnprune, cache, TREE, T](TREE &tr, Data[T] &weights)
+    
     cpdef cppclass dTree_t:
         pass
     cpdef cppclass sTree_t:
@@ -173,17 +167,11 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
     cdef struct randomsplit:
         SPDMatrix[float]* Kptr
     
-    #Working prototype *Compress
+    #Legacy Working prototype *Compress
     #sTree_t *Compress(sSPDMatrix_t*, float, float)
     #dTree_t *Compress(dSPDMatrix_t&, double, double)
     #dTree_t *Compress(SPDMatrix[double]&, double, double)
     #sTree_t *Compress(SPDMatrix[float]&, float, float)  
-    #TODO: Add more configuration options (Take in config object). Write C++ code to apply configuration. 
-    
-
-    #This option is so heavily templated I'm not sure how to handle it. (Tree should be templated on setup and nodetype)
-    #Tree *Compress(SPDMatrix[float]*, Data[float], centersplit, randomsplit, Configuration[float]*)
-    #Tree *Compress(SPDMatrix[float]*, Data[pair[float, int]], centersplit, randomsplit, Configuration[float]*)
     
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/igofmm.hpp" namespace "hmlp::gofmm":
     cdef hmlpError_t Factorize[T,TREE](TREE , T )
