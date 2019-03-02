@@ -338,12 +338,10 @@ ctypedef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],flo
 
 # GOFMM tree
 cdef class PyTreeSPD:
-    #cdef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]* c_tree
     cdef spd_float_tree* c_tree
 
-    # Initializer test
+    # Dummy initializer -- TODO: move compress in here
     def __cinit__(self):
-        #self.c_tree = new Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]()
         self.c_tree = new spd_float_tree()
 
     # GOFMM compress
@@ -374,26 +372,17 @@ cdef class PyTreeSPD:
    #     self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(c.c_config))
     
     def PyEvaluate(self, PyData w):
-        result = PyData(w.row(),w.col())
-        #result.copy(Evaluate[use_runtime, use_opm_task, nnprune, cache, Tree[Setup[SPDMatrix[float], centersplit[SPDMatrix[float], two, float], float], NodeData[float]], float](deref(self.c_tree), deref(w.c_data)))
-
-        result.copy(Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree), deref(w.c_data)))
+        result = PyData()
+        cdef Data[float] bla = Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree), deref(w.c_data))
+        result.c_data = new Data[float](bla)
 
         return result
 
     def PyFactorize(self,float reg):
-        #Factorize[float,  Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]]]( deref(self.c_tree), reg)
-
         Factorize[float,spd_float_tree]( deref(self.c_tree), reg)
 
     def PySolve(self,PyData w):
-        # make data copy
-        #cdef PyData result = w.MakeCopy()
-        #result = PyData(w.row(),w.col())
-        #result.deepcopy(w)
-        #wout = PyData(w.row(),w.col())
-
-        # solve
+        # overwrites w!!!
         Solve[float,spd_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
