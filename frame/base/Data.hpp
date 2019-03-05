@@ -154,6 +154,13 @@ class Data : public ReadWrite, public vector<T, Allocator>
       assert( other_vector.size() == m * n );
       resize( m, n );
     };
+    
+    /** initialize from c style array (for python/cython compatibility)*/
+    Data( size_t m, size_t n, T* vec_ptr,bool diff ) : vector<T, Allocator>( m*n )
+    {
+        this->assign(vec_ptr,vec_ptr + (m*n));
+      resize( m, n );
+    };
 
     Data( size_t m, size_t n ) { resize( m, n ); };
 
