@@ -16,6 +16,12 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/Data.hpp" namespace "hmlp":
 
         # Copy constructor
         Data( const Data[T]& ) except +
+        
+        # Data constructor
+        Data( size_t, size_t, const vector[T] ) except +
+        
+        # Ptr constructor
+        Data( size_t, size_t, T*,bool ) except +
     
         # read from filename
         void read(size_t m , size_t n, string &filename)
@@ -38,6 +44,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/Data.hpp" namespace "hmlp":
         # resize
         void resize(size_t m, size_t n)
     
+        # get pointer to data
+        T* rowdata(size_t)
     
         # Get entry i,j
         T getvalue(size_t i, size_t j)

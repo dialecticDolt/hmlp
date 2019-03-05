@@ -4,11 +4,14 @@ from Matrix cimport Compress as c_compress
 from Data cimport Data
 from Config cimport *
 from libcpp.pair cimport pair
+from libcpp cimport vector
 from libc.math cimport sqrt
 from cython.operator cimport dereference as deref
+import numpy as np
 cimport numpy as np
 from libc.string cimport strcmp
 from libc.stdlib cimport malloc, free
+np.import_array()
 
 ctypedef fused numeric:
     double
@@ -339,7 +342,7 @@ cdef class PyData:
         self.c_data.setvalue(m,n,v)
 
     cpdef rand(self,float a, float b ):
-        self.c_data.rand(a,b)
+        self.c_data.rand(a, b)
     
     cdef copy(self, Data[float] ptr):
         del self.c_data
@@ -361,6 +364,44 @@ cdef class PyData:
 
     # TODO pass in numpy and make a data object?? try with [:]
     # not sure it is necessary, so going to leave this for later
+    cpdef scalar_add(self,float a = 3.0):
+        cdef size_t i,j
+        cdef float tmp
+
+        for i in range(self.row()):
+            for j in range(self.col()):
+                tmp = self.c_data.getvalue(i,j)
+                tmp += a
+                self.c_data.setvalue(i,j,tmp)
+
+    # this has 2 copies -- no good
+    @classmethod
+    def FromNumpy(cls,np.ndarray[float, ndim=2, mode="c"] arr_np):
+        # get sizes
+        cdef size_t m,n
+        m = <size_t> arr_np.shape[0]
+        n = <size_t> arr_np.shape[1]
+
+        # construct std::vector
+        #cdef vector[float] arr_cpp = vector[float](m*n)
+        #arr_cpp.assign(&arr_np[0,0], &arr_np[-1,-1])
+
+        # construct PyData obj
+        cpdef PyData ret = cls(m,n)
+        #cdef Data[float]* bla = new Data[float](m,n,arr_cpp)
+        cdef Data[float]* bla = new Data[float](m,n,&arr_np[0,0],True)
+        ret.c_data = bla
+        return ret
+         
+    def ToNumpy(self):
+        # get memoryview
+        cdef float* data_ptr = self.c_data.rowdata(0)
+        cdef float[:] mv = <float[:self.size()]> data_ptr
+
+        # initialize np_arr
+        np_arr = np.asarray(mv)
+        np_arr.resize(self.row(),self.col())
+        return np_arr
 
     # TODO access submatrix through inputting numpy vectors
     def submatrix(self,np.ndarray[np.intp_t, ndim=1] I not None,

@@ -4,14 +4,14 @@ from libcpp.string cimport string
 from libcpp cimport bool
 
 #Declaring some useful enums 
-cdef extern from "/workspace/will/dev/hmlp/frame/containers/VirtualMatrix.hpp":
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/VirtualMatrix.hpp":
     ctypedef enum DistanceMetric "DistanceMetric":
         GEOMETRY_DISTANCE "GEOMETRY_DISTANCE",
         KERNEL_DISTANCE "KERNEL_DISTANCE", 
         ANGLE_DISTANCE "ANGLE_DISTANCE",
         USER_DISTANCE "USER_DISTANCE"
 
-cdef extern from "/workspace/will/dev/hmlp/include/hmlp.h":
+cdef extern from "${CMAKE_SOURCE_DIR}/include/hmlp.h":
     ctypedef enum hmlpError_t:
         HMLP_ERROR_SUCCESS,
         HMLP_ERROR_NOT_INITIALIZED,
@@ -22,7 +22,7 @@ cdef extern from "/workspace/will/dev/hmlp/include/hmlp.h":
 
 
 #Configuration Type: Used as input parameters to gofmm::compress
-cdef extern from "/workspace/will/dev/hmlp/gofmm/gofmm.hpp" namespace "gofmm":
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm":
     cdef cppclass Configuration[T]:
 
         #variables
