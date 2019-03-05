@@ -10,6 +10,10 @@ cimport numpy as np
 from libc.string cimport strcmp
 from libc.stdlib cimport malloc, free
 
+ctypedef fused numeric:
+    double
+    float
+    
 cdef extern from "Python.h":
     char* PyUnicode_AsUTF8(object unicode)
 
@@ -142,6 +146,167 @@ cdef class PyConfig:
     def setSymmetry(self, bool status):
         self.c_config.setSymmetric(status)
 
+#cdef class PyData:
+#    cdef Data[float]* c_data
+#
+#    def __cinit__(self,size_t m = 0,size_t n = 0):
+#        self.c_data = new Data[float](m,n)
+
+    #def __dealloc__( self ):
+    #    self.c_data.clear()
+    #    del self.c_data
+
+#    cpdef read(self, size_t m, size_t n, str filename):
+#        self.c_data.read(m, n,filename.encode())
+#
+#    cpdef write(self,str filename):
+#        self.c_data.write(filename.encode())
+#
+#    cpdef row(self):
+#        return self.c_data[0].row()
+#
+#    cpdef col(self):
+#        return self.c_data.col()
+#
+#    cpdef size(self):
+#        return self.c_data.size()
+#
+#    cpdef getvalue(self,size_t m, size_t n):
+#        return self.c_data.getvalue(m,n)
+#
+#    cpdef setvalue(self,size_t m, size_t n, float v):
+#        self.c_data.setvalue(m,n,v)
+#
+#    cpdef rand(self,float a, float b ):
+#        self.c_data.rand(a,b)
+#    
+#    cdef copy(self, Data[float] ptr):
+#        del self.c_data
+#        self.c_data = &ptr
+#    
+#    cpdef MakeCopy(self):
+#
+#        # get my data stuff
+#        cdef Data[float]* cpy = new Data[float](deref(self.c_data) )
+#        
+#        # put into python obj
+#        cpdef PyData bla = PyData(self.row(), self.col())
+#        bla.c_data = cpy
+#        return bla 
+#
+#    cdef deepcopy(self,PyData other):
+#        del self.c_data
+#        self.c_data = new Data[float]( deref(other.c_data) )
+#
+#    # TODO pass in numpy and make a data object?? try with [:]
+#    # not sure it is necessary, so going to leave this for later
+#
+#    # TODO access submatrix through inputting numpy vectors
+#    def submatrix(self,np.ndarray[np.intp_t, ndim=1] I not None,
+#        np.ndarray[np.intp_t,ndim=1] J not None):
+#
+#        # define memory views?
+#        cdef np.intp_t [:] Iview = I
+#        cdef np.intp_t [:] Jview = J
+#
+#
+#        cdef size_t ci,cj
+#
+#        # get sizes, initialize new PyData
+#        cdef size_t ni = <size_t> I.size
+#        cdef size_t nj = <size_t> J.size
+#        cdef Data[float]* subdata = new Data[float](ni,nj)
+#        cdef float tmp
+#
+#        # begin loops
+#        for ci in range(ni):
+#            for cj in range(nj):
+#                tmp = self.c_data.getvalue( <size_t> Iview[ci], <size_t> Jview[cj] )
+#                subdata.setvalue(<size_t> ci,<size_t> cj,tmp)
+#
+#        # new Pydata object
+#        cpdef PyData sub = PyData(ni,nj)
+#
+#        # call c_data's sub func
+#        sub.c_data = subdata
+#
+#        # return sub
+#        return sub
+
+cdef class PyPairData:
+    cdef Data[pair[float, size_t]]* c_data
+
+    def __cinit__(self,size_t m = 0,size_t n = 0):
+        self.c_data = new Data[pair[float, size_t]](m,n)
+
+    #def __dealloc__( self ):
+    #    self.c_data.clear()
+    #    del self.c_data
+
+    cpdef row(self):
+        return self.c_data[0].row()
+
+    cpdef col(self):
+        return self.c_data.col()
+
+    cpdef size(self):
+        return self.c_data.size()
+
+    cpdef getvalue(self,size_t m, size_t n):
+        return self.c_data.getvalue(m,n)
+
+    cpdef setvalue(self,size_t m, size_t n, pair[float, size_t] v):
+        self.c_data.setvalue(m,n,v)
+
+    cdef copy(self, Data[pair[float, size_t]] ptr):
+        del self.c_data
+        self.c_data = &ptr
+    
+    cpdef MakeCopy(self):
+        # get my data stuff
+        cdef Data[pair[float, size_t]]* cpy = new Data[pair[float, size_t]](deref(self.c_data) )
+        # put into python obj
+
+        cpdef PyPairData bla = PyPairData(self.row(), self.col())
+        bla.c_data = cpy
+        return bla 
+
+    cdef deepcopy(self,PyPairData other):
+        del self.c_data
+        self.c_data = new Data[pair[float, size_t]]( deref(other.c_data) )
+
+    # TODO access submatrix through inputting numpy vectors
+    def submatrix(self,np.ndarray[np.intp_t, ndim=1] I not None,
+        np.ndarray[np.intp_t,ndim=1] J not None):
+
+        # define memory views?
+        cdef np.intp_t [:] Iview = I
+        cdef np.intp_t [:] Jview = J
+
+        cdef size_t ci,cj
+
+        # get sizes, initialize new PyData
+        cdef size_t ni = <size_t> I.size
+        cdef size_t nj = <size_t> J.size
+        cdef Data[pair[float, size_t]]* subdata = new Data[pair[float, size_t]](ni,nj)
+        cdef pair[float, size_t] tmp
+
+        # begin loops
+        for ci in range(ni):
+            for cj in range(nj):
+                tmp = self.c_data.getvalue( <size_t> Iview[ci], <size_t> Jview[cj] )
+                subdata.setvalue(<size_t> ci,<size_t> cj,tmp)
+
+        # new Pydata object
+        cpdef PyPairData sub = PyPairData(ni,nj)
+
+        # call c_data's sub func
+        sub.c_data = subdata
+
+        # return sub
+        return sub
+
+
 cdef class PyData:
     cdef Data[float]* c_data
 
@@ -255,6 +420,16 @@ cdef class PySPDMatrix:
 
     def randspd(self, float a, float b):
         self.c_matrix.randspd(a, b)
+
+    def findNN(self, PyConfig conf):
+        result = PyPairData()
+        cdef randomsplit[SPDMatrix[float], two, float] c_rsplit
+        c_rsplit.Kptr = self.c_matrix
+
+        cdef Data[pair[float, size_t]] nn = FindNeighbors[randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(self.c_matrix), c_rsplit, deref(conf.c_config))
+        result.c_data = new Data[pair[float, size_t]](nn)
+        return result
+
 
 cdef class PyKernel:
     cdef kernel_s[float,float]* c_kernel

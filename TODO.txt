@@ -16,11 +16,8 @@ SHORT TERM:
 
 - PyTreeKM or Inherit from Virtual Matrix  (Sameer)
 
-- Make wrappers for:
-	- Overload Compress, make different calls, use PyConfig object. (Will)
 - Try fused types (Will)
-- Nearest neighbor function (Will)
-
+- Nearest neighbor function (Will) - Neighbors for non SPDMatrix
 
 - Define your own kernel -- how to link? (Will)
 - Clean up (Will)

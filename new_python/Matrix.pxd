@@ -5,7 +5,7 @@ from libcpp.pair cimport pair
 from Data cimport Data
 from Runtime cimport hmlpError_t
 from libcpp cimport bool
-from Config cimport Configuration
+from Config cimport Configuration, DistanceMetric
 
 # useful for splitter templating
 cdef extern from *:
@@ -38,6 +38,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
         # num cols
         size_t col()
         void randspd(T a, T b)
+        #hmlpError_t NeighborSearch(DistanceMetric, size_t, const vector[size_t]&, const vector[size_t]& , Data[pair[T, size_t]]]  
     ## end cppclass SPDMatrix[T]
 ## end extern from.
 
@@ -87,6 +88,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         inline void operator() (const void* param, const TP* X, 
                 const TP* Y, size_t d,T* K, size_t m, size_t n) const
 
+        T (*user_element_function)(const void* param, const TP* y, size_t d)
+        T (*user_matrix_function)(const void* param, const T* X, const T* Y, T*K, size_t m, size_t n)
 
     cdef cppclass KernelMatrix[T]:
         # symmetric constructor
@@ -140,6 +143,9 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
         pass
     cpdef cppclass sTree_t:
         pass
+
+    #Find Nearest Neighbors
+    cdef Data[pair[T, size_t]] FindNeighbors[SPLITTER, T, SPDMATRIX](SPDMATRIX&, SPLITTER, Configuration[T]&, size_t)
     
     cdef cppclass sSPDMatrix_t:
         sSPDMatrix_t() except +
@@ -178,6 +184,4 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/igofmm.hpp" namespace "hmlp::gofmm":
 
     cdef hmlpError_t Solve[T,TREE](TREE, Data[T])
     #cdef hmlpError_t Solve[T,TREE](TREE, Data[T],Data[T])
-
-
 
