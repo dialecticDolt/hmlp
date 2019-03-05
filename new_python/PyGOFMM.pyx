@@ -523,6 +523,9 @@ cdef class PyKernel:
     def GetScal(self):
         return self.c_kernel.scal
 
+    def setCustom(self, f):
+        self.user_element_function = f
+
 cdef class PyKernelMatrix:
     cdef KernelMatrix[float]* c_matrix
 
@@ -551,6 +554,53 @@ cdef class PyKernelMatrix:
 
 # Type defs to make life easier
 ctypedef Tree[Setup[SPDMatrix[float],centersplit[SPDMatrix[float],two,float],float],NodeData[float]] spd_float_tree
+ctypedef Tree[Setup[KernelMatrix[float], centersplit[KernelMatrix[float], two, float], float], NodeData[float]] km_float_tree
+
+# GOFMM tree
+cdef class PyTreeKM:
+    cdef km_float_tree* c_tree
+
+    # Dummy initializer -- TODO: move compress in here
+    def __cinit__(self):
+        self.c_tree = new km_float_tree()
+
+    # GOFMM compress
+    
+    def PyCompress(self, PyKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
+        cdef centersplit[KernelMatrix[float], two, float] c_csplit
+        cdef randomsplit[KernelMatrix[float], two, float] c_rsplit
+        cdef Data[pair[float, size_t]] c_NNdata
+        c_csplit.Kptr = K.c_matrix
+        c_rsplit.Kptr = K.c_matrix
+        if(config):
+            self.c_tree = Compress[centersplit[KernelMatrix[float], two, float], randomsplit[KernelMatrix[float], two, float], float, KernelMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
+        else:
+            conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
+            conf.setSymmetry(sym)
+            conf.setAdaptiveRank(adapt_ranks)
+            self.c_tree = Compress[centersplit[KernelMatrix[float], two, float], randomsplit[KernelMatrix[float], two, float], float, KernelMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
+
+    def PyEvaluate(self, PyData w):
+        result = PyData()
+        cdef Data[float] bla = Evaluate[use_runtime, use_opm_task,nnprune,cache,km_float_tree,float](deref(self.c_tree), deref(w.c_data))
+        result.c_data = new Data[float](bla)
+
+        return result
+
+    def PyFactorize(self,float reg):
+        Factorize[float,km_float_tree]( deref(self.c_tree), reg)
+
+    def PySolve(self,PyData w):
+        # overwrites w!!!
+        Solve[float,km_float_tree](deref(self.c_tree), deref(w.c_data))
+        return w
+
+
+
+
+
+
+
 
 # GOFMM tree
 cdef class PyTreeSPD:
