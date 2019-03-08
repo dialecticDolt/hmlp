@@ -262,6 +262,23 @@ if (VIRTUALENV)
     endif()
   endforeach()
   
+  set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python_MPI)
+  set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python_MPI)
+  set(SETUP_PY    ${PYTHON_BUILD_DIR}/setup.py)
+  file(GLOB pySRCs RELATIVE ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py)
+  foreach(pyFILE ${pySRCs})
+    set(pyFILE_PATH ${PYTHON_SRC_DIR}/${pyFILE})
+    if(NOT IS_DIRECTORY ${pyFILE_PATH})
+      message(STATUS "Configuring file ${pyFILE}")
+      if(${pyFILE} STREQUAL "setup.in.py")
+        configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/setup.py)
+      else()
+        configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/${pyFILE})
+      endif()
+    endif()
+  endforeach()
   
   
   #set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/new_python/setup.in.py)
