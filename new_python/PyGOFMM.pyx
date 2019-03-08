@@ -11,6 +11,8 @@ import numpy as np
 cimport numpy as np
 from libc.string cimport strcmp
 from libc.stdlib cimport malloc, free
+from CustomKernel cimport *
+
 np.import_array()
 
 ctypedef fused numeric:
@@ -480,7 +482,16 @@ cdef class PyKernel:
        self.c_kernel = new kernel_s[float,float]()
        k_enum = PyKernel.GetKernelTypeEnum(kstring)
        self.c_kernel.SetKernelType(k_enum)
+       if(k_enum==9):
+            self.c_kernel.user_element_function = custom_element_kernel[float, float]
+            self.c_kernel.user_matrix_function = custom_matrix_kernel[float, float]
 
+    def __dealloc__(self):
+        print("Cython: Running __dealloc__ for PyKernel")
+        self.c_kernel.user_matrix_function = NULL
+        self.c_kernel.user_element_function = NULL
+        free(self.c_kernel)
+ 
     # static method for handling enum
     @staticmethod
     def GetKernelTypeEnum(str kstring):
@@ -523,8 +534,9 @@ cdef class PyKernel:
     def GetScal(self):
         return self.c_kernel.scal
 
-    def setCustom(self, f):
+    def setCustom(self, f, g):
         self.user_element_function = f
+        self.user_matrix_function = g
 
 cdef class PyKernelMatrix:
     cdef KernelMatrix[float]* c_matrix
@@ -542,6 +554,10 @@ cdef class PyKernelMatrix:
             self.c_matrix = new KernelMatrix[float](m,n,d,deref(kernel.c_kernel),deref(sources.c_data),deref(targets.c_data))
         else:
             self.c_matrix = new KernelMatrix[float](m,n,d,deref(kernel.c_kernel),deref(sources.c_data))
+
+    def __dealloc__(self):
+        print("Cython: Running __dealloc__ for PyKernelMatrix") 
+        free(self.c_matrix)
 
     cpdef dim(self):
         return self.c_matrix.dim()
@@ -563,6 +579,10 @@ cdef class PyTreeKM:
     # Dummy initializer -- TODO: move compress in here
     def __cinit__(self):
         self.c_tree = new km_float_tree()
+
+    def __dealloc__(self):
+        print("Cython: Running __dealloc__ for PyTreeKM")
+        free(self.c_tree)
 
     # GOFMM compress
     

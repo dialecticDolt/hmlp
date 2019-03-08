@@ -53,7 +53,7 @@ int main( int argc, char *argv[] )
     /** Use float as data type. */
     using T = float;
     /** [Required] Problem size. */
-    size_t n = 5000;
+    size_t n = 200;
     /** Maximum leaf node size (not used in neighbor search). */
     size_t m = 128;
     /** [Required] Number of nearest neighbors. */
@@ -95,10 +95,10 @@ int main( int argc, char *argv[] )
     Data<T> w2( n, nrhs ); w2.randn();
     auto u2 = gofmm::Evaluate( tree2, w2 );
     /** [Step#7] Factorization (HSS using ULV). */
-    gofmm::Factorize( tree2, lambda ); 
+    //gofmm::Factorize( tree2, lambda ); 
     /** [Step#8] Solve (K+lambda*I)w = u approximately with HSS. */
-    auto x2 = u2;
-    gofmm::Solve( tree2, x2 ); 
+    // auto x2 = u2;
+    //gofmm::Solve( tree2, x2 ); 
     /** HMLP API call to terminate the runtime. */
     HANDLE_ERROR( hmlp_finalize() );
   }

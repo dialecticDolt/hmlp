@@ -54,7 +54,12 @@ template<typename T, typename TP>
 struct kernel_s
 {
   kernel_type type;
+  
 
+//  ~kernel_s(){
+//    user_matrix_function = nullptr;
+//    user_element_function = nullptr;
+//  }
 
   /** setters and getters for python (issues with name "type" */
   void SetKernelType(kernel_type kt){type = kt;};
@@ -114,6 +119,8 @@ struct kernel_s
       case QUARTIC:
         return 0;
       case USER_DEFINE:
+        //printf("x c-address:: %p \n", (void *)y);
+        //printf("y c-address:: %p \n", (void *)x);
         return user_element_function( param, x, y, d );
       default:
         printf( "invalid kernel type\n" );
@@ -142,6 +149,8 @@ struct kernel_s
         break;
       case USER_DEFINE:
         user_matrix_function( param, X, Y, d, K, m, n );
+    //    printf("X c-address:: %p \n", (void *)X);
+    //    printf("Y c-address:: %p \n", (void *)Y);
         break;
       default:
         printf( "invalid kernel type\n" );

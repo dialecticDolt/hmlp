@@ -64,7 +64,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         kernel_type type # TODO is this bad practice?
         T scal # gauss or sigmoid
         #T cons = 0 # for sigmoid
-
+        
         # set and get
         kernel_type GetKernelType()
         void SetKernelType(kernel_type kt)
@@ -88,8 +88,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         inline void operator() (const void* param, const TP* X, 
                 const TP* Y, size_t d,T* K, size_t m, size_t n) const
 
-        T (*user_element_function)(const void* param, const TP* y, size_t d)
-        T (*user_matrix_function)(const void* param, const T* X, const T* Y, T*K, size_t m, size_t n)
+        T (*user_element_function)(const void* param, const TP* c, const TP* x, size_t d)
+        void (*user_matrix_function)(const void* param, const T* X, const T* Y, size_t d, T*K, size_t m, size_t n)
 
     cdef cppclass KernelMatrix[T]:
         # symmetric constructor
