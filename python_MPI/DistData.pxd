@@ -58,10 +58,6 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
     
     #Wrappers for various data distribution types. TODO: Add support for double precision
     #Note: Not all of these are equally developed in Chenhans code. The main ones used are STAR_CBLK/RBKL_STAR 
-    #TODO: 
-    #       - Add support for the other constructors (local column/row data, from local vector data)
-    #       - Add read from file wrapper
-    #       - Add wrappers for overloading of () and = 
 
     cdef cppclass CIRC_CIRC_f_DistData(DistDataBase[float]):
         CIRC_CIRC_f_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
