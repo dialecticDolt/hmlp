@@ -1029,7 +1029,7 @@ class DistData<STAR, USER, T> : public DistDataBase<T>
     #endif
 
     /** Default constructor */
-    DistData( size_t m, size_t n, mpi::Comm comm ) 
+    DistData<STAR, USER, T>( size_t m, size_t n, mpi::Comm comm ) 
     : DistDataBase<T>( m, n, comm ), all_rows( m )
     {
       for ( size_t i = 0; i < m; i ++ ) all_rows[ i ] = i;
