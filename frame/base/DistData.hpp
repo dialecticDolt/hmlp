@@ -253,8 +253,6 @@ class DistData : public DistDataBase<T, Allocator>
 };
 
 
-
-
 template<typename T>
 class DistData<CIRC, CIRC, T> : public DistDataBase<T>
 {
@@ -273,7 +271,7 @@ class DistData<CIRC, CIRC, T> : public DistDataBase<T>
     #endif
 
 
-    DistData( size_t m, size_t n, int owner, mpi::Comm comm ) :
+    DistData<CIRC, CIRC, T>( size_t m, size_t n, int owner, mpi::Comm comm ) :
       DistDataBase<T>( m, n, comm )
     {
       this->owner = owner;
@@ -360,7 +358,7 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
     #endif
 
 
-    DistData( size_t m, size_t n, mpi::Comm comm ) 
+    DistData<STAR, CBLK, T>( size_t m, size_t n, mpi::Comm comm ) 
       : DistDataBase<T>( m, n, comm )
     {
       /** MPI */
@@ -377,7 +375,7 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
     };
 
     /** We should use this and move mpi::Comm to the front. */
-    DistData( size_t m, size_t n, T initT, mpi::Comm comm )
+    DistData<STAR, CBLK, T>( size_t m, size_t n, T initT, mpi::Comm comm )
       : DistDataBase<T>( m, n, comm ) 
     {
       /** MPI */
@@ -393,7 +391,7 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
     };
 
     /** Construct distributed data from local column data. */
-    DistData( size_t m, size_t n, Data<T>& local_column_data, mpi::Comm comm )
+    DistData<STAR, CBLK, T>( size_t m, size_t n, Data<T>& local_column_data, mpi::Comm comm )
       : DistDataBase<T>( m, n, local_column_data, comm )
     {
       /** MPI */
@@ -411,7 +409,7 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
     };
 
     /** Construct distributed data from local std::vector. */
-    DistData( size_t m, size_t n, vector<T>& local_vector, mpi::Comm comm )
+    DistData<STAR, CBLK, T>( size_t m, size_t n, vector<T>& local_vector, mpi::Comm comm )
       : DistDataBase<T>( m, n, m, local_vector.size() / m, local_vector, comm )
     {
       /** MPI */
@@ -427,7 +425,7 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
     };
 
     /** Constructor that reads a binary file. */ 
-    DistData( size_t m, size_t n, mpi::Comm comm, string &filename ) 
+    DistData<STAR, CBLK, T>( size_t m, size_t n, mpi::Comm comm, string &filename ) 
       : DistData<STAR, CBLK, T>( m, n, comm )
     {
       read( m, n, filename );
@@ -633,7 +631,7 @@ class DistData<RBLK, STAR, T> : public DistDataBase<T>
 
 
 
-    DistData( size_t m, size_t n, mpi::Comm comm ) 
+    DistData<RBLK, STAR, T>( size_t m, size_t n, mpi::Comm comm ) 
       : DistDataBase<T>( m, n, comm ) 
     {
       /** MPI */
@@ -648,7 +646,7 @@ class DistData<RBLK, STAR, T> : public DistDataBase<T>
     };
 
     /** Construct distributed data from local row data. */
-    DistData( size_t m, size_t n, Data<T>& local_row_data, mpi::Comm comm )
+    DistData<RBLK, STAR, T>( size_t m, size_t n, Data<T>& local_row_data, mpi::Comm comm )
       : DistDataBase<T>( m, n, local_row_data, comm )
     {
       /** MPI */
@@ -663,7 +661,7 @@ class DistData<RBLK, STAR, T> : public DistDataBase<T>
     };
 
     /** Construct distributed data from local vector. */
-    DistData( size_t m, size_t n, vector<T>& local_vector, mpi::Comm comm )
+    DistData<RBLK, STAR, T>( size_t m, size_t n, vector<T>& local_vector, mpi::Comm comm )
       : DistDataBase<T>( m, n, local_vector.size() / n, n, local_vector, comm )
     {
       /** MPI */
@@ -802,7 +800,7 @@ class DistData<STAR, CIDS, T> : public DistDataBase<T>
     #endif
 
     /** Default constructor */
-    DistData( size_t m, size_t n, vector<size_t> &cids, mpi::Comm comm ) : 
+    DistData<STAR, CIDS, T>( size_t m, size_t n, vector<size_t> &cids, mpi::Comm comm ) : 
       DistDataBase<T>( m, n, comm ) 
     {
       /** now check if (sum cids.size() >= n) */
@@ -818,7 +816,7 @@ class DistData<STAR, CIDS, T> : public DistDataBase<T>
     };
 
     /** Default constructor */
-    DistData( size_t m, size_t n, vector<size_t> &cids, T initT, mpi::Comm comm ) : 
+    DistData<STAR, CIDS, T>( size_t m, size_t n, vector<size_t> &cids, T initT, mpi::Comm comm ) : 
       DistDataBase<T>( m, n, comm ) 
     {
       /** now check if (sum cids.size() >= n) */
@@ -833,7 +831,7 @@ class DistData<STAR, CIDS, T> : public DistDataBase<T>
         cid2col[ cids[ j ] ] = j;      
     };
 
-    DistData( size_t m, size_t n, vector<size_t> &cids, Data<T> &A, mpi::Comm comm ) : 
+    DistData<STAR, CIDS, T>( size_t m, size_t n, vector<size_t> &cids, Data<T> &A, mpi::Comm comm ) : 
       DistDataBase<T>( m, n, comm ) 
     {
       assert( A.row() == m );
@@ -1038,7 +1036,7 @@ class DistData<STAR, USER, T> : public DistDataBase<T>
     };
 
     /** Constructed from DistDAta<STAR, CBLK> */
-    DistData( DistData<STAR, CBLK, T> &A ) 
+    DistData<STAR, USER, T>( DistData<STAR, CBLK, T> &A ) 
     : DistData( A.row(), A.col(), A.GetComm() )
     {
       /** MPI */
@@ -1233,7 +1231,7 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
 
 
     /** default constructor */
-    DistData( size_t m, size_t n, std::vector<size_t> &rids, mpi::Comm comm ) : 
+    DistData<RIDS, STAR, T>( size_t m, size_t n, std::vector<size_t> &rids, mpi::Comm comm ) : 
       DistDataBase<T>( m, n, comm ) 
     {
       /** now check if (sum rids.size() == m) */
@@ -1431,7 +1429,23 @@ class DistData<STAR, STAR, T> : public DistDataBase<T>
 }; /** end class DistData<STAR, STAR, T> */
 
 
+typedef DistData<CIRC, CIRC, float> CIRC_CIRC_f_DistData;
+typedef DistData<STAR, CBLK, float> STAR_CBLK_f_DistData;
+typedef DistData<RBLK, STAR, float> RBLK_STAR_f_DistData;
+typedef DistData<STAR, CIDS, float> STAR_CIDS_f_DistData;
+typedef DistData<STAR, USER, float> STAR_USER_f_DistData;
+typedef DistData<RIDS, STAR, float> RIDS_STAR_f_DistData;
+typedef DistData<STAR, STAR, float> STAR_STAR_f_DistData;
 
+
+
+typedef DistData<CIRC, CIRC, double> CIRC_CIRC_d_DistData;
+typedef DistData<STAR, CBLK, double> STAR_CBLK_d_DistData;
+typedef DistData<RBLK, STAR, double> RBLK_STAR_d_DistData;
+typedef DistData<STAR, CIDS, double> STAR_CIDS_d_DistData;
+typedef DistData<STAR, USER, double> STAR_USER_d_DistData;
+typedef DistData<RIDS, STAR, double> RIDS_STAR_d_DistData;
+typedef DistData<STAR, STAR, double> STAR_STAR_d_DistData;
 
 
 
