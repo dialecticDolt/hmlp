@@ -3,6 +3,8 @@ from DistData cimport *
 from Runtime cimport *
 from DistMatrix cimport *
 from CustomKernel cimport *
+from Config cimport *
+from DistTree cimport *
 
 #Import MPI
 cimport mpi4py.MPI as MPI
@@ -53,6 +55,100 @@ cdef class PyRuntime:
     cpdef finalize(self):
         hmlp_finalize()
 
+def convertMetric(str metric_type):
+   if(metric_type == "GEOMETRY_DISTANCE"):
+      m = int(0)
+   elif(metric_type == "KERNEL_DISTANCE"):
+      m = int(1)
+   elif(metric_type == "ANGLE_DISTANCE"):
+      m = int(2)
+   elif(metric_type == "USER_DISTANCE"):
+      m = int(3)
+   return m
+
+cdef class PyConfig:
+    cdef Configuration[float]* c_config
+    cpdef str metric_t
+    
+    def __cinit__(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
+        self.metric_t = metric_type
+        m = convertMetric(metric_type) 
+        m = int(m)
+        self.c_config = new Configuration[float](m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
+
+    def setAll(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
+        self.metric_t = metric_type
+        m = convertMetric(metric_type)
+        m = int(m)
+        self.c_config.Set(m, problem_size, leaf_node_size, neighbor_size, maximum_rank, tolerance, budget, secure_accuracy)
+
+    #TODO: Add getters and setters for all
+    def setMetricType(self, metric_type):
+        self.metric_t = metric_type
+        m = convertMetric(metric_type)
+        m = int(m)
+        self.c_config.Set(m, self.getProblemSize(), self.getLeafNodeSizei(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setNeighborSize(self, int nsize):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), nsize, self.getMaximumRank(), self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setProblemSize(self, int psize):
+        self.c_config.Set(self.c_config.MetricType(), psize, self.getLeafNodeSizei(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setMaximumRank(self, int mrank):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), mrank, self.getTolerance(), self.getBudget(), self.isSecure())
+
+    def setTolerance(self, float tol):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), self.getMaximumRank(), tol, self.getBudget(), self.isSecure())
+
+    def setBudget(self, float budget):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), budget, self.isSecure())
+
+    def setSecureAccuracy(self, bool status):
+        self.c_config.Set(self.c_config.MetricType(), self.getProblemSize(), self.getLeafNodeSize(), self.getNeighborSize(), self.getMaximumRank(), self.getTolerance(), self.getBudget(), status)
+        
+    def getMetricType(self):
+        return self.metric_t
+
+    def getMaximumRank(self):
+        return self.c_config.MaximumRank()
+
+    def getNeighborSize(self):
+        return self.c_config.NeighborSize()
+
+    def getProblemSize(self):
+        return self.c_config.ProblemSize()
+
+    def getMaximumDepth(self):
+        return self.c_config.getMaximumDepth()
+
+    def getLeafNodeSize(self):
+        return self.c_config.getLeafNodeSize()
+
+    def getTolerance(self):
+        return self.c_config.Tolerance()
+
+    def getBudget(self):
+        return self.c_config.Budget()
+
+    def isSymmetric(self):
+        return self.c_config.IsSymmetric()
+
+    def isAdaptive(self):
+        return self.c_config.UseAdaptiveRanks()
+
+    def isSecure(self):
+        return self.c_config.SecureAccuracy()
+
+    def setLeafNodeSize(self, int leaf_node_size):
+        self.c_config.setLeafNodeSize(leaf_node_size)
+
+    def setAdaptiveRank(self, bool status):
+        self.c_config.setAdaptiveRanks(status)
+
+    def setSymmetry(self, bool status):
+        self.c_config.setSymmetric(status)
+
 
 #Wrapper for locally stored PyData class. 
 #   TODO:
@@ -68,8 +164,8 @@ cdef class PyData:
     
     def __dealloc__( self ):
         print("Cython: Running __dealloc___ for PyData Object")
-        self.c_data.clear()
-        free(self.c_data)
+       # self.c_data.clear()
+       # free(self.c_data)
 
     cpdef read(self, size_t m, size_t n, str filename):
         self.c_data.read(m, n,filename.encode())
@@ -119,24 +215,26 @@ cdef class PyData:
 #           - "Template" on float/double fused type, need to decide on how we'll structure this
 
 cdef class PyDistData:
-    cdef STAR_CBLK_f_DistData* c_data
+    cdef STAR_CBLK_DistData[float]* c_data
 
-    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, int owner=(-1), str fileName=None, localdata=None):
-        cdef string fName = <string>fileName
-        if owner == (-1) and not (fileName or localdata): 
-            self.c_data = new STAR_CBLK_f_DistData(m, n, owner, comm.ob_mpi)
-        if fileName and not (owner!=(-1) or localdata):
-            self.c_data = new STAR_CBLK_f_DistData(m, n, comm.ob_mpi, fName)
-        if localdata and not (owner!=(-1) or fileName):
+    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
+        cdef string fName
+        if not (fileName or localdata): 
+            self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi)
+        elif fileName and not (localdata):
+            fName = <string>fileName
+            #TODO: Error handling 
+            self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi, fName)
+        elif localdata and not (fileName):
             if type(localdata) is PyData:
-                self.c_data = new STAR_CBLK_f_DistData(m, n, deref(<Data[float]*>(PyData(localdata).c_data)), comm.ob_mpi)
+                self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(localdata).c_data)), comm.ob_mpi)
             if isinstance(localdata, (np.ndarray, np.generic)):
                 print("Loading local numpy arrays is not yet supported")
         else:
             print("Invalid constructor parameters")
 
     def __dealloc__(self):
-        print("Cython: Running __dealloc___ for PyData Object")
+        print("Cython: Running __dealloc___ for PyDistData Object")
         self.c_data.clear()
         free(self.c_data)
 
@@ -172,7 +270,60 @@ cdef class PyDistData:
     #    cdef string fName = <string>fileName
     #    self.c_data.write(fName)
 
-    
+
+cdef class PyDistPairData:
+    cdef STAR_CBLK_DistData[pair[float, size_t]]* c_data
+
+    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
+        cdef string fName
+        if not (fileName or localdata): 
+            self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi)
+        elif fileName and not (localdata):
+            fName = <string>fileName
+            #TODO: Error handling 
+            self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi, fName)
+        elif localdata and not (fileName):
+            if type(localdata) is PyData:
+                self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, deref(<Data[pair[float, size_t]]*>(PyData(localdata).c_data)), comm.ob_mpi)
+            if isinstance(localdata, (np.ndarray, np.generic)):
+                print("Loading local numpy arrays is not yet supported")
+        else:
+            print("Invalid constructor parameters")
+
+    def __dealloc__(self):
+        print("Cython: Running __dealloc___ for PyDistData Object")
+        self.c_data.clear()
+        free(self.c_data)
+
+    #TODO: Resolve ambigious overloading with Data[T]
+    #def loadFile(self, size_t m, size_t n, str fileName):
+    #    cdef string fName = <string>fileName
+    #    self.c_data.read(m, n, fName)
+
+    def getCommSize(self):
+        return self.c_data.GetSize()
+
+    def getRank(self):
+        return self.c_data.GetRank()
+
+    def rows(self):
+        return self.c_data.row()
+
+    def cols(self):
+        return self.c_data.col()
+
+    def rows_local(self):
+        return self.c_data.row_owned()
+
+    def cols_local(self):
+        return self.c_data.col_owned()
+
+    #THIS IS A LOCAL WRITE
+    #def write(self, str fileName):
+    #    cdef string fName = <string>fileName
+    #    self.c_data.write(fName)
+
+   
 #Python Class for Kernel Evaluation Object kernel_s
 #   TODO:
 #           -"Template" on float/double fused type
@@ -182,7 +333,7 @@ cdef class PyKernel:
     # constructor 
     def __cinit__(self,str kstring="GAUSSIAN"):
        self.c_kernel = new kernel_s[float,float]()
-       k_enum = PyKernel.GetKernelTypeEnum(kstring)
+       k_enum = PyKernel.getKernelType(kstring)
        self.c_kernel.SetKernelType(k_enum)
        if(k_enum==9):
             self.c_kernel.user_element_function = custom_element_kernel[float, float]
@@ -241,7 +392,7 @@ cdef class PyKernel:
 
 
 cdef class PyDistKernelMatrix:
-    cdef DistKernelMatrix* c_matrix
+    cdef DistKernelMatrix[float, float]* c_matrix
 
     def __cinit(self, MPI.Comm comm, PyKernel kernel, PyDistData sources, PyDistData targets=None):
         cdef size_t m, d, n
@@ -251,6 +402,39 @@ cdef class PyDistKernelMatrix:
 
         if targets is not None:
             n = targets.col()
-            self.c_matrix = new DistKernelMatrix(m, n, d, deref(kernel.c_kernel), deref(sources.c_data), deref(targets.c_data), comm.ob_mpi)
+            self.c_matrix = new DistKernelMatrix[float, float](m, n, d, deref(kernel.c_kernel), deref(sources.c_data), deref(targets.c_data), comm.ob_mpi)
         else:
-            self.c_matrix = new DistKernelMatrix(m, d, deref(kernel.c_kernel), deref(sources.c_data), comm.ob_mpi) 
+            self.c_matrix = new DistKernelMatrix[float, float](m, d, deref(kernel.c_kernel), deref(sources.c_data), comm.ob_mpi)
+
+
+#Python class for Kernel Matrix Tree
+ctypedef Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
+
+cdef class PyTreeKM:
+    cdef km_float_tree* c_tree 
+
+    def __cinit__(self):
+        self.c_tree = new km_float_tree()
+
+    def __dealloc__(self):
+        print("Cython: Running __dealloc__ for PyTreeKM")
+        free(self.c_tree)
+
+#TODO: Unlike shared memory this cannot take an empty NNdata, change chenhans code or write it in cython?
+
+#    def compress(self, MPI.Comm comm, PyDistKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
+#        cdef centersplit[DistKernelMatrix[float, float], two, float] c_csplit
+#        cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
+#        cdef STAR_CBLK_DistData[pair[float, size_t]]* c_NNdata = new STAR_CBLK_DistData[pair[float, size_t]](0, 0, comm.ob_mpi)
+#        c_csplit.Kptr = K.c_matrix
+#        c_rsplit.Kptr = K.c_matrix
+#        if(config):
+#            self.c_tree = Compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
+#        else:
+#            conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
+#            conf.setSymmetry(sym)
+#            conf.setAdaptiveRank(adapt_ranks)
+#            self.c_tree = Compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
+
+
+

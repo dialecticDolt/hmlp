@@ -9,21 +9,53 @@
 
 ========================================
 
-SHORT TERM:
+SHARED MEMORY IMPLEMENTATION
 - Soft copy bug (Sameer)
 - Numpy to Data (Sameer)
 - Compute error function (Sameer)
-
 - PyTreeKM or Inherit from Virtual Matrix  (Sameer)
 
-- Try fused types (Will)
-- Nearest neighbor function (Will) - Neighbors for non SPDMatrix
-
-- Define your own kernel -- how to link? (Will)
+- Easier to use/more intuitive nearest neighbor function (Will)
+- How to pass in a custom cython kernel function (Will)
+- How to pass in a custom python kernel function (Will)
 - Clean up (Will)
+
+DISTRIBUTED MEMORY IMPLEMENTATION
+Notes:
+    - There is only a distributed version of the kernel matrix container. There is no SPDMatrix equivalent. 
+    - I've not tested anything with multiple MPI workers yet, this is a major TODO
+
+-DistData
+    -Notes: 
+            -DistData has many different data distributions, they're developed to very different degrees and have different methods
+            -The two used by chenhans gofmm are STAR_CBLK and RBLK_STAR for column-major matrices and vectors respectively 
+            -Only STAR_CBLK has a read function, there '=' is overloaded to convert and redistribute between them. 
+
+    -Need:
+            -  python wrapper for RBLK_STAR DistData type (for weights and matvec results)
+            -  python wrapper for overloaded operators 
+                - ()
+                    - a = PyData(). Do we want a.get(i, j), or just a[i, j], for submatrices should we support slicing?
+                - = 
+                    - a.redistribute 
+
+-Compress
+    -Notes:
+            -Assumes we're passing nearest neighbor list
+    - Need:
+        - pxd code and python wrapper for nearest neighbor function
+        - python wrapper for compress that calls nearest neighbor function 
+
+
+-Evaluate
+    - all of it
+
+-Factorize
+    - all of it
+
+
 
 LONGER TERM:
 
 -There is a bug in Data.setvalue()  It throws a segfault on repeated calls/when looping over the data structure.
-Could this be related to our soft copy bug?
-- Distributed and GPU implementations, test mpi
+Could this be related to our soft copy bug? Nope it's unrelated. 

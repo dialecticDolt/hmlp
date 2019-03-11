@@ -1438,6 +1438,24 @@ typedef DistData<RIDS, STAR, float> RIDS_STAR_f_DistData;
 typedef DistData<STAR, STAR, float> STAR_STAR_f_DistData;
 
 
+template<typename T> using RBLK_STAR_DistData = DistData<RBLK, STAR, T>;
+template<typename T> using STAR_CBLK_DistData = DistData<STAR, CBLK, T>;
+template<typename T> using CIRC_CIRC_DistData = DistData<STAR, CBLK, T>;
+template<typename T> using STAR_CIDS_DistData = DistData<STAR, CIDS, T>;
+template<typename T> using STAR_USER_DistData = DistData<STAR, USER, T>;
+template<typename T> using RIDS_STAR_DistData = DistData<RIDS, STAR, T>;
+template<typename T> using STAR_STAR_DistData = DistData<STAR, STAR, T>;
+
+
+
+
+
+template<typename T>
+struct DataHelper
+{
+    typedef DistData<RBLK, STAR, T> RBLK_STAR_Data; 
+};
+
 
 typedef DistData<CIRC, CIRC, double> CIRC_CIRC_d_DistData;
 typedef DistData<STAR, CBLK, double> STAR_CBLK_d_DistData;

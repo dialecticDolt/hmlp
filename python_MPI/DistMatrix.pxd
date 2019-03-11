@@ -7,6 +7,7 @@ cimport  mpi4py.libmpi as libmpi
 
 from DistData cimport *
 
+
 cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp":
 
     ctypedef enum kernel_type:
@@ -52,22 +53,19 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         T (*user_element_function)(const void* param, const TP* c, const TP* x, size_t d)
         void (*user_matrix_function)(const void* param, const T* X, const T* Y, size_t d, T*K, size_t m, size_t n)
 
-    cdef cppclass DistKernelMatrix[float, float, Allocator=*]:
-        DistKernelMatrix(size_t, size_t, size_t, STAR_CBLK_f_DistData&, STAR_CBLK_f_DistData&, libmpi.MPI_Comm) except +
-        DistKernelMatrix(size_t, size_t, STAR_CBLK_f_DistData&, libmpi.MPI_Comm) except +
+    cdef cppclass DistKernelMatrix[T, TP, Allocator=*]:
+        DistKernelMatrix(size_t, size_t, size_t, STAR_CBLK_DistData[T]&, STAR_CBLK_DistData[T]&, libmpi.MPI_Comm) except +
+        DistKernelMatrix(size_t, size_t, STAR_CBLK_DistData[T]&, libmpi.MPI_Comm) except +
         
-        DistKernelMatrix(size_t, size_t, size_t, kernel_s[float, float]&, STAR_CBLK_f_DistData&, STAR_CBLK_f_DistData&, libmpi.MPI_Comm) except +
-        DistKernelMatrix(size_t, size_t, kernel_s[float, float]&, STAR_CBLK_f_DistData&, libmpi.MPI_Comm) except +
-
-        Data[float]& GeometryDistances(const vector[size_t]&, const vector[size_t]&) except +
-        Data[float]& Diagonal(vector[size_t]&) except +
-        pair[float, size_t] ImportantSample(size_t) except +
+        DistKernelMatrix(size_t, size_t, size_t, kernel_s[T, TP]&, STAR_CBLK_DistData[T]&, STAR_CBLK_DistData[T]&, libmpi.MPI_Comm) except +
+        DistKernelMatrix(size_t, size_t, kernel_s[T, TP]&, STAR_CBLK_DistData[T]&, libmpi.MPI_Comm) except +
+    
+        Data[T]& GeometryDistances(const vector[size_t]&, const vector[size_t]&) except +
+        Data[T]& Diagonal(vector[size_t]&) except +
+        pair[T, size_t] ImportantSample(size_t) except +
         void Print()
         void SendIndices(vector[size_t]&, int, libmpi.MPI_Comm)
         void RecvIndices(int, libmpi.MPI_Comm, libmpi.MPI_Status)
         void BcasIndices(vector[size_t]&, int, libmpi.MPI_Comm)
         void RequestIndices(const vector[vector[size_t]]&)
         
-
-
-

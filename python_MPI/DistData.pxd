@@ -18,6 +18,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
     
     #Wrapper for Base Shared Memory Data Class
     cdef cppclass Data[T]:
+        Data() except +
         Data(size_t, size_t) except +
         Data(const Data[T]&) except +
         Data(size_t, size_t, const vector[T]) except +        
@@ -40,6 +41,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
  
     #Wrapper for Base Distributed Data Class
     cdef cppclass DistDataBase[T](Data[T]):
+        DistDataBase(libmpi.MPI_Comm) except +
         DistDataBase(size_t, size_t, int, libmpi.MPI_Comm) except +    
         DistDataBase(size_t, size_t, Data[T]&, libmpi.MPI_Comm) except +
         DistDataBase(size_t, size_t, size_t, size_t, const vector[T], libmpi.MPI_Comm) except +
@@ -59,9 +61,121 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
     #Wrappers for various data distribution types. TODO: Add support for double precision
     #Note: Not all of these are equally developed in Chenhans code. The main ones used are STAR_CBLK/RBKL_STAR 
 
-    cdef cppclass CIRC_CIRC_f_DistData(DistDataBase[float]):
-        CIRC_CIRC_f_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
-        CIRC_CIRC_f_DistData& operator = (STAR_CIDS_f_DistData& A) except +    
+    cdef cppclass CIRC_CIRC_DistData[T](DistDataBase[T]):
+        CIRC_CIRC_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
+        CIRC_CIRC_DistData[T]& operator = (STAR_CIDS_DistData[T]& A) except +    
+
+    cdef cppclass STAR_CBLK_DistData[T](DistDataBase[T]):
+        STAR_CBLK_DistData(size_t, size_t, libmpi.MPI_Comm) except +
+        STAR_CBLK_DistData(size_t, size_t, T initT, libmpi.MPI_Comm) except +
+        #construct from local column data
+        STAR_CBLK_DistData(size_t, size_t, Data[T]&, libmpi.MPI_Comm) except +
+        STAR_CBLK_DistData(size_t, size_t, vector[T]&, libmpi.MPI_Comm) except +
+        #reads column major file
+        STAR_CBLK_DistData(size_t, size_t, libmpi.MPI_Comm, string&) except +
+        void read(size_t m, size_t n, string&) except +
+        
+        #operator overloading
+        # ()
+        T& operator () (size_t, size_t j)
+        Data[T]& operator() (vector[size_t]&, vector[size_t]&)
+        # = 
+        STAR_CBLK_DistData[T]& operator = (const CIRC_CIRC_DistData[T]&) #not implemented in chenhan's code
+        STAR_CBLK_DistData[T]& operator = (STAR_CIDS_DistData[T]&) except +
+
+    cdef cppclass RBLK_STAR_DistData[T](DistDataBase[T]):
+        RBLK_STAR_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
+        #construct from local row data
+        RBLK_STAR_DistData(size_t, size_t, Data[T]&, libmpi.MPI_Comm) except +
+        RBLK_STAR_DistData(size_t, size_t, vector[T]&, libmpi.MPI_Comm) except +
+        #there are no file read constructors for this distribution in chenhan's code        
+        #operator overloading
+        #()
+        T& operator () (size_t, size_t)
+        Data[T]& operator () (vector[size_t]&, vector[size_t]&)
+        # = 
+        RBLK_STAR_DistData[T]& operator = (const CIRC_CIRC_DistData[T]&) #not implemented in chenhan's code
+        RBLK_STAR_DistData[T]& operator = (RIDS_STAR_DistData[T]&) except +
+
+    cdef cppclass STAR_CIDS_DistData[T](DistDataBase[T]):
+        STAR_CIDS_DistData(size_t, size_t, vector[size_t]&, libmpi.MPI_Comm) except +
+        STAR_CIDS_DistData(size_t, size_t, vector[size_t]&, T initT, libmpi.MPI_Comm) except +
+        STAR_CIDS_DistData(size_t, size_t, vector[size_t]&, Data[T]&, libmpi.MPI_Comm) except +
+
+        #operator overloading
+        #()
+        T& operator () (size_t, size_t)
+        Data[T]& operator () (vector[size_t]&, vector[size_t]&)  
+        # = 
+        STAR_CIDS_DistData[T]& operator = (STAR_CBLK_DistData[T]&) except +
+        
+        #bookkeeping
+        bool_t HasColumn(size_t cid)
+        T* columndata(size_t cid)
+        pair[size_t, T*] GetIDAndColumnPointer(size_t)
+        vector[vector[size_t]] CBLKOwnership() except +
+        vector[vector[size_t]] CIRCOwndership(int owner) except +
+        
+
+    cdef cppclass STAR_USER_DistData[T](DistDataBase[T]):
+        STAR_USER_DistData(size_t, size_t, libmpi.MPI_Comm) except +
+        STAR_USER_DistData(STAR_CBLK_DistData[T]&) except +
+        void InsertColumns(const vector[size_t]&, Data[T]&) except +
+        #operator overloading
+        #()
+        T& operator () (size_t, size_t)
+        Data[T]& operator () (vector[size_t]&, vector[size_t]&)
+        
+        #bookkeeping
+        bool_t HasColumn(size_t cid)
+        T* columndata(size_t cid)
+        
+    cdef cppclass RIDS_STAR_DistData[T](DistDataBase[T]):
+        RIDS_STAR_DistData(size_t, size_t, vector[size_t]&, libmpi.MPI_Comm) except +
+        #operator overloading
+        #()
+        T& operator () (size_t, size_t)
+        Data[T]& operator () (vector[size_t]&, vector[size_t]&)
+        # = 
+        RIDS_STAR_DistData[T]& operator = (RBLK_STAR_DistData[T]&) except +
+
+        #bookkeeping
+        vector[vector[size_t]] RBKLOwndership() except +
+        
+    cdef cppclass STAR_STAR_DistData[T](DistDataBase[T]):
+        #This is an empty class in chenhan's code
+        STAR_STAR_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
+
+
+
+    #Rework to make DistData templated on datatype(float, double, pair)
+    ###################################################
+    #cdef cppclass RBLK_STAR_DistData[T]:
+    #    RBLK_STAR_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
+    #    #construct from local row data
+    #    RBLK_STAR_DistData(size_t, size_t, Data[T]&, libmpi.MPI_Comm) except +
+    #    RBLK_STAR_DistData(size_t, size_t, vector[T]&, libmpi.MPI_Comm) except +
+
+
+    #cdef cppclass STAR_CBLK_DistData[T](DistDataBase[T]):
+    #    STAR_CBLK_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
+    #    STAR_CBLK_DistData(size_t, size_t, T initT, libmpi.MPI_Comm) except +
+    #    #construct from local column data
+    #    STAR_CBLK_DistData(size_t, size_t, Data[T]&, libmpi.MPI_Comm) except +
+    #    STAR_CBLK_DistData(size_t, size_t, vector[T]&, libmpi.MPI_Comm) except +
+    #    #reads column major file
+    #    STAR_CBLK_DistData(size_t, size_t, libmpi.MPI_Comm, string&) except +
+    #    void read(size_t m, size_t n, string&) except +
+    #    
+    #    #operator overloading
+    #    # ()
+    #    T& operator () (size_t, size_t j)
+    #    Data[T]& operator() (vector[size_t]&, vector[size_t]&)
+    #    # = 
+    #    #STAR_CBLK_DistData& operator = (const CIRC_CIRC_DistData&) #not implemented in chenhan's code
+    #    #STAR_CBLK_DistData& operator = (STAR_CIDS_DistData&) except +
+
+
 
     cdef cppclass STAR_CBLK_f_DistData(DistDataBase[float]):
         STAR_CBLK_f_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
@@ -78,72 +192,5 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
         float& operator () (size_t, size_t j)
         Data[float]& operator() (vector[size_t]&, vector[size_t]&)
         # = 
-        STAR_CBLK_f_DistData& operator = (const CIRC_CIRC_f_DistData&) #not implemented in chenhan's code
-        STAR_CBLK_f_DistData& operator = (STAR_CIDS_f_DistData&) except +
-
-    cdef cppclass RBLK_STAR_f_DistData(DistDataBase[float]):
-        RBLK_STAR_f_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
-        #construct from local row data
-        RBLK_STAR_f_DistData(size_t, size_t, Data[float]&, libmpi.MPI_Comm) except +
-        RBLK_STAR_f_DistData(size_t, size_t, vector[float]&, libmpi.MPI_Comm) except +
-        #there are no file read constructors for this distribution in chenhan's code        
-        #operator overloading
-        #()
-        float& operator () (size_t, size_t)
-        Data[float]& operator () (vector[size_t]&, vector[size_t]&)
-        # = 
-        RBLK_STAR_f_DistData& operator = (const CIRC_CIRC_f_DistData&) #not implemented in chenhan's code
-        RBLK_STAR_f_DistData& operator = (RIDS_STAR_f_DistData&) except +
-
-    cdef cppclass STAR_CIDS_f_DistData(DistDataBase[float]):
-        STAR_CIDS_f_DistData(size_t, size_t, vector[size_t]&, libmpi.MPI_Comm) except +
-        STAR_CIDS_f_DistData(size_t, size_t, vector[size_t]&, float initT, libmpi.MPI_Comm) except +
-        STAR_CIDS_f_DistData(size_t, size_t, vector[size_t]&, Data[float]&, libmpi.MPI_Comm) except +
-
-        #operator overloading
-        #()
-        float& operator () (size_t, size_t)
-        Data[float]& operator () (vector[size_t]&, vector[size_t]&)  
-        # = 
-        STAR_CIDS_f_DistData& operator = (STAR_CBLK_f_DistData&) except +
-        
-        #bookkeeping
-        bool_t HasColumn(size_t cid)
-        float* columndata(size_t cid)
-        pair[size_t, float*] GetIDAndColumnPointer(size_t)
-        vector[vector[size_t]] CBLKOwnership() except +
-        vector[vector[size_t]] CIRCOwndership(int owner) except +
-        
-
-    cdef cppclass STAR_USER_f_DistData(DistDataBase[float]):
-        STAR_USER_f_DistData(size_t, size_t, libmpi.MPI_Comm) except +
-        STAR_USER_f_DistData(STAR_CBLK_f_DistData&) except +
-        void InsertColumns(const vector[size_t]&, Data[float]&) except +
-        #operator overloading
-        #()
-        float& operator () (size_t, size_t)
-        Data[float]& operator () (vector[size_t]&, vector[size_t]&)
-        
-        #bookkeeping
-        bool_t HasColumn(size_t cid)
-        float* columndata(size_t cid)
-        
-    cdef cppclass RIDS_STAR_f_DistData(DistDataBase[float]):
-        RIDS_STAR_f_DistData(size_t, size_t, vector[size_t]&, libmpi.MPI_Comm) except +
-        #operator overloading
-        #()
-        float& operator () (size_t, size_t)
-        Data[float]& operator () (vector[size_t]&, vector[size_t]&)
-        # = 
-        RIDS_STAR_f_DistData& operator = (RBLK_STAR_f_DistData&) except +
-
-        #bookkeeping
-        vector[vector[size_t]] RBKLOwndership() except +
-        
-    cdef cppclass STAR_STAR_f_DistData(DistDataBase[float]):
-        #This is an empty class in chenhan's code
-        STAR_STAR_f_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
-        
-    
-        
-        
+        #STAR_CBLK_f_DistData& operator = (const CIRC_CIRC_f_DistData&) #not implemented in chenhan's code
+        #STAR_CBLK_f_DistData& operator = (STAR_CIDS_f_DistData&) except +
