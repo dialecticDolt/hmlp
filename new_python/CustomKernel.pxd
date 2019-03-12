@@ -5,9 +5,9 @@ from libcpp.vector cimport vector
 #from libc.math cimport max
 cimport cython
 
-#cdef extern from "/workspace/will/dev/hmlp/new_python/custom/user_defined.cpp":
-#    cdef T custom_element_kernel[T, TP](const void* param, const TP* x, const TP* y, size_t d)
-#    cdef void custom_matrix_kernel[T, TP](const void* param, const TP* X, const TP*Y, size_t d, T* K, size_t m, size_t n)
+#cdef extern from "${CMAKE_SOURCE_DIR}/new_python/custom/user_defined.cpp" nogil:
+#    cdef T custom_element_kernel[T, TP](const void* param, const TP* x, const TP* y, size_t d) nogil
+#    cdef void custom_matrix_kernel[T, TP](const void* param, const TP* X, const TP*Y, size_t d, T* K, size_t m, size_t n) nogil
 
 cdef extern from "<algorithm>" namespace "std" nogil:
     T max[T](T a, T b)

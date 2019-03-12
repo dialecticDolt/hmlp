@@ -21,7 +21,7 @@ cdef extern from *:
     ctypedef bool verdad "true"
 
 ## Import dense SPDMatrix<T> from hmlp::SPDMatrix<T>.
-cdef extern from "/workspace/will/dev/hmlp/frame/containers/SPDMatrix.hpp" namespace "hmlp":
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace "hmlp" nogil:
     cdef cppclass SPDMatrix[T]:
         # default constructor
         SPDMatrix() except +
@@ -43,7 +43,7 @@ cdef extern from "/workspace/will/dev/hmlp/frame/containers/SPDMatrix.hpp" names
 ## end extern from.
 
 ## Import KernelMatrix from hmlp::KernelMatrix<T>
-cdef extern from "/workspace/will/dev/hmlp/frame/containers/KernelMatrix.hpp" namespace "hmlp" nogil:
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp" nogil:
     # enum for kernel type
     ctypedef enum kernel_type:
         GAUSSIAN
@@ -107,14 +107,14 @@ cdef extern from "/workspace/will/dev/hmlp/frame/containers/KernelMatrix.hpp" na
         size_t dim()
 
 # tree.hpp import Tree
-cdef extern from "/workspace/will/dev/hmlp/gofmm/tree.hpp" namespace "hmlp::tree":
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "hmlp::tree" nogil:
     cdef cppclass Tree[SETUP,NODEDATA]:
         pass
 
 
 
 ## gofmm.hpp import compress essentials 
-cdef extern from "/workspace/will/dev/hmlp/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm" nogil:
     cdef cppclass centersplit[SPDMATRIX, int, T]:
         SPDMATRIX *Kptr
 
@@ -137,7 +137,7 @@ cdef extern from "/workspace/will/dev/hmlp/gofmm/gofmm.hpp" namespace "hmlp::gof
             centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&)
 
     #Evaluate (Matvec)
-    cdef Data[T] Evaluate[use_runtime, use_omp_task, nnprune, cache, TREE, T](TREE &tr, Data[T] &weights)
+    cdef Data[T] Evaluate[use_runtime, use_omp_task, nnprune, cache, TREE, T](TREE &tr, Data[T] &weights) 
     
     cpdef cppclass dTree_t:
         pass
@@ -179,7 +179,7 @@ cdef extern from "/workspace/will/dev/hmlp/gofmm/gofmm.hpp" namespace "hmlp::gof
     #dTree_t *Compress(SPDMatrix[double]&, double, double)
     #sTree_t *Compress(SPDMatrix[float]&, float, float)  
     
-cdef extern from "/workspace/will/dev/hmlp/gofmm/igofmm.hpp" namespace "hmlp::gofmm":
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/igofmm.hpp" namespace "hmlp::gofmm" nogil:
     cdef hmlpError_t Factorize[T,TREE](TREE , T )
 
     cdef hmlpError_t Solve[T,TREE](TREE, Data[T])

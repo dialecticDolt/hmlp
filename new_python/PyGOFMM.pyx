@@ -662,7 +662,11 @@ cdef class PyTreeSPD:
     
     def PyEvaluate(self, PyData w):
         result = PyData()
-        cdef Data[float] bla = Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree), deref(w.c_data))
+        #cdef spd_float_tree tin = deref(self.c_tree)
+        #cdef Data[float] win = deref(w.c_data)
+        cdef Data[float] bla 
+        with nogil:
+            bla = Evaluate[use_runtime, use_opm_task,nnprune,cache,spd_float_tree,float](deref(self.c_tree),deref(w.c_data))
         result.c_data = new Data[float](bla)
 
         return result

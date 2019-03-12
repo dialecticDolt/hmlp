@@ -4,14 +4,16 @@
 ## ======================================
 
 ## Make sure CC and CXX are set properly in your system.
-export CC=${MPICC}
-export CXX=${MPICXX}
+export CC=${CC}
+export CXX=${CXX}
 
 ## Whether use BLAS or not?
 export HMLP_USE_BLAS=true
 
 ## Make sure MKLROOT is defined in your system. (icc/icpc)
 export MKLROOT=${MKLROOT}
+#export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_intel_thread.so
+export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so
 
 ## Make sure OPENBLASROOT is defined. (gcc/g++)
 export OPENBLASROOT=${OPENBLASROOT}

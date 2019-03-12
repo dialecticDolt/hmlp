@@ -3,7 +3,7 @@ from libcpp.vector cimport vector
 from libcpp.string cimport string
 
 
-cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/Data.hpp" namespace "hmlp":
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/Data.hpp" namespace "hmlp" nogil:
     cdef cppclass Data[T,ALLOCATOR=*]:
         ctypedef T value_type
         ctypedef ALLOCATOR allocator_type

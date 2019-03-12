@@ -111,7 +111,7 @@ ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
 ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
   # ---[ ICC/ICPC
   MESSAGE(STATUS "Intel compiler.")
-  SET(HMLP_CFLAGS "${HMLP_CFLAGS} -O3 -qopenmp -m64")
+  SET(HMLP_CFLAGS "-O3 -qopenmp -m64")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -Wall -pedantic -fPIC -D_POSIX_C_SOURCE=200112L")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -DUSE_INTEL")
   #SET(HMLP_PYTHON_CFLAGS     "-std=c++11 -O3 -qopenmp -arch x86_64 -m64")
@@ -119,7 +119,7 @@ ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
   SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64")
   #SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64\",\"-DHMLP_USE_MPI")
   #SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mkl=parallel")
-  SET(HMLP_PYTHON_LINKER_FLAGS "-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mkl=parallel")
+  SET(HMLP_PYTHON_LINKER_FLAGS "-lpthread\",\"-qopenmp\",\"-mkl=parallel\", \"-lm")
 
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -qopenmp -lm")
 ELSE()
@@ -225,7 +225,7 @@ endif()
 
 
 # ---[ Python support
-find_program(VIRTUALENV "virtualenv-3")
+find_program(VIRTUALENV "virtualenv")
 if(NOT VIRTUALENV)
 	MESSAGE(WARNING "virtualenv not found. Not attempting to build cython version of GOFMM.")
 endif()
@@ -264,7 +264,7 @@ if (VIRTUALENV)
   
   set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python_MPI)
   set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python_MPI)
-  set(SETUP_PY    ${PYTHON_BUILD_DIR}/setup.py)
+  set(SETUP_PY_MPI    ${PYTHON_BUILD_DIR}/setup.py)
   file(GLOB pySRCs RELATIVE ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
     ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
     ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py)
@@ -308,13 +308,14 @@ if (VIRTUALENV)
   #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
   
 IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
-  install(CODE "execute_process(COMMAND virtualenv-3 --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
+  message(STATUS "Going to install python in build directory..")
+  install(CODE "execute_process(COMMAND virtualenv --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
   set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python3)
   set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip3)
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install cython)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install numpy==1.11.3)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install mpi4py)")
-endif()  
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install cython)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install numpy==1.11.3)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip install mpi4py)")
+endif()
 	## Jump to the virtual environment.
 	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
 	## Active the virtual environment (bash shell).
@@ -328,7 +329,8 @@ endif()
 	
 
 	#install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix=${CMAKE_BINARY_DIR})")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python3  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
+  #install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY_MPI} build_ext --build-lib ${CMAKE_BINARY_DIR}/python_MPI/)")
 endif()
 
 

@@ -31,7 +31,7 @@ import numpy as np
 #TODO: Add branching statement if HMLP_USE_MLI is true
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpic++"
-os.system("export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so")
+#os.system("export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so")
 
 #include directories
 inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
@@ -49,7 +49,7 @@ print(inc_dirs)
 
 # hmlp library directory
 lib_dirs = ['${CMAKE_BINARY_DIR}/lib']
-lib_dirs = lib_dirs + ['${MPI_CXX_LIBRARIES}']
+#lib_dirs = lib_dirs + ['${MPI_CXX_LIBRARIES}']
 lib_dirs = lib_dirs + ['${MKLROOT}/include']
 lib_dirs = lib_dirs + ['${MKLROOT}/lib/intel64']
 #lib_dirs = lib_dirs + ['${MKLROOT}/lib/intel64/libmkl_core.so']
@@ -61,10 +61,10 @@ extension_mod_matrix = Extension(
   sources = ['${CMAKE_BINARY_DIR}/new_python/PyGOFMM.pyx'],
   language="c++",
   include_dirs = inc_dirs,
-  libraries = ['hmlp'],
   library_dirs = lib_dirs,
+  libraries = ['hmlp','mkl_rt','pthread'],
   runtime_library_dirs = lib_dirs,
-  extra_compile_args=["${HMLP_PYTHON_CFLAGS}", "-DUSE_INTEL", "-DUSE_VML", "-DMKL_ILP64", "-mavx", "-DHMLP_USE_MPI", "-I${MKLROOT}/include"],
+  extra_compile_args=["${HMLP_PYTHON_CFLAGS}", "-DUSE_INTEL", "-DUSE_VML", "-DMKL_ILP64", "-mavx", "-DHMLP_USE_MPI"],
   #extra_compile_args=["-fopenmp", "-O3", "-std=c++11",
   #	"-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION"],
   extra_link_args=["${HMLP_PYTHON_LINKER_FLAGS}", "-L${MKLROOT}/lib/intel64/", "-lmkl_rt", "-lpthread", "-lm", "-ldl", "-mavx"]
