@@ -7,13 +7,16 @@
 export CC=${CC}
 export CXX=${CXX}
 
+## For python building
+export VENV_BIN=virtualenv
+
 ## Whether use BLAS or not?
 export HMLP_USE_BLAS=true
 
 ## Make sure MKLROOT is defined in your system. (icc/icpc)
 export MKLROOT=${MKLROOT}
 #export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_intel_thread.so
-export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so
+export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_rt.so
 
 ## Make sure OPENBLASROOT is defined. (gcc/g++)
 export OPENBLASROOT=${OPENBLASROOT}
