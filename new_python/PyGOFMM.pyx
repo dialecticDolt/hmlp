@@ -45,7 +45,7 @@ cdef class PyRuntime:
         cdef char **arg_v = <char **>malloc(7 * sizeof(char *))
         #cdef char** arg_v = to_cstring_array(str_list)
         hmlp_init(&arg_c, &arg_v)
-        #self.isInit = int(1)
+        self.isInit = int(1)
 
     cpdef set_num_workers( self, int nworkers ):
         if self.isInit is 1:
@@ -353,7 +353,9 @@ cdef class PyData:
     cpdef MakeCopy(self):
 
         # get my data stuff
-        cdef Data[float]* cpy = new Data[float](deref(self.c_data) )
+        cdef Data[float]* cpy 
+        with nogil:
+            cpy = new Data[float](deref(self.c_data) )
         
         # put into python obj
         cpdef PyData bla = PyData(self.row(), self.col())
@@ -391,7 +393,9 @@ cdef class PyData:
         # construct PyData obj
         cpdef PyData ret = cls(m,n)
         #cdef Data[float]* bla = new Data[float](m,n,arr_cpp)
-        cdef Data[float]* bla = new Data[float](m,n,&arr_np[0,0],True)
+        cdef Data[float]* bla 
+        with nogil:
+            bla = new Data[float](m,n,&arr_np[0,0],True)
         ret.c_data = bla
         return ret
          
@@ -469,7 +473,9 @@ cdef class PySPDMatrix:
         cdef randomsplit[SPDMatrix[float], two, float] c_rsplit
         c_rsplit.Kptr = self.c_matrix
 
-        cdef Data[pair[float, size_t]] nn = FindNeighbors[randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(self.c_matrix), c_rsplit, deref(conf.c_config))
+        cdef Data[pair[float, size_t]] nn 
+        with nogil:
+            nn = FindNeighbors[randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(self.c_matrix), c_rsplit, deref(conf.c_config))
         result.c_data = new Data[pair[float, size_t]](nn)
         return result
 
@@ -593,26 +599,32 @@ cdef class PyTreeKM:
         c_csplit.Kptr = K.c_matrix
         c_rsplit.Kptr = K.c_matrix
         if(config):
-            self.c_tree = Compress[centersplit[KernelMatrix[float], two, float], randomsplit[KernelMatrix[float], two, float], float, KernelMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
+            with nogil:
+                self.c_tree = Compress[centersplit[KernelMatrix[float], two, float], randomsplit[KernelMatrix[float], two, float], float, KernelMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
         else:
             conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
             conf.setSymmetry(sym)
             conf.setAdaptiveRank(adapt_ranks)
-            self.c_tree = Compress[centersplit[KernelMatrix[float], two, float], randomsplit[KernelMatrix[float], two, float], float, KernelMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
+            with nogil:
+                self.c_tree = Compress[centersplit[KernelMatrix[float], two, float], randomsplit[KernelMatrix[float], two, float], float, KernelMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
 
     def PyEvaluate(self, PyData w):
         result = PyData()
-        cdef Data[float] bla = Evaluate[use_runtime, use_opm_task,nnprune,cache,km_float_tree,float](deref(self.c_tree), deref(w.c_data))
+        cdef Data[float] bla 
+        with nogil:
+            bla = Evaluate[use_runtime, use_opm_task,nnprune,cache,km_float_tree,float](deref(self.c_tree), deref(w.c_data))
         result.c_data = new Data[float](bla)
 
         return result
 
     def PyFactorize(self,float reg):
-        Factorize[float,km_float_tree]( deref(self.c_tree), reg)
+        with nogil:
+            Factorize[float,km_float_tree]( deref(self.c_tree), reg)
 
     def PySolve(self,PyData w):
         # overwrites w!!!
-        Solve[float,km_float_tree](deref(self.c_tree), deref(w.c_data))
+        with nogil:
+            Solve[float,km_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
 
@@ -644,12 +656,14 @@ cdef class PyTreeSPD:
         c_csplit.Kptr = K.c_matrix
         c_rsplit.Kptr = K.c_matrix
         if(config):
-            self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
+            with nogil:
+                self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
         else:
             conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
             conf.setSymmetry(sym)
             conf.setAdaptiveRank(adapt_ranks)
-            self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
+            with nogil:
+                self.c_tree = Compress[centersplit[SPDMatrix[float], two, float], randomsplit[SPDMatrix[float], two, float], float, SPDMatrix[float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
 
    # def PyCompress(self, PySPDMatrix K, PyConfig c):
    #     cdef centersplit[SPDMatrix[float], two, float] c_csplit
@@ -672,11 +686,13 @@ cdef class PyTreeSPD:
         return result
 
     def PyFactorize(self,float reg):
-        Factorize[float,spd_float_tree]( deref(self.c_tree), reg)
+        with nogil:
+            Factorize[float,spd_float_tree]( deref(self.c_tree), reg)
 
     def PySolve(self,PyData w):
         # overwrites w!!!
-        Solve[float,spd_float_tree](deref(self.c_tree), deref(w.c_data))
+        with nogil:
+            Solve[float,spd_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
 
