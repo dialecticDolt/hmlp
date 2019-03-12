@@ -483,8 +483,8 @@ cdef class PyKernel:
        k_enum = PyKernel.GetKernelTypeEnum(kstring)
        self.c_kernel.SetKernelType(k_enum)
        if(k_enum==9):
-            self.c_kernel.user_element_function = custom_element_kernel[float, float]
-            self.c_kernel.user_matrix_function = custom_matrix_kernel[float, float]
+            self.c_kernel.user_element_function = &custom_element_kernel#[float, float]
+            self.c_kernel.user_matrix_function = &custom_matrix_kernel#[float, float]
 
     def __dealloc__(self):
         print("Cython: Running __dealloc__ for PyKernel")

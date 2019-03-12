@@ -21,7 +21,7 @@ cdef extern from *:
     ctypedef bool verdad "true"
 
 ## Import dense SPDMatrix<T> from hmlp::SPDMatrix<T>.
-cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace "hmlp":
+cdef extern from "/workspace/will/dev/hmlp/frame/containers/SPDMatrix.hpp" namespace "hmlp":
     cdef cppclass SPDMatrix[T]:
         # default constructor
         SPDMatrix() except +
@@ -43,7 +43,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/SPDMatrix.hpp" namespace 
 ## end extern from.
 
 ## Import KernelMatrix from hmlp::KernelMatrix<T>
-cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp":
+cdef extern from "/workspace/will/dev/hmlp/frame/containers/KernelMatrix.hpp" namespace "hmlp" nogil:
     # enum for kernel type
     ctypedef enum kernel_type:
         GAUSSIAN
@@ -71,16 +71,16 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
 
         # inner products
         @staticmethod
-        inline T innerProduct(const TP* x, const TP* y, size_t d)
+        inline T innerProduct(const TP* x, const TP* y, size_t d) nogil
         @staticmethod
-        inline void innerProducts(const TP* X, const TP* Y, size_t d, T* K, size_t m, size_t n)
+        inline void innerProducts(const TP* X, const TP* Y, size_t d, T* K, size_t m, size_t n) nogil
 
         # squared distances
         @staticmethod
-        inline T squaredDistance(const TP* x, const TP* y, size_t d)
+        inline T squaredDistance(const TP* x, const TP* y, size_t d) nogil
         @staticmethod
         inline void squaredDistances(const TP* X, const TP* Y, size_t d, 
-                T* K, size_t m, size_t n)
+                T* K, size_t m, size_t n) nogil
 
 
         # operators
@@ -88,8 +88,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         inline void operator() (const void* param, const TP* X, 
                 const TP* Y, size_t d,T* K, size_t m, size_t n) const
 
-        T (*user_element_function)(const void* param, const TP* c, const TP* x, size_t d)
-        void (*user_matrix_function)(const void* param, const T* X, const T* Y, size_t d, T*K, size_t m, size_t n)
+        T (*user_element_function)(const void* param, const TP* c, const TP* x, size_t d) nogil
+        void (*user_matrix_function)(const void* param, const T* X, const T* Y, size_t d, T*K, size_t m, size_t n) nogil
 
     cdef cppclass KernelMatrix[T]:
         # symmetric constructor
@@ -107,14 +107,14 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         size_t dim()
 
 # tree.hpp import Tree
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree.hpp" namespace "hmlp::tree":
+cdef extern from "/workspace/will/dev/hmlp/gofmm/tree.hpp" namespace "hmlp::tree":
     cdef cppclass Tree[SETUP,NODEDATA]:
         pass
 
 
 
 ## gofmm.hpp import compress essentials 
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
+cdef extern from "/workspace/will/dev/hmlp/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
     cdef cppclass centersplit[SPDMATRIX, int, T]:
         SPDMATRIX *Kptr
 
@@ -179,7 +179,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
     #dTree_t *Compress(SPDMatrix[double]&, double, double)
     #sTree_t *Compress(SPDMatrix[float]&, float, float)  
     
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/igofmm.hpp" namespace "hmlp::gofmm":
+cdef extern from "/workspace/will/dev/hmlp/gofmm/igofmm.hpp" namespace "hmlp::gofmm":
     cdef hmlpError_t Factorize[T,TREE](TREE , T )
 
     cdef hmlpError_t Solve[T,TREE](TREE, Data[T])
