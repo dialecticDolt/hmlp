@@ -5,7 +5,7 @@ from DistMatrix cimport *
 from CustomKernel cimport *
 from Config cimport *
 from DistTree cimport *
-
+from DistTree cimport Compress as c_compress
 #Import MPI
 cimport mpi4py.MPI as MPI
 cimport mpi4py.libmpi as libmpi
@@ -205,7 +205,7 @@ cdef class PyData:
 
 
 
-#Python Class for Distributed Data Object
+#Python Class for Distributed Data Object - Columnwise
 #   TODO:
 #           - "Template" on Distribution Type. (have a pointer to BaseDistData that we case?)
 #           - Add support for additional constructors
@@ -214,10 +214,12 @@ cdef class PyData:
 #           - Add support for reading from distributed file
 #           - "Template" on float/double fused type, need to decide on how we'll structure this
 
-cdef class PyDistData:
+cdef class PyDistData_CBLK:
     cdef STAR_CBLK_DistData[float]* c_data
+    cdef MPI.Comm our_comm
 
     def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
+        self.our_comm = comm
         cdef string fName
         if not (fileName or localdata): 
             self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi)
@@ -237,6 +239,12 @@ cdef class PyDistData:
         print("Cython: Running __dealloc___ for PyDistData Object")
         self.c_data.clear()
         free(self.c_data)
+    
+    #def loadCIDS(self, PyDistData_CIDS b):
+    #    free(self.c_data)
+    #    cdef STAR_CBLK_DistData[float] a = STAR_CIDS_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
+    #    a = (deref(b.c_data))
+    #    self.c_data = &a
 
     #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a, float b):
@@ -269,6 +277,117 @@ cdef class PyDistData:
     #def write(self, str fileName):
     #    cdef string fName = <string>fileName
     #    self.c_data.write(fName)
+
+
+cdef class PyDistData_RBLK:
+    cdef RBLK_STAR_DistData[float]* c_data
+    cdef MPI.Comm our_comm
+ 
+    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
+        #cdef string fName
+        #if not (fileName or localdata): 
+        self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi)
+        #elif fileName and not (localdata):
+        #    fName = <string>fileName
+        #    #TODO: Error handling 
+        #    self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi, fName)
+        #elif localdata and not (fileName):
+        #    if type(localdata) is PyData:
+        #        self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(localdata).c_data)), comm.ob_mpi)
+        #    if isinstance(localdata, (np.ndarray, np.generic)):
+        #        print("Loading local numpy arrays is not yet supported")
+        #else:
+        #    print("Invalid constructor parameters")
+
+    def __dealloc__(self):
+        print("Cython: Running __dealloc___ for PyDistData Object")
+        self.c_data.clear()
+        free(self.c_data)
+
+
+    def loadRIDS(self, PyDistData_RIDS b):
+        free(self.c_data)
+        cdef RBLK_STAR_DistData[float]* a = new RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
+        a[0] = (deref(b.c_data))
+        self.c_data = a
+
+    #Fill the data object with random uniform data from the interval [a, b]
+    def rand(self, float a, float b):
+        self.c_data.rand(a, b)
+
+    def getCommSize(self):
+        return self.c_data.GetSize()
+
+    def getRank(self):
+        return self.c_data.GetRank()
+
+    def rows(self):
+        return self.c_data.row()
+
+    def cols(self):
+        return self.c_data.col()
+
+    def rows_local(self):
+        return self.c_data.row_owned()
+
+    def cols_local(self):
+        return self.c_data.col_owned()
+
+#TODO: RIDS & CIDS DistData need a numpy constructor
+cdef class PyDistData_RIDS:
+    cdef RIDS_STAR_DistData[float]* c_data
+
+#    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
+#        #cdef string fName
+#        #if not (fileName or localdata): 
+#        self.c_data = new RIDS_STAR_DistData[float](m, n, comm.ob_mpi)
+#        #elif fileName and not (localdata):
+#        #    fName = <string>fileName
+#        #    #TODO: Error handling 
+#        #    self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi, fName)
+#        #elif localdata and not (fileName):
+#        #    if type(localdata) is PyData:
+#        #        self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(localdata).c_data)), comm.ob_mpi)
+#        #    if isinstance(localdata, (np.ndarray, np.generic)):
+#        #        print("Loading local numpy arrays is not yet supported")
+#        #else:
+#        #    print("Invalid constructor parameters")
+#
+#    def __dealloc__(self):
+#        print("Cython: Running __dealloc___ for PyDistData Object")
+#        self.c_data.clear()
+#        free(self.c_data)
+#
+#
+#    def loadRBLK(self, PyDistData_RBLK b):
+#        free(self.c_data)
+#        cdef RIDS_STAR_DistData[float] a = RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
+#        a = (deref(b.c_data))
+#        self.c_data = &a
+#
+#    #Fill the data object with random uniform data from the interval [a, b]
+#    def rand(self, float a, float b):
+#        self.c_data.rand(a, b)
+#
+#    def getCommSize(self):
+#        return self.c_data.GetSize()
+#
+#    def getRank(self):
+#        return self.c_data.GetRank()
+#
+#    def rows(self):
+#        return self.c_data.row()
+#
+#    def cols(self):
+#        return self.c_data.col()
+#
+#    def rows_local(self):
+#        return self.c_data.row_owned()
+#
+#    def cols_local(self):
+#        return self.c_data.col_owned()
+
+
 
 
 cdef class PyDistPairData:
@@ -394,7 +513,7 @@ cdef class PyKernel:
 cdef class PyDistKernelMatrix:
     cdef DistKernelMatrix[float, float]* c_matrix
 
-    def __cinit(self, MPI.Comm comm, PyKernel kernel, PyDistData sources, PyDistData targets=None):
+    def __cinit(self, MPI.Comm comm, PyKernel kernel, PyDistData_CBLK sources, PyDistData_CBLK targets=None):
         cdef size_t m, d, n
         m = sources.col()
         d = sources.row()
@@ -408,19 +527,19 @@ cdef class PyDistKernelMatrix:
 
 
 #Python class for Kernel Matrix Tree
-ctypedef Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
+#ctypedef DTree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
 
 cdef class PyTreeKM:
-    cdef km_float_tree* c_tree 
+    cdef Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]]* c_tree 
 
-    def __cinit__(self):
-        self.c_tree = new km_float_tree()
+    def __cinit__(self, MPI.Comm comm):
+        self.c_tree = new Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]](comm.ob_mpi)
 
     def __dealloc__(self):
         print("Cython: Running __dealloc__ for PyTreeKM")
         free(self.c_tree)
 
-#TODO: Unlike shared memory this cannot take an empty NNdata, change chenhans code or write it in cython?
+#TODO: Theres a namespace bug here. Compress is returning hmlp::tree::Compress for some reason. I need hmlp::mpitree::Compress. 
 
 #    def compress(self, MPI.Comm comm, PyDistKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
 #        cdef centersplit[DistKernelMatrix[float, float], two, float] c_csplit
@@ -429,12 +548,12 @@ cdef class PyTreeKM:
 #        c_csplit.Kptr = K.c_matrix
 #        c_rsplit.Kptr = K.c_matrix
 #        if(config):
-#            self.c_tree = Compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(config.c_config))
+#            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(config.c_config))
 #        else:
 #            conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
 #            conf.setSymmetry(sym)
 #            conf.setAdaptiveRank(adapt_ranks)
-#            self.c_tree = Compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), c_NNdata, c_csplit, c_rsplit, deref(conf.c_config))
+#            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(conf.c_config))
 
 
 

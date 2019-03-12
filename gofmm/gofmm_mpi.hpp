@@ -4010,8 +4010,7 @@ DistData<STAR, CBLK, pair<T, size_t>> FindNeighbors
 
 
 
-
-
+template<typename SETUP, typename NODEDATA> using DTree = mpitree::Tree<SETUP, NODEDATA>;
 
 /**
  *  @brief template of the compress routine

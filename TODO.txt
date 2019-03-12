@@ -24,7 +24,7 @@ DISTRIBUTED MEMORY IMPLEMENTATION
 Notes:
     - There is only a distributed version of the kernel matrix container. There is no SPDMatrix equivalent. 
     - I've not tested anything with multiple MPI workers yet, this is a major TODO
-
+    - Theres a bug that Compress is returning hmlp::tree::Tree instead of hmlp::mpitree::Tree
 -DistData
     -Notes: 
             -DistData has many different data distributions, they're developed to very different degrees and have different methods

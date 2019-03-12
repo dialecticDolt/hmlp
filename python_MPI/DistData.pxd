@@ -84,7 +84,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
         STAR_CBLK_DistData[T]& operator = (STAR_CIDS_DistData[T]&) except +
 
     cdef cppclass RBLK_STAR_DistData[T](DistDataBase[T]):
-        RBLK_STAR_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
+        RBLK_STAR_DistData() except +
+        RBLK_STAR_DistData(size_t, size_t, libmpi.MPI_Comm) except +
         #construct from local row data
         RBLK_STAR_DistData(size_t, size_t, Data[T]&, libmpi.MPI_Comm) except +
         RBLK_STAR_DistData(size_t, size_t, vector[T]&, libmpi.MPI_Comm) except +
