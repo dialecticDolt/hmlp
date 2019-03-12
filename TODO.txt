@@ -38,6 +38,9 @@ Notes:
                     - a = PyData(). Do we want a.get(i, j), or just a[i, j], for submatrices should we support slicing?
                 - = 
                     - a.redistribute 
+            - numpy to DistData object. 
+                - built piece by piece with local arrays
+                - built with array then scattered
 
 -Compress
     -Notes:
