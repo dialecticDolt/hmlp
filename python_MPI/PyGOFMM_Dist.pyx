@@ -20,7 +20,9 @@ from libc.string cimport strcmp
 from libc.stdlib cimport malloc, free
 
 #Import from cython
+import cython
 from cython.operator cimport dereference as deref
+from cython.view cimport array as cvarray
 
 #Numpy
 import numpy as np
@@ -159,13 +161,129 @@ cdef class PyConfig:
 cdef class PyData:
     cdef Data[float]* c_data
 
-    def __cinit__(self, size_t m = 0, size_t n = 0):
-        self.c_data = new Data[float](m, n)
-    
+    #TODO: Add error handling if the user gives the wrong array sizes (at the moment I'm overriding)
+    #      
+    @cython.boundscheck(False)
+    def __cinit__(self, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
+        cdef string fName
+        cdef vector[float] vec
+        if not (fileName or data or arr!=None or darr!=None):
+            #Create empty Data object
+            self.c_data = new Data[float](m, n)
+        elif fileName and not (data or darr!=None or arr!=None):
+            #Load data object from file
+            fName = <string>fileName
+            self.c_data = new Data[float](m, n)
+            self.c_data.read(m, n, fName)
+        elif data and not (fileName or darr!=None or arr!=None):
+            #Deep copy from existing data object
+            self.c_data = new Data[float](deref(data.c_data))
+        elif darr!=None and not (fileName or data!=None or arr!=None):
+            #Load data object from numpy array
+            m = <size_t>darr.shape[0]
+            n = <size_t>darr.shape[1]
+            vec.assign(&darr[0, 0], &darr[-1, -1])
+            self.c_data = new Data[float](m, n, &darr[0, 0], True)
+        elif arr!=None and not (fileName or data!=None or darr!=None):
+            #Load data object from numpy array
+            m = <size_t>arr.size
+            n = <size_t>1
+            vec.assign(&arr[0], &arr[-1])
+            self.c_data = new Data[float](m, n, vec)
+        else:
+            raise Exception("Invalid constructor parameters")
+
     def __dealloc__( self ):
         print("Cython: Running __dealloc___ for PyData Object")
-       # self.c_data.clear()
-       # free(self.c_data)
+        # self.c_data.clear()
+        free(self.c_data)
+
+    #TODO: Add error handling in case non integers are passed
+    #All values are locally indexed
+    def __getitem__(self, pos):
+        if isinstance(pos, int):
+            return self.c_data.getvalue(<size_t>pos,<size_t>0)
+        #elif isinstance(pos, int) and self.c_data.row() == 1:
+        #     return self.c_data.getvalue(<size_t>0, <size_t>pos)
+        elif isinstance(pos, tuple) and len(pos) == 2:
+            i, j = pos
+            return self.c_data.getvalue(i, j)
+        else:
+            raise Exception('PyData can only be indexed in 1 or 2 dimensions')
+
+    #TODO: Add error handling in case non integers are passed
+    #All values are locally indexed
+    def __setitem__(self, pos, float v):
+        if isinstance(pos, int):
+            self.c_data.setvalue(<size_t>pos,<size_t>0, v)
+        #elif isinstance(pos, int) and self.c_data.row() == 1:
+        #    self.c_data.setvalue(<size_t>0, <size_t>pos, v)
+        elif not isinstance(pos, int) and len(pos) == 2:
+            i, j = pos
+            self.c_data.setvalue(<size_t>i, <size_t>j, v)
+        else:
+            raise Exception('PyData can only be indexed in 1 or 2 dimensions')
+
+    @cython.boundscheck(False)
+    @classmethod 
+    def FromNumpy(cls,np.ndarray[float, ndim=2, mode="c"] arr_np):
+        # get sizes
+        cdef size_t m,n
+        m = <size_t> arr_np.shape[0]
+        n = <size_t> arr_np.shape[1]
+        
+        # construct std::vector
+        #cdef vector[float] arr_cpp = vector[float](m*n)
+        #arr_cpp.assign(&arr_np[0,0], &arr_np[-1,-1])
+
+        # construct PyData obj
+        cpdef PyData ret = cls(m,n)
+        #cdef Data[float]* bla = new Data[float](m,n,arr_cpp)
+        cdef Data[float]* bla 
+        with nogil:
+            bla = new Data[float](m,n,&arr_np[0,0],True)
+        ret.c_data = bla
+        return ret
+
+    def toNumpy(self):
+        cdef float* data_ptr = self.c_data.rowdata(0)
+        cdef float[:] mv = <float[:self.size()]> data_ptr
+        np_arr = np.asarray(mv)
+        np_arr.resize(self.row(),self.col())
+        return np_arr
+
+    @cython.boundscheck(False)
+    # TODO access submatrix through inputting numpy vectors
+    def submatrix(self,np.ndarray[np.intp_t, ndim=1] I not None,
+        np.ndarray[np.intp_t,ndim=1] J not None):
+
+        # define memory views?
+        cdef np.intp_t [:] Iview = I
+        cdef np.intp_t [:] Jview = J
+
+
+        cdef size_t ci,cj
+
+        # get sizes, initialize new PyData
+        cdef size_t ni = <size_t> I.size
+        cdef size_t nj = <size_t> J.size
+        cdef Data[float]* subdata = new Data[float](ni,nj)
+        cdef float tmp
+
+        # begin loops
+        for ci in range(ni):
+            for cj in range(nj):
+                tmp = self.c_data.getvalue( <size_t> Iview[ci], <size_t> Jview[cj] )
+                subdata.setvalue(<size_t> ci,<size_t> cj,tmp)
+
+        # new Pydata object
+        cpdef PyData sub = PyData(ni,nj)
+
+        # call c_data's sub func
+        sub.c_data = subdata
+
+        # return sub
+        return sub
 
     cpdef read(self, size_t m, size_t n, str filename):
         self.c_data.read(m, n,filename.encode())
@@ -182,11 +300,11 @@ cdef class PyData:
     cpdef size(self):
         return self.c_data.size()
 
-    cpdef getvalue(self,size_t m, size_t n):
-        return self.c_data.getvalue(m,n)
-
     cpdef setvalue(self,size_t m, size_t n, float v):
         self.c_data.setvalue(m,n,v)
+    
+    cpdef getvalue(self, size_t m, size_t n):
+        return self.c_data.getvalue(m, n)
 
     cpdef rand(self,float a, float b ):
         self.c_data.rand(a, b)
@@ -218,28 +336,56 @@ cdef class PyDistData_CBLK:
     cdef STAR_CBLK_DistData[float]* c_data
     cdef MPI.Comm our_comm
 
-    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
-        self.our_comm = comm
+    #TODO: Add error handling if the user gives the wrong array sizes (at the moment I'm overriding)
+    #      
+    @cython.boundscheck(False)
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
-        if not (fileName or localdata): 
+        cdef vector[float] vec
+        if not (fileName or data or arr!=None or darr!=None):
+            #Create empty Data object
             self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi)
-        elif fileName and not (localdata):
+        elif fileName and not (data or darr!=None or arr!=None):
+            #Load data object from file
             fName = <string>fileName
-            #TODO: Error handling 
             self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi, fName)
-        elif localdata and not (fileName):
-            if type(localdata) is PyData:
-                self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(localdata).c_data)), comm.ob_mpi)
-            if isinstance(localdata, (np.ndarray, np.generic)):
-                print("Loading local numpy arrays is not yet supported")
+        elif data and not (fileName or darr!=None or arr!=None):
+            #From local copy of PyData object
+            self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
+        elif darr!=None and not (fileName or data!=None or arr!=None):
+            #Load data object from numpy array
+            m = <size_t>darr.shape[0]
+            n = <size_t>darr.shape[1]
+            vec.assign(&darr[0, 0], &darr[-1, -1])
+            self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
+        elif arr!=None and not (fileName or data!=None or darr!=None):
+            #Load data object from numpy array
+            m = <size_t>arr.size
+            n = <size_t>1
+            vec.assign(&arr[0], &arr[-1])
+            self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
+
+    def __len__(self):
+        return self.c_data.row()*self.c_data.col()
+
+    #TODO: Add error handling in case non integers are passed
+    #All values are locally indexed
+    def __getitem__(self, pos):
+        if isinstance(pos, int) and self.c_data.col() == 1:
+            return deref(self.c_data)(<size_t>pos,<size_t>1)
+        elif isinstance(pos, int) and self.c_data.row() == 1:
+            return deref(self.c_data)(<size_t>1, <size_t>pos)
+        elif len(pos) == 2:
+            i, j = pos
+            return deref(self.c_data)(<size_t>i, <size_t>j)
         else:
-            print("Invalid constructor parameters")
+            raise Exception('PyData can only be indexed in 1 or 2 dimensions')
 
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
-        self.c_data.clear()
         free(self.c_data)
     
+    #TODO: Add support for CIDS
     #def loadCIDS(self, PyDistData_CIDS b):
     #    free(self.c_data)
     #    cdef STAR_CBLK_DistData[float] a = STAR_CIDS_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
@@ -273,7 +419,7 @@ cdef class PyDistData_CBLK:
     def cols_local(self):
         return self.c_data.col_owned()
 
-    #THIS IS A LOCAL WRITE
+    #TODO: THIS IS A LOCAL WRITE
     #def write(self, str fileName):
     #    cdef string fName = <string>fileName
     #    self.c_data.write(fName)
@@ -282,34 +428,50 @@ cdef class PyDistData_CBLK:
 cdef class PyDistData_RBLK:
     cdef RBLK_STAR_DistData[float]* c_data
     cdef MPI.Comm our_comm
- 
-    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
-        #cdef string fName
-        #if not (fileName or localdata): 
-        self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi)
-        #elif fileName and not (localdata):
-        #    fName = <string>fileName
-        #    #TODO: Error handling 
-        #    self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi, fName)
-        #elif localdata and not (fileName):
-        #    if type(localdata) is PyData:
-        #        self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(localdata).c_data)), comm.ob_mpi)
-        #    if isinstance(localdata, (np.ndarray, np.generic)):
-        #        print("Loading local numpy arrays is not yet supported")
-        #else:
-        #    print("Invalid constructor parameters")
+
+    @cython.boundscheck(False)
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
+        cdef string fName
+        cdef vector[float] vec
+        if not (fileName or data or arr!=None or darr!=None):
+            #Create empty Data object
+            self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi)
+        elif fileName and not (data or darr!=None or arr!=None):
+            #Load data object from file
+            raise Exception("RBLK does not support loading from a file. Please load a RIDS and convert if you need a RBLK")
+        elif data and not (fileName or darr!=None or arr!=None):
+            #From local copy of PyData object
+            self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
+        elif darr!=None and not (fileName or data!=None or arr!=None):
+            #Load data object from numpy array
+            m = <size_t>darr.shape[0]
+            n = <size_t>darr.shape[1]
+            vec.assign(&darr[0, 0], &darr[-1, -1])
+            self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+        elif arr!=None and not (fileName or data!=None or darr!=None):
+            #Load data object from numpy array
+            m = <size_t>arr.size
+            n = <size_t>1
+            vec.assign(&arr[0], &arr[-1])
+            self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
 
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
-        self.c_data.clear()
         free(self.c_data)
 
 
     def loadRIDS(self, PyDistData_RIDS b):
         free(self.c_data)
-        cdef RBLK_STAR_DistData[float]* a = new RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
+        cdef RBLK_STAR_DistData[float]* a# = new RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
         a[0] = (deref(b.c_data))
         self.c_data = a
+
+    @classmethod
+    def fromRIDS(cls, PyDistData_RIDS b):
+        cpdef PyDistData_RBLK ret = cls(b.our_comm, b.rows(), b.cols())
+        free(ret.c_data)
+        ret.c_data[0] = (deref(b.c_data))
+        return ret
 
     #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a, float b):
@@ -333,38 +495,63 @@ cdef class PyDistData_RBLK:
     def cols_local(self):
         return self.c_data.col_owned()
 
-#TODO: RIDS & CIDS DistData need a numpy constructor
+#TODO: RIDS & CIDS DistData,  need a numpy constructor 
 cdef class PyDistData_RIDS:
     cdef RIDS_STAR_DistData[float]* c_data
+    cdef MPI.Comm our_comm
 
-#    def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
-#        #cdef string fName
-#        #if not (fileName or localdata): 
-#        self.c_data = new RIDS_STAR_DistData[float](m, n, comm.ob_mpi)
-#        #elif fileName and not (localdata):
-#        #    fName = <string>fileName
-#        #    #TODO: Error handling 
-#        #    self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi, fName)
-#        #elif localdata and not (fileName):
-#        #    if type(localdata) is PyData:
-#        #        self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(localdata).c_data)), comm.ob_mpi)
-#        #    if isinstance(localdata, (np.ndarray, np.generic)):
-#        #        print("Loading local numpy arrays is not yet supported")
-#        #else:
-#        #    print("Invalid constructor parameters")
-#
-#    def __dealloc__(self):
-#        print("Cython: Running __dealloc___ for PyDistData Object")
-#        self.c_data.clear()
-#        free(self.c_data)
-#
-#
-#    def loadRBLK(self, PyDistData_RBLK b):
-#        free(self.c_data)
-#        cdef RIDS_STAR_DistData[float] a = RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
-#        a = (deref(b.c_data))
-#        self.c_data = &a
-#
+    @cython.boundscheck(False)
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
+        cdef string fName
+        cdef int[:] a = np.arange(m).astype('int')
+        cdef vector[size_t] vec
+        if iset==None:
+            vec.assign(&a[0], &a[-1])
+        else:
+            vec.assign(&iset[0], &iset[-1])
+        if not (fileName or data):
+            self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+        elif fileName and not (data or darr!=None or arr!=None):
+            #Load data object from file
+            raise Exception("RIDS does not yet support loading from a file...it will soon")
+        elif data and not (fileName or darr!=None):
+            #From local copy of PyData object
+            raise Exception("RIDS does not yet support loading from localdata...it will soon")
+        elif arr!=None and not (fileName or darr!=None):
+             #Load data object from numpy array
+             raise Exception("RIDS does not yet support loading from a file...it will soon")
+        elif darr!=None and not (fileName or data!=None):
+             #Load data object from numpy array
+             raise Exception("RIDS does not yet support loading from numpy...it will soon")
+             #m = <size_t>arr.size
+             #n = <size_t>1
+             #vec.assign(&arr[0], &arr[-1])
+             #self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+
+    def __dealloc__(self):
+        print("Cython: Running __dealloc___ for PyDistData Object")
+        free(self.c_data)
+
+
+    def loadRBLK(self, PyDistData_RBLK b):
+        free(self.c_data)
+        cdef int[:] iset = np.arange(b.rows()).astype(int)
+        cdef vector[size_t] vec
+        vec.assign(&iset[0], &iset[-1])
+        cdef RIDS_STAR_DistData[float]* a# = new RIDS_STAR_DistData[float](b.rows(), b.cols(), vec, self.our_comm.ob_mpi)
+        #free(a)
+        a[0] = (deref(b.c_data))
+        self.c_data = a
+
+
+    @classmethod
+    def fromRBLK(cls, PyDistData_RIDS b):
+        cdef PyDistData_RIDS ret = cls(b.our_comm, b.rows(), b.cols())
+        free(ret.c_data)
+        ret.c_data[0] = (deref(b.c_data))
+        return ret
+
+
 #    #Fill the data object with random uniform data from the interval [a, b]
 #    def rand(self, float a, float b):
 #        self.c_data.rand(a, b)
