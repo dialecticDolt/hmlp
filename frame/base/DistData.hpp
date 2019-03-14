@@ -1401,7 +1401,10 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
 
 
     /**
-     *  read a dense column-major matrix 
+     *  read a dense column-major matrix.
+     *  WARNING: this overwrites rids/rid2row, assuming 
+     *  contiguous row blocks are assigned to each 
+     *  task.
      */ 
     void read( size_t m, size_t n, string &filename )
     {
