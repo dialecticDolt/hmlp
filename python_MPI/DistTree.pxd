@@ -16,41 +16,27 @@ cdef extern from *:
     ctypedef bool nnprune "true"
     ctypedef bool cache "true"
 
+# used for tree templating later (no distributed nodedata)
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
+    cdef cppclass NodeData[T]:
+        pass
 
-
-#cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree_mpi.hpp" namespace "hmlp::mpitree":
-
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpitree":
-
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree_mpi.hpp" namespace "hmlp::mpitree":
     cdef cppclass Tree[SETUP, NODEDATA]:
         Tree(libmpi.MPI_Comm) except +
 
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::gofmm":
-    
-
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpigofmm":
     #Objects used to template Tree    
+    cdef cppclass Setup[MATRIX, SPLITTER, T]:
+        pass
+
     cdef cppclass centersplit[MATRIX, int, T]:
         MATRIX *Kptr
 
     cdef cppclass randomsplit[MATRIX, int, T]:
         MATRIX *Kptr
 
-    cdef cppclass Setup[MATRIX, SPLITTER, T]:
-        pass
-
-    cdef cppclass NodeData[T]:
-        pass
-    #Compress
-
-    #Float (single precision)
-    #cdef Tree[Setup[MATRIX, centersplit[MATRIX, two, float], float], NodeData[float]] *Compress[CSPLIT, RSPLIT, float, MATRIX](MATRIX&, STAR_CBLK_DistData[pair[float, size_t]]&, centersplit[MATRIX, two, float], randomsplit[MATRIX, two, float], Configuration[float]&)
-
-
-
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::gofmm":
-    
-    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ]* Compress[CSPLIT, RSPLIT, T,SPDMATRIX]( SPDMATRIX&, STAR_CBLK_DistData[pair[T, size_t]]&,
-            centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&)
+    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ]* Compress[CSPLIT, RSPLIT, T,SPDMATRIX]( SPDMATRIX&, STAR_CBLK_DistData[pair[T, size_t]]&, centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&,libmpi.MPI_Comm)
 
     #Evaluate (Matvec)
 
