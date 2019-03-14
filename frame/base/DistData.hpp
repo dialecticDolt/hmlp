@@ -1229,7 +1229,6 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
     using ALLOCATOR = std::allocator<T>;
     #endif
 
-
     /** default constructor */
     DistData<RIDS, STAR, T>( size_t m, size_t n, std::vector<size_t> &rids, mpi::Comm comm ) : 
       DistDataBase<T>( m, n, comm ) 
@@ -1401,6 +1400,67 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
     };
 
 
+    /**
+     *  read a dense column-major matrix.
+     *  WARNING: this overwrites rids/rid2row, assuming 
+     *  contiguous row blocks are assigned to each 
+     *  task.
+     */ 
+    void read( size_t m, size_t n, string &filename )
+    {
+      /** MPI */
+      int size = this->GetSize();
+      int rank = this->GetRank();
+
+      /** find where to begin file read */
+      size_t base_sz = (size_t) m / size;
+      size_t addl_row = (size_t) m % size;
+      size_t addl_row_prev = (addl_row < (size_t) rank) ? addl_row : (size_t) rank;
+      size_t row_beg = (size_t) (base_sz * rank) + addl_row_prev;
+      size_t num_rows = (addl_row < (size_t) rank) ? base_sz : base_sz + 1;
+
+      /** adjust rids and rid2row? */
+      std::vector<size_t> rids(num_rows);
+      for( size_t i = 0; i < num_rows; i++ ){ rids[i] = row_beg + i;}
+      this->resize( rids.size(), n );
+      for ( size_t i = 0; i < rids.size(); i ++ )
+        rid2row[ rids[ i ] ] = i;      
+
+      /** print out filename */
+      cout << filename << endl;
+
+      std::ifstream file( filename.data(), 
+          std::ios::in|std::ios::binary|std::ios::ate );
+
+      if ( file.is_open() )
+      {
+        auto size = file.tellg();
+        assert( size == m * n * sizeof(T) );
+
+        file.close();
+      }
+
+      #pragma omp parallel
+      {
+        std::ifstream ompfile( filename.data(), 
+          std::ios::in|std::ios::binary|std::ios::ate );
+
+        if ( ompfile.is_open() )
+        {
+          // loop over n, increment by one
+          #pragma omp for
+          for ( size_t j = 0; j < n; j ++ )
+          {
+            size_t byte_offset = sizeof(T) * ( row_beg + (j*m) );
+            ompfile.seekg( byte_offset, std::ios::beg );
+            ompfile.read( (char*) this->columndata(j), num_rows * sizeof(T) );
+          }
+
+          ompfile.close();
+        }
+      } /** end omp parallel */
+
+    }; /** end void read() */
 
 
 
