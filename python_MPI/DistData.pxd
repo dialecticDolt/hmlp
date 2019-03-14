@@ -5,7 +5,7 @@ from libcpp.string cimport string
 from libcpp.pair cimport pair
 cimport  mpi4py.libmpi as libmpi
 
-cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" nogil:
 
     ctypedef enum Distribution_t "Distribution_t":
         CBLK "CBLK",
@@ -36,7 +36,6 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp":
         T* rowdata(size_t)
         T getvalue(size_t i, size_t j)
         void setvalue(size_t i, size_t j, T v) except +
-
         void rand(T a, T b)
  
     #Wrapper for Base Distributed Data Class
