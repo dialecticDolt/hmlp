@@ -68,4 +68,5 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         void RecvIndices(int, libmpi.MPI_Comm, libmpi.MPI_Status)
         void BcasIndices(vector[size_t]&, int, libmpi.MPI_Comm)
         void RequestIndices(const vector[vector[size_t]]&)
+        size_t dim()
         

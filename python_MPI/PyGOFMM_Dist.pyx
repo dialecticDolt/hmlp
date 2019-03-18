@@ -709,10 +709,10 @@ cdef class PyKernel:
 cdef class PyDistKernelMatrix:
     cdef DistKernelMatrix[float, float]* c_matrix
 
-    def __cinit(self, MPI.Comm comm, PyKernel kernel, PyDistData_CBLK sources, PyDistData_CBLK targets=None):
+    def __cinit__(self, MPI.Comm comm, PyKernel kernel, PyDistData_CBLK sources, PyDistData_CBLK targets=None):
         cdef size_t m, d, n
-        m = sources.col()
-        d = sources.row()
+        m = sources.c_data.col()
+        d = sources.c_data.row()
         n = m
 
         if targets is not None:
@@ -720,6 +720,10 @@ cdef class PyDistKernelMatrix:
             self.c_matrix = new DistKernelMatrix[float, float](m, n, d, deref(kernel.c_kernel), deref(sources.c_data), deref(targets.c_data), comm.ob_mpi)
         else:
             self.c_matrix = new DistKernelMatrix[float, float](m, d, deref(kernel.c_kernel), deref(sources.c_data), comm.ob_mpi)
+
+    def dim(self):
+        return self.c_matrix.dim()
+
 
 
 #Python class for Kernel Matrix Tree
@@ -737,19 +741,19 @@ cdef class PyTreeKM:
 
 #TODO: Theres a namespace bug here. Compress is returning hmlp::tree::Compress for some reason. I need hmlp::mpitree::Compress. 
 
-#    def compress(self, MPI.Comm comm, PyDistKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
-#        cdef centersplit[DistKernelMatrix[float, float], two, float] c_csplit
-#        cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
-#        cdef STAR_CBLK_DistData[pair[float, size_t]]* c_NNdata = new STAR_CBLK_DistData[pair[float, size_t]](0, 0, comm.ob_mpi)
-#        c_csplit.Kptr = K.c_matrix
-#        c_rsplit.Kptr = K.c_matrix
-#        if(config):
-#            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(config.c_config))
-#        else:
-#            conf = PyConfig(metric_type, K.row(), m, k, s, stol, budget, sec_acc)
-#            conf.setSymmetry(sym)
-#            conf.setAdaptiveRank(adapt_ranks)
-#            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(conf.c_config))
+    def compress(self, MPI.Comm comm, PyDistKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
+        cdef centersplit[DistKernelMatrix[float, float], two, float] c_csplit
+        cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
+        cdef STAR_CBLK_DistData[pair[float, size_t]]* c_NNdata = new STAR_CBLK_DistData[pair[float, size_t]](0, 0, comm.ob_mpi)
+        c_csplit.Kptr = K.c_matrix
+        c_rsplit.Kptr = K.c_matrix
+        if(config):
+            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(config.c_config),comm.ob_mpi)
+        else:
+            conf = PyConfig(metric_type, K.dim(), m, k, s, stol, budget, sec_acc)
+            conf.setSymmetry(sym)
+            conf.setAdaptiveRank(adapt_ranks)
+            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(conf.c_config),comm.ob_mpi)
 
 
 

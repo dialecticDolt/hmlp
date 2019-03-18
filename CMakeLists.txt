@@ -225,12 +225,14 @@ endif()
 
 
 # ---[ Python support
-find_program(VIRTUALENV "${VENV_BIN}")
-if(NOT VIRTUALENV)
+#find_program(VIRTUALENV ${VENV_BIN})
+set(CVENV $ENV{VENV_BIN})
+MESSAGE(STATUS "VENV SET TO ${VENV_BIN}")
+if(NOT CVENV)
 	MESSAGE(WARNING "virtualenv not found. Not attempting to build cython version of GOFMM.")
 endif()
 
-if (VIRTUALENV)
+if(CVENV)
   #set(INSTA_SH_IN ${hmlp_SOURCE_DIR}/python/install.in.sh)
   #set(INSTA_SH    ${CMAKE_BINARY_DIR}/python/install.sh)
   #senfigure_file(${INSTA_SH_IN} ${INSTA_SH})
@@ -309,7 +311,7 @@ if (VIRTUALENV)
   
 IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
   message(STATUS "Going to install python in build directory..")
-  install(CODE "execute_process(COMMAND ${VENV_BIN} --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
+  install(CODE "execute_process(COMMAND ${CVENV} --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
   set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python3)
   set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip3)
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install cython)")

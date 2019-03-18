@@ -1251,6 +1251,15 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
     };
 
 
+    /** filename constructor */
+    DistData<RIDS, STAR, T>( size_t m, size_t n, std::string &filename, mpi::Comm comm ) : 
+      DistDataBase<T>( m, n, comm ) 
+    {
+        this->read(m,n,filename);
+
+
+    }; // end filename constructor
+
     /**
      *  Overload operator () to allow accessing data using gids
      */ 
@@ -1421,11 +1430,11 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
       size_t num_rows = (addl_row < (size_t) rank) ? base_sz : base_sz + 1;
 
       /** adjust rids and rid2row? */
-      std::vector<size_t> rids(num_rows);
-      for( size_t i = 0; i < num_rows; i++ ){ rids[i] = row_beg + i;}
-      this->resize( rids.size(), n );
+      this->rids = std::vector<size_t>(num_rows);
+      for( size_t i = 0; i < num_rows; i++ ){ this->rids[i] = row_beg + i;}
+      this->resize( this->rids.size(), n );
       for ( size_t i = 0; i < rids.size(); i ++ )
-        rid2row[ rids[ i ] ] = i;      
+        this->rid2row[ this->rids[ i ] ] = i;      
 
       /** print out filename */
       cout << filename << endl;

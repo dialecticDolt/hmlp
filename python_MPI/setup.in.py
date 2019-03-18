@@ -31,7 +31,7 @@ import numpy as np
 #TODO: Add branching statement if HMLP_USE_MLI is true
 os.environ["CC"] = "mpicc"
 os.environ["CXX"] = "mpic++"
-os.system("export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so")
+#os.system("export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so")
 
 #include directories
 inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
@@ -49,7 +49,7 @@ print(inc_dirs)
 
 # hmlp library directory
 lib_dirs = ['${CMAKE_BINARY_DIR}/lib']
-lib_dirs = lib_dirs + ['${MPI_CXX_LIBRARIES}']
+#lib_dirs = lib_dirs + ['${MPI_CXX_LIBRARIES}']
 lib_dirs = lib_dirs + ['${MKLROOT}/include']
 lib_dirs = lib_dirs + ['${MKLROOT}/lib/intel64']
 #lib_dirs = lib_dirs + ['${MKLROOT}/lib/intel64/libmkl_core.so']
