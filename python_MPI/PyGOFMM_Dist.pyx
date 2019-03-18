@@ -354,14 +354,10 @@ cdef class PyDistData_CBLK:
             self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
             #Load data object from numpy array
-            m = <size_t>darr.shape[0]
-            n = <size_t>darr.shape[1]
             vec.assign(&darr[0, 0], &darr[-1, -1])
             self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
-            m = <size_t>arr.size
-            n = <size_t>1
             vec.assign(&arr[0], &arr[-1])
             self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
 
@@ -373,8 +369,8 @@ cdef class PyDistData_CBLK:
     def __getitem__(self, pos):
         if isinstance(pos, int) and self.c_data.col() == 1:
             return deref(self.c_data)(<size_t>pos,<size_t>1)
-        elif isinstance(pos, int) and self.c_data.row() == 1:
-            return deref(self.c_data)(<size_t>1, <size_t>pos)
+        #elif isinstance(pos, int) and self.c_data.row() == 1:
+        #    return deref(self.c_data)(<size_t>1, <size_t>pos)
         elif len(pos) == 2:
             i, j = pos
             return deref(self.c_data)(<size_t>i, <size_t>j)
@@ -444,14 +440,10 @@ cdef class PyDistData_RBLK:
             self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
             #Load data object from numpy array
-            m = <size_t>darr.shape[0]
-            n = <size_t>darr.shape[1]
             vec.assign(&darr[0, 0], &darr[-1, -1])
             self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
-            m = <size_t>arr.size
-            n = <size_t>1
             vec.assign(&arr[0], &arr[-1])
             self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
 
@@ -461,17 +453,30 @@ cdef class PyDistData_RBLK:
 
 
     def loadRIDS(self, PyDistData_RIDS b):
-        free(self.c_data)
-        cdef RBLK_STAR_DistData[float]* a# = new RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
-        a[0] = (deref(b.c_data))
-        self.c_data = a
+        #free(self.c_data)
+        #cdef RBLK_STAR_DistData[float]* a = new RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
+        self.c_data[0] = (deref(b.c_data))
+        #self.c_data = a
 
     @classmethod
     def fromRIDS(cls, PyDistData_RIDS b):
         cpdef PyDistData_RBLK ret = cls(b.our_comm, b.rows(), b.cols())
-        free(ret.c_data)
+        #free(ret.c_data)
         ret.c_data[0] = (deref(b.c_data))
         return ret
+
+
+    #TODO
+    def __getitem__(self, pos):
+        if isinstance(pos, int) and self.c_data.col() == 1:
+            return deref(self.c_data)(<size_t>pos,<size_t>1)
+        #elif isinstance(pos, int) and self.c_data.row() == 1:
+        #    return deref(self.c_data)(<size_t>1, <size_t>pos)
+        elif len(pos) == 2:
+            i, j = pos
+            return deref(self.c_data)(<size_t>i, <size_t>j)
+        else:
+            raise Exception('PyData can only be indexed in 1 or 2 dimensions')
 
     #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a, float b):
@@ -503,7 +508,7 @@ cdef class PyDistData_RIDS:
     @cython.boundscheck(False)
     def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
-        cdef int[:] a = np.arange(m).astype('int')
+        cdef int[:] a = np.arange(m).astype('int32')
         cdef vector[size_t] vec
         if iset==None:
             vec.assign(&a[0], &a[-1])
@@ -532,42 +537,46 @@ cdef class PyDistData_RIDS:
         print("Cython: Running __dealloc___ for PyDistData Object")
         free(self.c_data)
 
+    def rand(self, float a, float b):
+        self.c_data.rand(a, b)
 
     def loadRBLK(self, PyDistData_RBLK b):
-        free(self.c_data)
-        cdef int[:] iset = np.arange(b.rows()).astype(int)
-        cdef vector[size_t] vec
-        vec.assign(&iset[0], &iset[-1])
-        cdef RIDS_STAR_DistData[float]* a# = new RIDS_STAR_DistData[float](b.rows(), b.cols(), vec, self.our_comm.ob_mpi)
-        #free(a)
-        a[0] = (deref(b.c_data))
-        self.c_data = a
+        #free(self.c_data)
+        #cdef int[:] iset = np.arange(b.rows()).astype(int)
+        #cdef vector[size_t] vec
+        #vec.assign(&iset[0], &iset[-1])
+        #cdef RIDS_STAR_DistData[float] a(b.rows(), b.cols(), vec, self.our_comm.ob_mpi)
+        self.c_data[0] = (deref(b.c_data))
+        #self.c_data = &a
 
 
     @classmethod
-    def fromRBLK(cls, PyDistData_RIDS b):
+    def fromRBLK(cls, PyDistData_RBLK b):
         cdef PyDistData_RIDS ret = cls(b.our_comm, b.rows(), b.cols())
-        free(ret.c_data)
         ret.c_data[0] = (deref(b.c_data))
         return ret
 
+    def getRank(self):
+        return self.c_data.GetRank()
 
-#    #Fill the data object with random uniform data from the interval [a, b]
-#    def rand(self, float a, float b):
-#        self.c_data.rand(a, b)
-#
-#    def getCommSize(self):
-#        return self.c_data.GetSize()
-#
-#    def getRank(self):
-#        return self.c_data.GetRank()
-#
-#    def rows(self):
-#        return self.c_data.row()
-#
-#    def cols(self):
-#        return self.c_data.col()
-#
+    def rows(self):
+        return self.c_data.row()
+
+    def cols(self):
+        return self.c_data.col()
+
+    def __getitem__(self, pos):
+        if isinstance(pos, int) and self.c_data.col() == 1:
+            return deref(self.c_data)(<size_t>pos,<size_t>1)
+        #elif isinstance(pos, int) and self.c_data.row() == 1:
+        #    return deref(self.c_data)(<size_t>1, <size_t>pos)
+        elif len(pos) == 2:
+            i, j = pos
+            return deref(self.c_data)(<size_t>i, <size_t>j)
+        else:
+            raise Exception('PyData can only be indexed in 1 or 2 dimensions')
+
+
 #    def rows_local(self):
 #        return self.c_data.row_owned()
 #

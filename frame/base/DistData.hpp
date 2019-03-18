@@ -1318,13 +1318,14 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
     {
       /** assertion: must provide rids */
       assert( rids.size() );
-
+      
       /** MPI */
       mpi::Comm comm = this->GetComm();
       int size = this->GetSize();
       int rank = this->GetRank();
 
-      //printf( "Enter redistrivution rids.size() %lu\n", rids.size() ); fflush( stdout );
+      printf("Starting Redistribute\n");
+      printf( "Enter redistrivution rids.size() %lu\n", rids.size() ); fflush( stdout );
       //mpi::Barrier( comm );
 
       /** allocate buffer for ids */
