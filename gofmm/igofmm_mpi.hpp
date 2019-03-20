@@ -350,7 +350,7 @@ class DistULVBackwardSolveTask : public Task
 
 
 
-/** @biref Top-level factorization routine. */ 
+/** @brief Top-level factorization routine. */ 
 template<typename T, typename TREE>
 void DistFactorize( TREE &tree, T lambda )
 {

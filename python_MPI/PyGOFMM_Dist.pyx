@@ -6,6 +6,8 @@ from CustomKernel cimport *
 from Config cimport *
 from DistTree cimport *
 from DistTree cimport Compress as c_compress
+from DistInverse cimport *
+
 #Import MPI
 cimport mpi4py.MPI as MPI
 cimport mpi4py.libmpi as libmpi
@@ -309,6 +311,18 @@ cdef class PyData:
     cpdef rand(self,float a, float b ):
         self.c_data.rand(a, b)
 
+    cpdef randn(self, float mu, float std):
+        self.c_data.randn(mu, std)
+
+    cpdef randspd(self, float a, float b):
+        self.c_data.randspd(a, b)
+
+    cpdef display(self):
+        self.c_data.Print()
+
+    cpdef HasIllegalValue(self):
+        return self.c_data.HasIllegalValue()
+
     cpdef MakeCopy(self):
         # get my data stuff
         cdef Data[float]* cpy = new Data[float](deref(self.c_data) )
@@ -350,7 +364,8 @@ cdef class PyDistData_CBLK:
             fName = <string>fileName
             self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi, fName)
         elif data and not (fileName or darr!=None or arr!=None):
-            #From local copy of PyData object
+            #From local copy of PyData object TODO TODO TODO 
+            raise Exception("This is currently broken")
             self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
             #Load data object from numpy array
@@ -389,8 +404,14 @@ cdef class PyDistData_CBLK:
     #    self.c_data = &a
 
     #Fill the data object with random uniform data from the interval [a, b]
-    def rand(self, float a, float b):
+    def rand(self, float a=0.0, float b=1.0):
         self.c_data.rand(a, b)
+
+    def display(self):
+        self.c_data.Print()
+
+    def randn(self, float m=0.0, float s=1.0):
+        self.c_data.randn(m, s)
 
     #TODO: Resolve ambigious overloading with Data[T]
     #def loadFile(self, size_t m, size_t n, str fileName):
@@ -479,8 +500,14 @@ cdef class PyDistData_RBLK:
             raise Exception('PyData can only be indexed in 1 or 2 dimensions')
 
     #Fill the data object with random uniform data from the interval [a, b]
-    def rand(self, float a, float b):
+    def rand(self, float a=0.0, float b=1.0):
         self.c_data.rand(a, b)
+
+    def display(self):
+        self.c_data.Print()
+
+    def randn(self, float m=0.0, float s=1.0):
+        self.c_data.randn(m, s)
 
     def getCommSize(self):
         return self.c_data.GetSize()
@@ -506,11 +533,13 @@ cdef class PyDistData_RIDS:
     cdef MPI.Comm our_comm
 
     @cython.boundscheck(False)
-    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, float[:, :] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
         cdef string fName
         cdef int[:] a = np.arange(m).astype('int32')
         cdef vector[size_t] vec
-        if iset==None:
+        if tree:
+            vec = tree.c_tree.getGIDS()
+        elif iset==None and tree==None:
             vec.assign(&a[0], &a[-1])
         else:
             vec.assign(&iset[0], &iset[-1])
@@ -518,7 +547,8 @@ cdef class PyDistData_RIDS:
             self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
         elif fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
-            raise Exception("RIDS does not yet support loading from a file...it will soon")
+            fName = <string>fileName
+            self.c_data = new RIDS_STAR_DistData[float](m, n, fName, comm.ob_mpi)
         elif data and not (fileName or darr!=None):
             #From local copy of PyData object
             raise Exception("RIDS does not yet support loading from localdata...it will soon")
@@ -528,18 +558,22 @@ cdef class PyDistData_RIDS:
         elif darr!=None and not (fileName or data!=None):
              #Load data object from numpy array
              raise Exception("RIDS does not yet support loading from numpy...it will soon")
-             #m = <size_t>arr.size
-             #n = <size_t>1
-             #vec.assign(&arr[0], &arr[-1])
-             #self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+        elif ddata and not (fileName or darr!=None or data):
+            self.c_data = new RIDS_STAR_DistData[float](deref(ddata.c_data), comm.ob_mpi)
 
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
         free(self.c_data)
 
-    def rand(self, float a, float b):
+    def rand(self, float a=0.0, float b=1.0):
         self.c_data.rand(a, b)
 
+    def display(self):
+        self.c_data.Print()
+
+    def randn(self, float m=0.0, float s=1.0):
+        self.c_data.randn(m, s)
+   
     def loadRBLK(self, PyDistData_RBLK b):
         #free(self.c_data)
         #cdef int[:] iset = np.arange(b.rows()).astype(int)
@@ -727,19 +761,23 @@ cdef class PyDistKernelMatrix:
 
 
 #Python class for Kernel Matrix Tree
-#ctypedef DTree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
+ctypedef Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
 
 cdef class PyTreeKM:
-    cdef Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]]* c_tree 
+    cdef km_float_tree* c_tree 
+    cdef MPI.Comm our_comm
+    cdef int cStatus
+    cdef int fStatus
 
     def __cinit__(self, MPI.Comm comm):
-        self.c_tree = new Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]](comm.ob_mpi)
+        self.c_tree = new km_float_tree(comm.ob_mpi)
+        self.our_comm = comm
+        self.cStatus = 0
+        self.fStatus = 0
 
     def __dealloc__(self):
         print("Cython: Running __dealloc__ for PyTreeKM")
         free(self.c_tree)
-
-#TODO: Theres a namespace bug here. Compress is returning hmlp::tree::Compress for some reason. I need hmlp::mpitree::Compress. 
 
     def compress(self, MPI.Comm comm, PyDistKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
         cdef centersplit[DistKernelMatrix[float, float], two, float] c_csplit
@@ -747,6 +785,7 @@ cdef class PyTreeKM:
         cdef STAR_CBLK_DistData[pair[float, size_t]]* c_NNdata = new STAR_CBLK_DistData[pair[float, size_t]](0, 0, comm.ob_mpi)
         c_csplit.Kptr = K.c_matrix
         c_rsplit.Kptr = K.c_matrix
+        self.cStatus=1
         if(config):
             self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(config.c_config),comm.ob_mpi)
         else:
@@ -755,5 +794,38 @@ cdef class PyTreeKM:
             conf.setAdaptiveRank(adapt_ranks)
             self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(conf.c_config),comm.ob_mpi)
 
+    ##TODO: Evaluate is NOT currently memory safe!!!
+    ##         - Make __cinit__ take in pointer to DistData object
+
+    def evaluateRIDS(self, PyDistData_RIDS rids):
+        if not self.cStatus:
+            raise Exception("You must run compress before running evaluate")
+        result = PyDistData_RIDS(self.our_comm, m=rids.rows(), n=rids.cols())
+        cdef RIDS_STAR_DistData[float]* bla = Evaluate_Python_RIDS[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
+        result.c_data = bla
+        return result
+
+
+    def evaluateRBLK(self, PyDistData_RBLK rblk):
+        if not self.cStatus:
+            raise Exception("You must run compress before running evaluate")
+        result = PyDistData_RBLK(self.our_comm, m=rblk.rows(), n=rblk.cols())
+        cdef RBLK_STAR_DistData[float]* bla = Evaluate_Python_RBLK[nnprune, km_float_tree, float](deref(self.c_tree), deref(rblk.c_data))
+        result.c_data = bla
+        return result
+
+    def factorize(self, float reg):
+        if not self.cStatus:
+            raise Exception("You must run compress before running factorize")
+        DistFactorize[float, km_float_tree](deref(self.c_tree), reg)
+        self.fStatus = 1
+
+    def solve(self, PyData w):
+        #overwrites w! (also returns w)
+        #Also its with a local copy?? not DistData
+        if not self.fStatus:
+            raise Exception("You must factorize before running solve")
+        DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
+        return w
 
 

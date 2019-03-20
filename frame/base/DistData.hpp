@@ -208,6 +208,18 @@ class DistDataBase : public Data<T, Allocator>, public mpi::MPIObject
       mpi::Comm_rank( comm, &comm_rank );
     }
 
+    /** Copy constructor from other DistData object **/
+    DistDataBase(DistDataBase& A, mpi::Comm comm):
+      Data<T, Allocator>(A), mpi::MPIObject(comm)
+    {
+        this->global_m = A.row();
+        this->global_n = A.col();
+        this->comm = comm;
+        mpi::Comm_size(comm, &comm_size);
+        mpi::Comm_rank(comm, &comm_rank);
+        
+    }
+
     /** MPI support */
     mpi::Comm GetComm() { return comm; };
     int GetSize() { return comm_size; };
@@ -674,7 +686,12 @@ class DistData<RBLK, STAR, T> : public DistDataBase<T>
       assert( local_m == this->row_owned() );
     };
 
+    /** Deep Copy Constructor **/
+    DistData<RBLK, STAR, T>(DistData<RBLK, STAR, T> &A, mpi::Comm comm)
+      : DistDataBase<T>(A, comm)
+    {
 
+    };
     /**
      *  Overload operator () to allow accessing data using gids
      */ 
@@ -1250,6 +1267,17 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
         rid2row[ rids[ i ] ] = i;      
     };
 
+    /** Copy Constructor for RIDS **/
+    DistData<RIDS, STAR, T>(DistData<RIDS, STAR, T>& A, mpi::Comm comm) :
+      DistDataBase<T>(A, comm)
+    {
+        int n = A.col();
+        this->rids = A.getRIDS();
+        this->resize(rids.size(), n);
+        for (size_t i = 0;i<rids.size();i++)
+            rid2row[rids[i]] = i;
+    };
+
 
     /** filename constructor */
     DistData<RIDS, STAR, T>( size_t m, size_t n, std::string &filename, mpi::Comm comm ) : 
@@ -1317,6 +1345,19 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
       return ownership;
 
     }; /** end RBLKOwnership() */
+
+    /**
+    Copy
+    **/
+
+    //DistData<RIDS, STAR, T> & operator = (DistData<RIDS, STAR, T> &B){
+    //    assert(rids.size())
+    //    mpi::Comm comm = this->getComm();
+    //    //DistData<RIDS, STAR, T>(A, comm);
+    //    
+    //
+    //   }
+
 
 
 
@@ -1473,7 +1514,13 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
     }; /** end void read() */
 
 
+    vector<size_t> getRIDS(){
+        return rids;
+    }
 
+    map<size_t, size_t> getMap(){
+        return rid2row;
+    }
 
 
   private:

@@ -3976,6 +3976,22 @@ DistData<RBLK, STAR, T> Evaluate( TREE &tree, DistData<RBLK, STAR, T> &w_rblk )
 }; /** end Evaluate() */
 
 
+/** Evaluate functions that are easier for cython to handle (return pointer to object on heap) **/
+template<bool NNPRUNE = true, typename TREE, typename T>
+DistData<RIDS, STAR, T>* Evaluate_Python_RIDS( TREE &tree, DistData<RIDS, STAR, T> &weights )
+{
+    DistData<RIDS, STAR, T> temp = mpigofmm::Evaluate<NNPRUNE, TREE, T>(tree, weights);
+    DistData<RIDS, STAR, T>* u_rids = new DistData<RIDS, STAR, T>(temp, weights.GetComm());
+    return u_rids;
+}; /** end Evaluate() */
+
+template<bool NNPRUNE = true, typename TREE, typename T>
+DistData<RBLK, STAR, T>* Evaluate_Python_RBLK( TREE &tree, DistData<RBLK, STAR, T> &weights )
+{
+    DistData<RBLK, STAR, T> temp = mpigofmm::Evaluate<NNPRUNE, TREE, T>(tree, weights);
+    DistData<RBLK, STAR, T>* u_rblk = new DistData<RBLK, STAR, T>(temp, weights.GetComm());
+    return u_rblk;
+}; /** end Evaluate() */
 
 template<typename SPLITTER, typename T, typename SPDMATRIX>
 DistData<STAR, CBLK, pair<T, size_t>> FindNeighbors

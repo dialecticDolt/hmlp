@@ -1003,6 +1003,10 @@ class Tree
 
     size_t getDepth() const noexcept { return loc_depth_; };
 
+    vector<NODE*> getTreelist() {return treelist;};
+   
+    vector<size_t> getGIDS() {return treelist[0]->gids;}; 
+        
     /** Currently only used in DrawInteraction() */ 
     void Offset( NODE *node, size_t offset )
     {

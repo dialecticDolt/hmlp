@@ -37,6 +37,10 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         T getvalue(size_t i, size_t j)
         void setvalue(size_t i, size_t j, T v) except +
         void rand(T a, T b)
+        void randn(T mu, T std)
+        void randspd(T a, T b)
+        bool_t HasIllegalValue()
+        void Print()
  
     #Wrapper for Base Distributed Data Class
     cdef cppclass DistDataBase[T](Data[T]):
@@ -44,7 +48,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         DistDataBase(size_t, size_t, int, libmpi.MPI_Comm) except +    
         DistDataBase(size_t, size_t, Data[T]&, libmpi.MPI_Comm) except +
         DistDataBase(size_t, size_t, size_t, size_t, const vector[T], libmpi.MPI_Comm) except +
-        
+        DistDataBase(DistDataBase[T]&, libmpi.MPI_Comm) except +        
         #total row and column numbers across all MPI ranks
         size_t row()    
         size_t col()
@@ -132,6 +136,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         
     cdef cppclass RIDS_STAR_DistData[T](DistDataBase[T]):
         RIDS_STAR_DistData(size_t, size_t, vector[size_t]&, libmpi.MPI_Comm) except +
+        RIDS_STAR_DistData(size_t, size_t, string& , libmpi.MPI_Comm) except +
+        RIDS_STAR_DistData(RIDS_STAR_DistData[T]&, libmpi.MPI_Comm) except +
         #operator overloading
         #()
         T& operator () (size_t, size_t)
@@ -140,7 +146,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         RIDS_STAR_DistData[T]& operator = (RBLK_STAR_DistData[T]&) except +
 
         #bookkeeping
-        vector[vector[size_t]] RBKLOwndership() except +
+        vector[vector[size_t]] RBLKOwnership() except +
         
     cdef cppclass STAR_STAR_DistData[T](DistDataBase[T]):
         #This is an empty class in chenhan's code

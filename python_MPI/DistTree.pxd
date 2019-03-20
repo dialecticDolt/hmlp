@@ -24,9 +24,10 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree_mpi.hpp" namespace "hmlp::mpitree":
     cdef cppclass Tree[SETUP, NODEDATA]:
         Tree(libmpi.MPI_Comm) except +
+        vector[size_t] getGIDS()
 
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpigofmm":
-    #Objects used to template Tree    
+    #used to template Tree    
     cdef cppclass Setup[MATRIX, SPLITTER, T]:
         pass
 
@@ -40,11 +41,10 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpig
 
     #Evaluate (Matvec)
 
-    #Float (single precision)
-    #RIDS_STAR_f_DistData[float] Evaluate[NNPRUNE, TREE, float](TREE&, RIDS_STAR_f_DistData[float]&)
-    #RBLK_STAR_f_DistData[float] Evaluate[NNPRUNE, TREE, float](TREE&, RBLK_STAR_f_DistData[float]&)
+    RIDS_STAR_DistData[T]* Evaluate_Python_RIDS[NNPRUNE, TREE, T](TREE& tree, RIDS_STAR_DistData[T]& ddata) except +
+    RBLK_STAR_DistData[T]* Evaluate_Python_RBLK[NNPRUNE, TREE, T](TREE&, RBLK_STAR_DistData[T]&) except +
     
-
+    
     #TODO: 
     #       -Add FindNeighbors
     #       -Add ComputeError
