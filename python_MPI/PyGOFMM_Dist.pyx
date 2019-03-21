@@ -610,6 +610,33 @@ cdef class PyDistData_RIDS:
         else:
             raise Exception('PyData can only be indexed in 1 or 2 dimensions')
 
+    #@cython.boundscheck(False)
+    #@classmethod 
+    #def FromNumpy(cls,MPI.Comm comm,np.ndarray[float, ndim=2, mode="c"] arr_np):
+    #    # get sizes
+    #    cdef size_t m,n
+    #    m = <size_t> arr_np.shape[0]
+    #    n = <size_t> arr_np.shape[1]
+    #    
+    #    # construct std::vector
+    #    #cdef vector[float] arr_cpp = vector[float](m*n)
+    #    #arr_cpp.assign(&arr_np[0,0], &arr_np[-1,-1])
+
+    #    # construct PyData obj
+    #    cpdef PyDistData_RIDS ret = cls(comm,m,n)
+    #    #cdef Data[float]* bla = new Data[float](m,n,arr_cpp)
+    #    cdef Data[float]* bla 
+    #    with nogil:
+    #        bla = new Data[float](m,n,&arr_np[0,0],True)
+    #    ret.c_data = bla
+    #    return ret
+
+    #def toNumpy(self):
+    #    cdef float* data_ptr = self.c_data.rowdata(0)
+    #    cdef float[:] mv = <float[:self.size()]> data_ptr
+    #    np_arr = np.asarray(mv)
+    #    np_arr.resize(self.row(),self.col())
+    #    return np_arr
 
 #    def rows_local(self):
 #        return self.c_data.row_owned()
