@@ -8,7 +8,7 @@ cimport  mpi4py.libmpi as libmpi
 from DistData cimport *
 
 
-cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp":
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp" nogil:
 
     ctypedef enum kernel_type:
         GAUSSIAN
@@ -50,8 +50,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         inline void operator() (const void* param, const TP* X,
                 const TP* Y, size_t d,T* K, size_t m, size_t n) const
 
-        T (*user_element_function)(const void* param, const TP* c, const TP* x, size_t d)
-        void (*user_matrix_function)(const void* param, const T* X, const T* Y, size_t d, T*K, size_t m, size_t n)
+        T (*user_element_function)(const void* param, const TP* c, const TP* x, size_t d) nogil
+        void (*user_matrix_function)(const void* param, const T* X, const T* Y, size_t d, T*K, size_t m, size_t n) nogil
 
     cdef cppclass DistKernelMatrix[T, TP, Allocator=*]:
         DistKernelMatrix(size_t, size_t, size_t, STAR_CBLK_DistData[T]&, STAR_CBLK_DistData[T]&, libmpi.MPI_Comm) except +

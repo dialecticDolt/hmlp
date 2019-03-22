@@ -171,27 +171,32 @@ cdef class PyData:
         cdef vector[float] vec
         if not (fileName or data or arr!=None or darr!=None):
             #Create empty Data object
-            self.c_data = new Data[float](m, n)
+            with nogil:
+                self.c_data = new Data[float](m, n)
         elif fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
-            fName = <string>fileName
-            self.c_data = new Data[float](m, n)
-            self.c_data.read(m, n, fName)
+            fName = <string>fileName.encode('utf-8')
+            with nogil:
+                self.c_data = new Data[float](m, n)
+                self.c_data.read(m, n, fName)
         elif data and not (fileName or darr!=None or arr!=None):
             #Deep copy from existing data object
-            self.c_data = new Data[float](deref(data.c_data))
+            with nogil:
+                self.c_data = new Data[float](deref(data.c_data))
         elif darr!=None and not (fileName or data!=None or arr!=None):
             #Load data object from numpy array
             m = <size_t>darr.shape[0]
             n = <size_t>darr.shape[1]
             vec.assign(&darr[0, 0], &darr[-1, -1])
-            self.c_data = new Data[float](m, n, &darr[0, 0], True)
+            with nogil:
+                self.c_data = new Data[float](m, n, &darr[0, 0], True)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
             m = <size_t>arr.size
             n = <size_t>1
             vec.assign(&arr[0], &arr[-1])
-            self.c_data = new Data[float](m, n, vec)
+            with nogil:
+                self.c_data = new Data[float](m, n, vec)
         else:
             raise Exception("Invalid constructor parameters")
 
@@ -288,7 +293,10 @@ cdef class PyData:
         return sub
 
     cpdef read(self, size_t m, size_t n, str filename):
-        self.c_data.read(m, n,filename.encode())
+        cdef string fName
+        fName = <string>filename.encode('utf-8')
+        with nogil:
+            self.c_data.read(m, n,fName)
 
     cpdef write(self,str filename):
         self.c_data.write(filename.encode())
@@ -309,13 +317,16 @@ cdef class PyData:
         return self.c_data.getvalue(m, n)
 
     cpdef rand(self,float a, float b ):
-        self.c_data.rand(a, b)
+        with nogil:
+            self.c_data.rand(a, b)
 
     cpdef randn(self, float mu, float std):
-        self.c_data.randn(mu, std)
+        with nogil:
+            self.c_data.randn(mu, std)
 
     cpdef randspd(self, float a, float b):
-        self.c_data.randspd(a, b)
+        with nogil:
+            self.c_data.randspd(a, b)
 
     cpdef display(self):
         self.c_data.Print()
@@ -358,23 +369,27 @@ cdef class PyDistData_CBLK:
         cdef vector[float] vec
         if not (fileName or data or arr!=None or darr!=None):
             #Create empty Data object
-            self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi)
+            with nogil:
+                self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi)
         elif fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
-            fName = <string>fileName
-            self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi, fName)
+            fName = <string>fileName.encode('utf-8')
+            with nogil:
+                self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi, fName)
         elif data and not (fileName or darr!=None or arr!=None):
-            #From local copy of PyData object TODO TODO TODO 
+            #From local copy of PyData object TODO TODO TODO Same error as dist data deep copy constructors (arguments don't match)
             raise Exception("This is currently broken")
             self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
             #Load data object from numpy array
             vec.assign(&darr[0, 0], &darr[-1, -1])
-            self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
+            with nogil:
+                self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
             vec.assign(&arr[0], &arr[-1])
-            self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
+            with nogil:
+                self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
 
     def __len__(self):
         return self.c_data.row()*self.c_data.col()
@@ -405,13 +420,15 @@ cdef class PyDistData_CBLK:
 
     #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a=0.0, float b=1.0):
-        self.c_data.rand(a, b)
+        with nogil:
+            self.c_data.rand(a, b)
 
     def display(self):
         self.c_data.Print()
 
     def randn(self, float m=0.0, float s=1.0):
-        self.c_data.randn(m, s)
+        with nogil:
+            self.c_data.randn(m, s)
 
     #TODO: Resolve ambigious overloading with Data[T]
     #def loadFile(self, size_t m, size_t n, str fileName):
@@ -452,21 +469,24 @@ cdef class PyDistData_RBLK:
         cdef vector[float] vec
         if not (fileName or data or arr!=None or darr!=None):
             #Create empty Data object
-            self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi)
+            with nogil:
+                self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi)
         elif fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
             raise Exception("RBLK does not support loading from a file. Please load a RIDS and convert if you need a RBLK")
         elif data and not (fileName or darr!=None or arr!=None):
-            #From local copy of PyData object
+            #From local copy of PyData object TODO: Fix this, same problem as CBLK
             self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
             #Load data object from numpy array
             vec.assign(&darr[0, 0], &darr[-1, -1])
-            self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+            with nogil:
+                self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
             vec.assign(&arr[0], &arr[-1])
-            self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+            with nogil:
+                self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
 
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
@@ -476,15 +496,17 @@ cdef class PyDistData_RBLK:
     def loadRIDS(self, PyDistData_RIDS b):
         #free(self.c_data)
         #cdef RBLK_STAR_DistData[float]* a = new RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
-        self.c_data[0] = (deref(b.c_data))
+        with nogil:
+            self.c_data[0] = (deref(b.c_data))
         #self.c_data = a
 
-    @classmethod
-    def fromRIDS(cls, PyDistData_RIDS b):
-        cpdef PyDistData_RBLK ret = cls(b.our_comm, b.rows(), b.cols())
-        #free(ret.c_data)
-        ret.c_data[0] = (deref(b.c_data))
-        return ret
+##TODO: Fix these class methods for RIDS/RBLK conversion
+  #  @classmethod
+  #  def fromRIDS(cls, PyDistData_RIDS b):
+  #      cpdef PyDistData_RBLK ret = cls(b.our_comm, b.rows(), b.cols())
+  #      #free(ret.c_data)
+  #      ret.c_data[0] = (deref(b.c_data))
+  #      return ret
 
 
     #TODO
@@ -501,13 +523,15 @@ cdef class PyDistData_RBLK:
 
     #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a=0.0, float b=1.0):
-        self.c_data.rand(a, b)
+        with nogil:
+            self.c_data.rand(a, b)
 
     def display(self):
         self.c_data.Print()
 
     def randn(self, float m=0.0, float s=1.0):
-        self.c_data.randn(m, s)
+        with nogil:
+            self.c_data.randn(m, s)
 
     def getCommSize(self):
         return self.c_data.GetSize()
@@ -544,11 +568,13 @@ cdef class PyDistData_RIDS:
         else:
             vec.assign(&iset[0], &iset[-1])
         if not (fileName or data):
-            self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+            with nogil:
+                self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
         elif fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
-            fName = <string>fileName
-            self.c_data = new RIDS_STAR_DistData[float](m, n, fName, comm.ob_mpi)
+            fName = <string>fileName.encode('utf-8')
+            with nogil:
+                self.c_data = new RIDS_STAR_DistData[float](m, n, fName, comm.ob_mpi)
         elif data and not (fileName or darr!=None):
             #From local copy of PyData object
             raise Exception("RIDS does not yet support loading from localdata...it will soon")
@@ -559,7 +585,8 @@ cdef class PyDistData_RIDS:
              #Load data object from numpy array
              raise Exception("RIDS does not yet support loading from numpy...it will soon")
         elif ddata and not (fileName or darr!=None or data):
-            self.c_data = new RIDS_STAR_DistData[float](deref(ddata.c_data), comm.ob_mpi)
+            with nogil:
+                self.c_data = new RIDS_STAR_DistData[float](deref(ddata.c_data), comm.ob_mpi)
 
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
@@ -580,15 +607,16 @@ cdef class PyDistData_RIDS:
         #cdef vector[size_t] vec
         #vec.assign(&iset[0], &iset[-1])
         #cdef RIDS_STAR_DistData[float] a(b.rows(), b.cols(), vec, self.our_comm.ob_mpi)
-        self.c_data[0] = (deref(b.c_data))
+        with nogil:
+            self.c_data[0] = (deref(b.c_data))
         #self.c_data = &a
 
 
-    @classmethod
-    def fromRBLK(cls, PyDistData_RBLK b):
-        cdef PyDistData_RIDS ret = cls(b.our_comm, b.rows(), b.cols())
-        ret.c_data[0] = (deref(b.c_data))
-        return ret
+    #@classmethod
+    #def fromRBLK(cls, PyDistData_RBLK b):
+    #    cdef PyDistData_RIDS ret = cls(b.our_comm, b.rows(), b.cols())
+    #    ret.c_data[0] = (deref(b.c_data))
+    #    return ret
 
     def getRank(self):
         return self.c_data.GetRank()
@@ -626,11 +654,13 @@ cdef class PyDistPairData:
     def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
         cdef string fName
         if not (fileName or localdata): 
-            self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi)
+            with nogil:
+                self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi)
         elif fileName and not (localdata):
-            fName = <string>fileName
+            fName = <string>fileName.encode('utf-8')
             #TODO: Error handling 
-            self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi, fName)
+            with nogil:
+                self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi, fName)
         elif localdata and not (fileName):
             if type(localdata) is PyData:
                 self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, deref(<Data[pair[float, size_t]]*>(PyData(localdata).c_data)), comm.ob_mpi)
@@ -751,9 +781,11 @@ cdef class PyDistKernelMatrix:
 
         if targets is not None:
             n = targets.col()
-            self.c_matrix = new DistKernelMatrix[float, float](m, n, d, deref(kernel.c_kernel), deref(sources.c_data), deref(targets.c_data), comm.ob_mpi)
+            with nogil:
+                self.c_matrix = new DistKernelMatrix[float, float](m, n, d, deref(kernel.c_kernel), deref(sources.c_data), deref(targets.c_data), comm.ob_mpi)
         else:
-            self.c_matrix = new DistKernelMatrix[float, float](m, d, deref(kernel.c_kernel), deref(sources.c_data), comm.ob_mpi)
+            with nogil:
+                self.c_matrix = new DistKernelMatrix[float, float](m, d, deref(kernel.c_kernel), deref(sources.c_data), comm.ob_mpi)
 
     def dim(self):
         return self.c_matrix.dim()
@@ -770,7 +802,8 @@ cdef class PyTreeKM:
     cdef int fStatus
 
     def __cinit__(self, MPI.Comm comm):
-        self.c_tree = new km_float_tree(comm.ob_mpi)
+        with nogil:
+            self.c_tree = new km_float_tree(comm.ob_mpi)
         self.our_comm = comm
         self.cStatus = 0
         self.fStatus = 0
@@ -787,12 +820,14 @@ cdef class PyTreeKM:
         c_rsplit.Kptr = K.c_matrix
         self.cStatus=1
         if(config):
-            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(config.c_config),comm.ob_mpi)
+            with nogil:
+                self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(config.c_config),comm.ob_mpi)
         else:
             conf = PyConfig(metric_type, K.dim(), m, k, s, stol, budget, sec_acc)
             conf.setSymmetry(sym)
             conf.setAdaptiveRank(adapt_ranks)
-            self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(conf.c_config),comm.ob_mpi)
+            with nogil:
+                self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(conf.c_config),comm.ob_mpi)
 
     ##TODO: Evaluate is NOT currently memory safe!!!
     ##         - Make __cinit__ take in pointer to DistData object
@@ -801,7 +836,9 @@ cdef class PyTreeKM:
         if not self.cStatus:
             raise Exception("You must run compress before running evaluate")
         result = PyDistData_RIDS(self.our_comm, m=rids.rows(), n=rids.cols())
-        cdef RIDS_STAR_DistData[float]* bla = Evaluate_Python_RIDS[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
+        cdef RIDS_STAR_DistData[float]* bla
+        with nogil:
+            bla = Evaluate_Python_RIDS[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
         result.c_data = bla
         return result
 
@@ -810,14 +847,17 @@ cdef class PyTreeKM:
         if not self.cStatus:
             raise Exception("You must run compress before running evaluate")
         result = PyDistData_RBLK(self.our_comm, m=rblk.rows(), n=rblk.cols())
-        cdef RBLK_STAR_DistData[float]* bla = Evaluate_Python_RBLK[nnprune, km_float_tree, float](deref(self.c_tree), deref(rblk.c_data))
+        cdef RBLK_STAR_DistData[float]* bla;
+        with nogil:
+            bla = Evaluate_Python_RBLK[nnprune, km_float_tree, float](deref(self.c_tree), deref(rblk.c_data))
         result.c_data = bla
         return result
 
     def factorize(self, float reg):
         if not self.cStatus:
             raise Exception("You must run compress before running factorize")
-        DistFactorize[float, km_float_tree](deref(self.c_tree), reg)
+        with nogil:
+            DistFactorize[float, km_float_tree](deref(self.c_tree), reg)
         self.fStatus = 1
 
     def solve(self, PyData w):
@@ -825,7 +865,8 @@ cdef class PyTreeKM:
         #Also its with a local copy?? not DistData
         if not self.fStatus:
             raise Exception("You must factorize before running solve")
-        DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
+        with nogil:
+            DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
 

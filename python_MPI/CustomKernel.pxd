@@ -4,9 +4,9 @@ cimport numpy as np
 from libcpp.vector cimport vector
 #from libc.math cimport max
 
-cdef extern from "${CMAKE_SOURCE_DIR}/new_python/custom/user_defined.cpp":
-    cdef T custom_element_kernel[T, TP](const void* param, const TP* x, const TP* y, size_t d)
-    cdef void custom_matrix_kernel[T, TP](const void* param, const TP* X, const TP*Y, size_t d, T* K, size_t m, size_t n)
+cdef extern from "${CMAKE_SOURCE_DIR}/new_python/custom/user_defined.cpp" nogil:
+    cdef T custom_element_kernel[T, TP](const void* param, const TP* x, const TP* y, size_t d) nogil
+    cdef void custom_matrix_kernel[T, TP](const void* param, const TP* X, const TP*Y, size_t d, T* K, size_t m, size_t n) nogil
 
 
 #cdef inline float custom_element_kernel(const void* param, const float* x, const float* y, size_t d):

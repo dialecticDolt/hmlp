@@ -1,7 +1,7 @@
 # distutils: language = c++
 
 cimport mpi4py.libmpi as libmpi
-cdef extern from "${PROJECT_SOURCE_DIR}/include/hmlp.h":
+cdef extern from "${PROJECT_SOURCE_DIR}/include/hmlp.h" nogil:
 
     ctypedef enum hmlpError_t:
         HMLP_ERROR_SUCCESS,

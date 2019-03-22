@@ -17,16 +17,16 @@ cdef extern from *:
     ctypedef bool cache "true"
 
 # used for tree templating later (no distributed nodedata)
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm":
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm" nogil:
     cdef cppclass NodeData[T]:
         pass
 
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree_mpi.hpp" namespace "hmlp::mpitree":
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree_mpi.hpp" namespace "hmlp::mpitree" nogil:
     cdef cppclass Tree[SETUP, NODEDATA]:
         Tree(libmpi.MPI_Comm) except +
         vector[size_t] getGIDS()
 
-cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpigofmm":
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpigofmm" nogil:
     #used to template Tree    
     cdef cppclass Setup[MATRIX, SPLITTER, T]:
         pass
