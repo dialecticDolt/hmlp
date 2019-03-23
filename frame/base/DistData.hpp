@@ -1287,6 +1287,28 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
 
 
     }; // end filename constructor
+    
+    /** Construct distributed data from local vector. */
+    DistData<RIDS, STAR, T>( size_t m, size_t n, std::vector<size_t> & rids, vector<T>& local_vector, mpi::Comm comm )
+      : DistDataBase<T>( m, n, local_vector.size() / n, n, local_vector, comm )
+    {
+      /** MPI */
+      
+      /** now check if (sum rids.size() == m) */
+      size_t bcast_m = rids.size();
+      size_t reduc_m = 0;
+      mpi::Allreduce( &bcast_m, &reduc_m, 1, MPI_SUM, comm );
+
+      if ( reduc_m != m ) 
+        printf( "%lu %lu\n", reduc_m, m ); fflush( stdout );
+
+
+      assert( reduc_m == m );
+      this->rids = rids;
+      
+      for ( size_t i = 0; i < rids.size(); i ++ )
+        this->rid2row[ rids[ i ] ] = i;      
+    };
 
     /**
      *  Overload operator () to allow accessing data using gids
