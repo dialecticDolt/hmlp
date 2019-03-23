@@ -6,7 +6,7 @@ from CustomKernel cimport *
 from Config cimport *
 from DistTree cimport *
 from DistTree cimport Compress as c_compress
-from DistInverse cimport *
+#from DistInverse cimport *
 
 #Import MPI
 cimport mpi4py.MPI as MPI
@@ -30,7 +30,6 @@ from cython.view cimport array as cvarray
 import numpy as np
 cimport numpy as np
 np.import_array()
-
 
 cdef class PyRuntime:
     cpdef int isInit
@@ -169,10 +168,8 @@ cdef class PyData:
     def __cinit__(self, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
         cdef vector[float] vec
-        if not (fileName or data or arr!=None or darr!=None):
-            #Create empty Data object
-            self.c_data = new Data[float](m, n)
-        elif fileName and not (data or darr!=None or arr!=None):
+        
+        if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
             fName = <string>fileName
             self.c_data = new Data[float](m, n)
@@ -181,6 +178,7 @@ cdef class PyData:
             #Deep copy from existing data object
             self.c_data = new Data[float](deref(data.c_data))
         elif darr!=None and not (fileName or data!=None or arr!=None):
+            raise Exception("Loading Data from 2D numpy arrays is currently unsupported")
             #Load data object from numpy array
             m = <size_t>darr.shape[0]
             n = <size_t>darr.shape[1]
@@ -190,10 +188,11 @@ cdef class PyData:
             #Load data object from numpy array
             m = <size_t>arr.size
             n = <size_t>1
-            vec.assign(&arr[0], &arr[-1])
+            vec.assign(&arr[0], &arr[0] + len(arr))
             self.c_data = new Data[float](m, n, vec)
         else:
-            raise Exception("Invalid constructor parameters")
+            #Create empty Data object
+            self.c_data = new Data[float](m, n)
 
     def __dealloc__( self ):
         print("Cython: Running __dealloc___ for PyData Object")
@@ -356,10 +355,8 @@ cdef class PyDistData_CBLK:
     def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
         cdef vector[float] vec
-        if not (fileName or data or arr!=None or darr!=None):
-            #Create empty Data object
-            self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi)
-        elif fileName and not (data or darr!=None or arr!=None):
+        
+        if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
             fName = <string>fileName
             self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi, fName)
@@ -368,13 +365,17 @@ cdef class PyDistData_CBLK:
             raise Exception("This is currently broken")
             self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
+            raise Exception("CBLK from 2D numpy arrays is not currently supported")
             #Load data object from numpy array
             vec.assign(&darr[0, 0], &darr[-1, -1])
             self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
-            vec.assign(&arr[0], &arr[-1])
+            vec.assign(&arr[0], &arr[0] + len(arr))
             self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
+        else:
+            #Create empty Data object
+            self.c_data = new STAR_CBLK_DistData[float](m, n, comm.ob_mpi)
 
     def __len__(self):
         return self.c_data.row()*self.c_data.col()
@@ -450,23 +451,25 @@ cdef class PyDistData_RBLK:
     def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
         cdef vector[float] vec
-        if not (fileName or data or arr!=None or darr!=None):
-            #Create empty Data object
-            self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi)
-        elif fileName and not (data or darr!=None or arr!=None):
+
+        if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
             raise Exception("RBLK does not support loading from a file. Please load a RIDS and convert if you need a RBLK")
         elif data and not (fileName or darr!=None or arr!=None):
             #From local copy of PyData object
             self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
+            raise Exception('RBLK does not currently support loading from 2D numpy arrays')
             #Load data object from numpy array
             vec.assign(&darr[0, 0], &darr[-1, -1])
             self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
-            vec.assign(&arr[0], &arr[-1])
+            vec.assign(&arr[0], &arr[0] + len(arr))
             self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
+        else:
+            #Create empty Data object
+            self.c_data = new RBLK_STAR_DistData[float](m, n, comm.ob_mpi)
 
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
@@ -527,25 +530,31 @@ cdef class PyDistData_RBLK:
     def cols_local(self):
         return self.c_data.col_owned()
 
+
+
 #TODO: RIDS & CIDS DistData,  need a numpy constructor 
 cdef class PyDistData_RIDS:
     cdef RIDS_STAR_DistData[float]* c_data
     cdef MPI.Comm our_comm
 
     @cython.boundscheck(False)
-    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, float[:, :] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, np.ndarray[float, ndim=2] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
         cdef string fName
-        cdef int[:] a = np.arange(m).astype('int32')
+        cdef int[:] a = np.arange(m).astype('int32') #TODO this needs a fix so not every process owns everything, static method?
         cdef vector[size_t] vec
+        cdef vector[float] dat
+
+        # assign owned indices (vec)
         if tree:
             vec = tree.c_tree.getGIDS()
         elif iset==None and tree==None:
-            vec.assign(&a[0], &a[-1])
+            vec.assign(&a[0], &a[0] + len(a))
         else:
-            vec.assign(&iset[0], &iset[-1])
-        if not (fileName or data):
-            self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
-        elif fileName and not (data or darr!=None or arr!=None):
+            vec.assign(&iset[0], &iset[0] + len(iset))
+            
+
+        # call DistData constructor 
+        if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
             fName = <string>fileName
             self.c_data = new RIDS_STAR_DistData[float](m, n, fName, comm.ob_mpi)
@@ -553,13 +562,25 @@ cdef class PyDistData_RIDS:
             #From local copy of PyData object
             raise Exception("RIDS does not yet support loading from localdata...it will soon")
         elif arr!=None and not (fileName or darr!=None):
-             #Load data object from numpy array
-             raise Exception("RIDS does not yet support loading from a file...it will soon")
+            #Load data object from 1D numpy array
+            dat.assign(&arr[0], &arr[0] + len(arr))
+            self.c_data = new RIDS_STAR_DistData[float](m,n,vec,dat,comm.ob_mpi)
+
         elif darr!=None and not (fileName or data!=None):
-             #Load data object from numpy array
-             raise Exception("RIDS does not yet support loading from numpy...it will soon")
+            raise Exception("RIDS does not yet support loading from 2D-numpy...it will soon")
+            #Load data object from numpy array
+            #arr = darr_flat
+            #cdef np.ndarray[float,ndim=1] darr_flat =  darr.ravel('F')
+            #arr = darr.ravel('F')
+            #dat.assign(&arr[0], &arr[0] + len(darr))
+            #self.c_data = new RIDS_STAR_DistData[float](m,n,vec,dat,comm.ob_mpi)
+            #raise Exception("RIDS does not yet support loading from numpy...it will soon")
+
         elif ddata and not (fileName or darr!=None or data):
             self.c_data = new RIDS_STAR_DistData[float](deref(ddata.c_data), comm.ob_mpi)
+
+        else:
+            self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
 
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
@@ -612,7 +633,7 @@ cdef class PyDistData_RIDS:
 
     #@cython.boundscheck(False)
     #@classmethod 
-    #def FromNumpy(cls,MPI.Comm comm,np.ndarray[float, ndim=2, mode="c"] arr_np):
+    #def FromNumpy(cls,MPI.Comm comm,np.ndarray[float, ndim=2, mode="c"] arr_np ):
     #    # get sizes
     #    cdef size_t m,n
     #    m = <size_t> arr_np.shape[0]
@@ -841,18 +862,18 @@ cdef class PyTreeKM:
         result.c_data = bla
         return result
 
-    def factorize(self, float reg):
-        if not self.cStatus:
-            raise Exception("You must run compress before running factorize")
-        DistFactorize[float, km_float_tree](deref(self.c_tree), reg)
-        self.fStatus = 1
+    #def factorize(self, float reg):
+    #    if not self.cStatus:
+    #        raise Exception("You must run compress before running factorize")
+    #    DistFactorize[float, km_float_tree](deref(self.c_tree), reg)
+    #    self.fStatus = 1
 
-    def solve(self, PyData w):
-        #overwrites w! (also returns w)
-        #Also its with a local copy?? not DistData
-        if not self.fStatus:
-            raise Exception("You must factorize before running solve")
-        DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
-        return w
+    #def solve(self, PyData w):
+    #    #overwrites w! (also returns w)
+    #    #Also its with a local copy?? not DistData
+    #    if not self.fStatus:
+    #        raise Exception("You must factorize before running solve")
+    #    DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
+    #    return w
 
 
