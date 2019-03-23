@@ -5,6 +5,9 @@ from libcpp.string cimport string
 from libcpp.pair cimport pair
 cimport  mpi4py.libmpi as libmpi
 
+
+
+
 cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" nogil:
 
     ctypedef enum Distribution_t "Distribution_t":
@@ -136,6 +139,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         
     cdef cppclass RIDS_STAR_DistData[T](DistDataBase[T]):
         RIDS_STAR_DistData(size_t, size_t, vector[size_t]&, libmpi.MPI_Comm) except +
+        RIDS_STAR_DistData(size_t, size_t, vector[size_t]&, vector[T]&, libmpi.MPI_Comm) except +
         RIDS_STAR_DistData(size_t, size_t, string& , libmpi.MPI_Comm) except +
         RIDS_STAR_DistData(RIDS_STAR_DistData[T]&, libmpi.MPI_Comm) except +
         #operator overloading
