@@ -74,7 +74,7 @@ cdef class PyConfig:
     cdef Configuration[float]* c_config
     cpdef str metric_t
     
-    def __cinit__(self, str metric_type, int problem_size, int leaf_node_size, int neighbor_size, int maximum_rank, float tolerance, float budget, bool secure_accuracy):
+    def __cinit__(self, str metric_type="GEOMETRY_DISTANCE", int problem_size=2000, int leaf_node_size=128, int neighbor_size=64, int maximum_rank=128, float tolerance=0.0001, float budget=0.01, bool secure_accuracy=True):
         self.metric_t = metric_type
         m = convertMetric(metric_type) 
         m = int(m)
@@ -164,7 +164,6 @@ cdef class PyData:
     cdef Data[float]* c_data
 
     #TODO: Add error handling if the user gives the wrong array sizes (at the moment I'm overriding)
-    #      
     @cython.boundscheck(False)
     def __cinit__(self, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
@@ -350,11 +349,6 @@ cdef class PyData:
 
 #Python Class for Distributed Data Object - Columnwise
 #   TODO:
-#           - "Template" on Distribution Type. (have a pointer to BaseDistData that we case?)
-#           - Add support for additional constructors
-#                   - Look into how local vector distributes. Make wrapper to take "global" numpy array and spread it around. 
-#                   - Add support for local numpy array
-#           - Add support for reading from distributed file
 #           - "Template" on float/double fused type, need to decide on how we'll structure this
 
 cdef class PyDistData_CBLK:
@@ -411,13 +405,6 @@ cdef class PyDistData_CBLK:
         print("Cython: Running __dealloc___ for PyDistData Object")
         free(self.c_data)
     
-    #TODO: Add support for CIDS
-    #def loadCIDS(self, PyDistData_CIDS b):
-    #    free(self.c_data)
-    #    cdef STAR_CBLK_DistData[float] a = STAR_CIDS_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
-    #    a = (deref(b.c_data))
-    #    self.c_data = &a
-
     #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a=0.0, float b=1.0):
         with nogil:
@@ -452,12 +439,6 @@ cdef class PyDistData_CBLK:
 
     def cols_local(self):
         return self.c_data.col_owned()
-
-    #TODO: THIS IS A LOCAL WRITE
-    #def write(self, str fileName):
-    #    cdef string fName = <string>fileName
-    #    self.c_data.write(fName)
-
 
 cdef class PyDistData_RBLK:
     cdef RBLK_STAR_DistData[float]* c_data
@@ -644,9 +625,6 @@ cdef class PyDistData_RIDS:
 #
 #    def cols_local(self):
 #        return self.c_data.col_owned()
-
-
-
 
 cdef class PyDistPairData:
     cdef STAR_CBLK_DistData[pair[float, size_t]]* c_data
@@ -869,4 +847,34 @@ cdef class PyTreeKM:
             DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
+def FindAllNeighbors(n, k, localpoints, metric="GEOMETRY_DISTANCE", comm=None):
+    cdef STAR_CBLK_DistData[pair[float, size_t]]* NNList
+    cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
+    cdef libmpi.MPI_Comm c_comm
+    if isinstance(localpoints, PyDistData_CBLK):
+        kernel = PyKernel()
+        d = PyDistData_CBLK(localpoints).rows();
+        c_comm = PyDistData_CBLK(localpoints).our_comm.ob_mpi
+        K = PyDistKernelMatrix(comm, kernel, PyDistData_CBLK(localpoints))
+        conf = PyConfig(problem_size = n, metric_type="GEOMETRY_DISTANCE", neighbor_size = k)
+        with nogil:
+            NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
+        PyNNList = PyDistPairData(comm, n, d);
+        free(PyNNList.c_data)
+        PyNNList.c_data = NNList;
+        return PyNNList
+    elif isinstance(localpoints, (np.array, np.generic)) and comm!=None:
+        d = localpoints.shape[1]
+        DD_points = PyDistData_CBLK(n, d, darr=localpoints)
+        kernel = PyKernel()
+        K = PyDistKernelMatrix(comm, kernel, DD_points)
+        c_comm = MPI.Comm(comm).ob_mpi;
+        conf = PyConfig(problem_size=n, metric_type="GEOMETRY_DISTANCE", neighbor_size=k)
+        with nogil: 
+            NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
+        PyNNList = PyDistPairData(comm, n, d)
+        free(PyNNList.c_data)
+        PyNNList.c_data = NNList;
+        ##TODO: Write to numpy function, tuple?
+        return PyNNList.toNumpy() 
 

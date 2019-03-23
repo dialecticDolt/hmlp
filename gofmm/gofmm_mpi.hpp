@@ -4022,7 +4022,13 @@ DistData<STAR, CBLK, pair<T, size_t>> FindNeighbors
 }; /** end FindNeighbors() */
 
 
-
+template<typename SPLITTER, typename T, typename SPDMATRIX>
+DistData<STAR, CBLK, pair<T, size_t>>* FindNeighbors_Python(SPDMATRIX& K, SPLITTER splitter, gofmm::Configuration<T>& config, mpi::Comm CommGOFMM, size_t n_iter)
+{
+    DistData<STAR, CBLK, pair<T, size_t>> temp = mpigofmm::FindNeighbors<SPLITTER, T, SPDMATRIX>(K, splitter, config, CommGOFMM, n_iter);
+    DistData<STAR, CBLK, pair<T, size_t>>* nnlist = new DistData<STAR, CBLK, pair<T, size_t>>(temp, CommGOFMM);
+    return nnlist;
+}
 
 
 

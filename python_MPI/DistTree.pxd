@@ -45,8 +45,10 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpig
     RBLK_STAR_DistData[T]* Evaluate_Python_RBLK[NNPRUNE, TREE, T](TREE&, RBLK_STAR_DistData[T]&) except +
     
     
+    #Find Nearest Neighbors
+    STAR_CBLK_DistData[pair[T, size_t]]* FindNeighbors_Python[SPLITTER, T, MATRIX](MATRIX&, SPLITTER, Configuration[T]&, libmpi.MPI_Comm, size_t) except + 
+    
     #TODO: 
-    #       -Add FindNeighbors
     #       -Add ComputeError
     #       -LaunchHelper/SelfTesting ?
 

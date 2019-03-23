@@ -386,6 +386,15 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
       this->resize( m, local_n );
     };
 
+    /** Deep copy constructor **/
+    DistData<STAR, CBLK, T>( DistData<STAR, CBLK, T>& A, mpi::Comm comm)
+      : DistDataBase<T>(A, comm)
+    {
+    
+
+    };
+
+
     /** We should use this and move mpi::Comm to the front. */
     DistData<STAR, CBLK, T>( size_t m, size_t n, T initT, mpi::Comm comm )
       : DistDataBase<T>( m, n, comm ) 
