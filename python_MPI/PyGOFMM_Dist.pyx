@@ -6,7 +6,7 @@ from CustomKernel cimport *
 from Config cimport *
 from DistTree cimport *
 from DistTree cimport Compress as c_compress
-#from DistInverse cimport *
+from DistInverse cimport *
 
 #Import MPI
 cimport mpi4py.MPI as MPI
