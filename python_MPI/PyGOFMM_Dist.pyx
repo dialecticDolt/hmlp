@@ -20,6 +20,8 @@ from libcpp cimport vector
 from libc.math cimport sqrt
 from libc.string cimport strcmp
 from libc.stdlib cimport malloc, free
+from libc.stdio cimport printf
+
 
 #Import from cython
 import cython
@@ -164,9 +166,10 @@ cdef class PyData:
 
     #TODO: Add error handling if the user gives the wrong array sizes (at the moment I'm overriding)
     @cython.boundscheck(False)
-    def __cinit__(self, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
+    def __cinit__(self, size_t m=0, size_t n=0, str fileName=None, float[::1, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
         cdef vector[float] vec
+        cdef int vec_sz
         if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
             fName = <string>fileName.encode('utf-8')
@@ -178,19 +181,20 @@ cdef class PyData:
             with nogil:
                 self.c_data = new Data[float](deref(data.c_data))
         elif darr!=None and not (fileName or data!=None or arr!=None):
-            raise Exception("Loading Data from 2D numpy arrays is currently unsupported")
-            #Load data object from numpy array
+            #Load data object from 2d numpy array
             m = <size_t>darr.shape[0]
             n = <size_t>darr.shape[1]
-            vec.assign(&darr[0, 0], &darr[-1, -1])
+            vec_sz = <int> (m * n)
             with nogil:
+                vec.assign(&darr[0, 0], &darr[0,0] + vec_sz)
                 self.c_data = new Data[float](m, n, &darr[0, 0], True)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
             m = <size_t>arr.size
             n = <size_t>1
-            vec.assign(&arr[0], &arr[0] + len(arr))
+            vec_sz = len(arr)
             with nogil:
+                vec.assign(&arr[0], &arr[0] + vec_sz)
                 self.c_data = new Data[float](m, n, vec)
         else:
             #Create empty Data object
@@ -356,7 +360,7 @@ cdef class PyDistData_CBLK:
     #TODO: Add error handling if the user gives the wrong array sizes (at the moment I'm overriding)
     #      
     @cython.boundscheck(False)
-    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[::1, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
         cdef vector[float] vec
         
@@ -370,10 +374,10 @@ cdef class PyDistData_CBLK:
             raise Exception("This is currently broken")
             self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
-            raise Exception("CBLK from 2D numpy arrays is not currently supported")
-            #Load data object from numpy array
-            vec.assign(&darr[0, 0], &darr[-1, -1])
+            #Load data object from 2d numpy array
+            vec_sz = darr.shape[0] * darr_shape[1]
             with nogil:
+                vec.assign(&darr[0, 0], &darr[0,0] + vec_sz)
                 self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
@@ -445,9 +449,10 @@ cdef class PyDistData_RBLK:
     cdef MPI.Comm our_comm
 
     @cython.boundscheck(False)
-    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[:, :] darr=None, float[:] arr=None, PyData data=None):
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[::1, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
         cdef vector[float] vec
+        cdef int vec_sz
 
         if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
@@ -457,9 +462,10 @@ cdef class PyDistData_RBLK:
             self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
             raise Exception('RBLK does not currently support loading from 2D numpy arrays')
-            #Load data object from numpy array
-            vec.assign(&darr[0, 0], &darr[-1, -1])
+            #Load data object from 2D numpy array
+            vec_sz = darr.shape[0] + darr.shape[1]
             with nogil:
+                vec.assign(&darr[0, 0], &darr[0,0] + vec_sz)
                 self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
         elif arr!=None and not (fileName or data!=None or darr!=None):
             #Load data object from numpy array
@@ -542,11 +548,12 @@ cdef class PyDistData_RIDS:
     cdef MPI.Comm our_comm
 
     @cython.boundscheck(False)
-    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, np.ndarray[float, ndim=2] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
+    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, float[::1,:] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
         cdef string fName
         cdef int[:] a = np.arange(m).astype('int32') #TODO this needs a fix so not every process owns everything, static method?
         cdef vector[size_t] vec
         cdef vector[float] dat
+        cdef int vec_sz
 
         # assign owned indices (vec)
         if tree:
@@ -572,14 +579,11 @@ cdef class PyDistData_RIDS:
             self.c_data = new RIDS_STAR_DistData[float](m,n,vec,dat,comm.ob_mpi)
 
         elif darr!=None and not (fileName or data!=None):
-            raise Exception("RIDS does not yet support loading from 2D-numpy...it will soon")
-            #Load data object from numpy array
-            #arr = darr_flat
-            #cdef np.ndarray[float,ndim=1] darr_flat =  darr.ravel('F')
-            #arr = darr.ravel('F')
-            #dat.assign(&arr[0], &arr[0] + len(darr))
-            #self.c_data = new RIDS_STAR_DistData[float](m,n,vec,dat,comm.ob_mpi)
-            #raise Exception("RIDS does not yet support loading from numpy...it will soon")
+            #Load data object from 2D numpy array
+            vec_sz = darr.shape[0] * darr.shape[1] 
+            with nogil:
+                dat.assign(&darr[0,0], &darr[0,0] + vec_sz)
+                self.c_data = new RIDS_STAR_DistData[float](m,n,vec,dat,comm.ob_mpi)
 
         elif ddata and not (fileName or darr!=None or data):
             with nogil:
@@ -611,6 +615,50 @@ cdef class PyDistData_RIDS:
         with nogil:
             self.c_data[0] = (deref(b.c_data))
         #self.c_data = &a
+
+    #@staticmethod
+    #def Loop2d(MPI.Comm comm, float[:,:] darr):
+    #    cdef int rank = comm.Get_rank()
+    #    cdef float bla
+    #    cdef int m,n,i,itot
+    #    m = darr.shape[0]
+    #    n = darr.shape[1]
+    #    itot = m * n
+    #    comm.barrier()
+    #    
+    #    if (rank == 0):
+    #        printf("2d looper %d\n",itot)
+    #        #for i in range(m):
+    #        #    for j in range(n):
+    #        #        bla = deref(&darr[i,j])
+    #        #        printf("%f\n", bla)
+    #        #        #print(darr[i,j])
+
+    #        for i in range(itot):
+    #            bla = deref(&darr[0,0] + i)
+    #            printf("%d %f\n",i, bla)
+    #        printf("\n")
+    #            
+    #    comm.barrier()
+
+
+    #@staticmethod
+    #def Loop1d(MPI.Comm comm, float[:] arr):
+    #    cdef int rank = comm.Get_rank()
+    #    cdef float bla
+    #    
+    #    comm.barrier()
+    #            
+    #    if (rank == 0):
+    #        printf("1d looper %d\n",len(arr))
+    #        for i in range(len(arr)):
+    #            bla = deref(&arr[i])
+    #            printf("%d %f\n", i,bla)
+    #            #print(<float> deref( <float *>( &arr[0] + i) ))
+    #            #print(arr[i])
+    #        printf("\n")
+
+    #    comm.barrier()
 
 
     #@classmethod
