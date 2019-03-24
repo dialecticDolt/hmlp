@@ -734,11 +734,42 @@ cdef class PyDistPairData:
         print("Cython: Running __dealloc___ for PyDistData Object")
         self.c_data.clear()
         free(self.c_data)
+    
+    def __getitem__(self, pos):
+        if isinstance(pos, int) and self.c_data.col() == 1:
+            return deref(self.c_data)(<size_t>pos,<size_t>1)
+        elif len(pos) == 2:
+            i, j = pos
+            return deref(self.c_data)(<size_t>i, <size_t>j)
+        else:
+            raise Exception('PyData can only be indexed in 1 or 2 dimensions')
 
-    #TODO: Resolve ambigious overloading with Data[T]
-    #def loadFile(self, size_t m, size_t n, str fileName):
-    #    cdef string fName = <string>fileName
-    #    self.c_data.read(m, n, fName)
+    def toNumpy(self):
+        cdef int local_cols
+        local_cols = self.cols_local()
+        cdef int local_rows
+        local_rows = self.rows_local()
+        cdef float[:, :] mv_distances = np.empty((local_rows, local_cols), dtype='float32')
+        cdef size_t[:, :] mv_gids = np.empty((local_rows, local_cols), dtype='uintp')
+        for i in range(local_rows):
+            for j in range(local_cols):
+                mv_distances[i, j] = self[i, j][0]
+                mv_gids[i, j] = self[i, j][1]
+        np_distances = np.asarray(mv_distances)
+        np_gids = np.asarray(mv_gids)
+        return (np_distances, np_gids)
+
+    #def toNumpy2(self):
+    #    cdef int local_cols
+    #    local_cols = self.cols_local()
+    #    cdef int local_rows
+    #    local_rows = self.rows_local()
+    #    cdef pair[float, size_t]* data_ptr = self.c_data.rowdata(0)
+    #    cdef pair[float, size_t][:] mv = <pair[float, size_t][:(local_cols*local_rows)] data_ptr
+    #    np_arr = np.asarray(mv)
+    #    np_arr.resize(local_rows, local_cols)
+    #    return np_arr
+        
 
     def getCommSize(self):
         return self.c_data.GetSize()
@@ -873,6 +904,15 @@ cdef class PyTreeKM:
         print("Cython: Running __dealloc__ for PyTreeKM")
         free(self.c_tree)
 
+    def getGIDS(self):
+        cdef vector[size_t] gidvec
+        with nogil:
+            gidvec = self.c_tree.getGIDS()
+        cdef size_t* data_ptr = &gidvec[0]
+        cdef size_t[:] mv = <size_t[:gidvec.size()]> data_ptr
+        np_arr = np.asarray(mv)
+        return np_arr
+
     def compress(self, MPI.Comm comm, PyDistKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
         cdef centersplit[DistKernelMatrix[float, float], two, float] c_csplit
         cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
@@ -930,16 +970,18 @@ cdef class PyTreeKM:
             DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
-def FindAllNeighbors(n, k, localpoints, metric="GEOMETRY_DISTANCE", comm=None):
+def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="GEOMETRY_DISTANCE"):
     cdef STAR_CBLK_DistData[pair[float, size_t]]* NNList
     cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
     cdef libmpi.MPI_Comm c_comm
     if isinstance(localpoints, PyDistData_CBLK):
-        kernel = PyKernel()
-        d = PyDistData_CBLK(localpoints).rows();
-        c_comm = PyDistData_CBLK(localpoints).our_comm.ob_mpi
-        K = PyDistKernelMatrix(comm, kernel, PyDistData_CBLK(localpoints))
+        kernel = PyKernel("GAUSSIAN")
+        d = localpoints.rows()
+        print(d)
+        K = PyDistKernelMatrix(comm, kernel, localpoints)
+        c_rsplit.Kptr = K.c_matrix
         conf = PyConfig(problem_size = n, metric_type="GEOMETRY_DISTANCE", neighbor_size = k)
+        c_comm = comm.ob_mpi
         with nogil:
             NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
         PyNNList = PyDistPairData(comm, n, d);
@@ -951,13 +993,14 @@ def FindAllNeighbors(n, k, localpoints, metric="GEOMETRY_DISTANCE", comm=None):
         DD_points = PyDistData_CBLK(n, d, darr=localpoints)
         kernel = PyKernel()
         K = PyDistKernelMatrix(comm, kernel, DD_points)
-        c_comm = MPI.Comm(comm).ob_mpi;
-        conf = PyConfig(problem_size=n, metric_type="GEOMETRY_DISTANCE", neighbor_size=k)
+        c_rsplit.Kptr = K.c_matrix
+        c_comm = comm.ob_mpi;
+        conf = PyConfig(problem_size = n, metric_type="GEOMETRY_DISTANCE", neighbor_size=k)
         with nogil: 
             NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
         PyNNList = PyDistPairData(comm, n, d)
         free(PyNNList.c_data)
         PyNNList.c_data = NNList;
-        ##TODO: Write to numpy function, tuple?
+        ##TODO: Write to numpy function, tuple coversion?
         return PyNNList.toNumpy() 
 
