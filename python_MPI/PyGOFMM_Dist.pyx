@@ -610,6 +610,10 @@ cdef class PyDistData_RIDS:
         with nogil:
             self.c_data[0] = (deref(b.c_data))
 
+    def redistribute(self, PyDistData_RIDS b):
+        with nogil:
+            self.c_data[0] = (deref(b.c_data))
+
     #@staticmethod
     #def Loop2d(MPI.Comm comm, float[:,:] darr):
     #    cdef int rank = comm.Get_rank()
@@ -666,7 +670,7 @@ cdef class PyDistData_RIDS:
 
     def __getitem__(self, pos):
         if isinstance(pos, int) and self.c_data.col() == 1:
-            return deref(self.c_data)(<size_t>pos,<size_t>1)
+            return deref(self.c_data)(<size_t>pos,<size_t>0)
         #elif isinstance(pos, int) and self.c_data.row() == 1:
         #    return deref(self.c_data)(<size_t>1, <size_t>pos)
         elif len(pos) == 2:
@@ -674,6 +678,12 @@ cdef class PyDistData_RIDS:
             return deref(self.c_data)(<size_t>i, <size_t>j)
         else:
             raise Exception('PyData can only be indexed in 1 or 2 dimensions')
+
+    def getRIDS(self):
+        cdef vector[size_t] rids_vec
+        rids_vec = self.c_data.getRIDS()
+        return np.asarray(rids_vec)
+
 
     #@cython.boundscheck(False)
     #@classmethod 
@@ -908,9 +918,7 @@ cdef class PyTreeKM:
         cdef vector[size_t] gidvec
         with nogil:
             gidvec = self.c_tree.getGIDS()
-        cdef size_t* data_ptr = &gidvec[0]
-        cdef size_t[:] mv = <size_t[:gidvec.size()]> data_ptr
-        np_arr = np.asarray(mv)
+        np_arr = np.asarray(gidvec, dtype='int32')
         return np_arr
 
     def compress(self, MPI.Comm comm, PyDistKernelMatrix K, float stol=0.001, float budget=0.01, size_t m=128, size_t k=64, size_t s=32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True, PyConfig config=None):
@@ -940,6 +948,7 @@ cdef class PyTreeKM:
         cdef RIDS_STAR_DistData[float]* bla
         with nogil:
             bla = Evaluate_Python_RIDS[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
+        free(result.c_data)
         result.c_data = bla
         return result
 
@@ -951,6 +960,7 @@ cdef class PyTreeKM:
         cdef RBLK_STAR_DistData[float]* bla;
         with nogil:
             bla = Evaluate_Python_RBLK[nnprune, km_float_tree, float](deref(self.c_tree), deref(rblk.c_data))
+        free(result.c_data)
         result.c_data = bla
         return result
 
@@ -970,7 +980,7 @@ cdef class PyTreeKM:
             DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
-def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="GEOMETRY_DISTANCE"):
+def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="GEOMETRY_DISTANCE", leafnode=128):
     cdef STAR_CBLK_DistData[pair[float, size_t]]* NNList
     cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
     cdef libmpi.MPI_Comm c_comm
@@ -980,7 +990,7 @@ def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="
         print(d)
         K = PyDistKernelMatrix(comm, kernel, localpoints)
         c_rsplit.Kptr = K.c_matrix
-        conf = PyConfig(problem_size = n, metric_type="GEOMETRY_DISTANCE", neighbor_size = k)
+        conf = PyConfig(problem_size = n, metric_type=metric, neighbor_size = k, leaf_node_size = leafnode)
         c_comm = comm.ob_mpi
         with nogil:
             NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
@@ -995,12 +1005,11 @@ def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="
         K = PyDistKernelMatrix(comm, kernel, DD_points)
         c_rsplit.Kptr = K.c_matrix
         c_comm = comm.ob_mpi;
-        conf = PyConfig(problem_size = n, metric_type="GEOMETRY_DISTANCE", neighbor_size=k)
+        conf = PyConfig(problem_size = n, metric_type=metric, neighbor_size=k, leaf_node_size = leafnode)
         with nogil: 
             NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
         PyNNList = PyDistPairData(comm, n, d)
         free(PyNNList.c_data)
         PyNNList.c_data = NNList;
-        ##TODO: Write to numpy function, tuple coversion?
         return PyNNList
 

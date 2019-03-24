@@ -148,9 +148,11 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         Data[T]& operator () (vector[size_t]&, vector[size_t]&)
         # = 
         RIDS_STAR_DistData[T]& operator = (RBLK_STAR_DistData[T]&) except +
+        RIDS_STAR_DistData[T]& operator = (RIDS_STAR_DistData[T]&)
 
         #bookkeeping
         vector[vector[size_t]] RBLKOwnership() except +
+        vector[size_t] getRIDS()
         
     cdef cppclass STAR_STAR_DistData[T](DistDataBase[T]):
         #This is an empty class in chenhan's code
