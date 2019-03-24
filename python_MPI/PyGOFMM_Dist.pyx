@@ -988,10 +988,10 @@ def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="
         free(PyNNList.c_data)
         PyNNList.c_data = NNList;
         return PyNNList
-    elif isinstance(localpoints, (np.array, np.generic)) and comm!=None:
-        d = localpoints.shape[1]
-        DD_points = PyDistData_CBLK(n, d, darr=localpoints)
-        kernel = PyKernel()
+    elif isinstance(localpoints, np.ndarray):
+        d = localpoints.shape[0]
+        DD_points = PyDistData_CBLK(comm, d, n, darr=localpoints)
+        kernel = PyKernel("GAUSSIAN")
         K = PyDistKernelMatrix(comm, kernel, DD_points)
         c_rsplit.Kptr = K.c_matrix
         c_comm = comm.ob_mpi;
@@ -1002,5 +1002,5 @@ def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="
         free(PyNNList.c_data)
         PyNNList.c_data = NNList;
         ##TODO: Write to numpy function, tuple coversion?
-        return PyNNList.toNumpy() 
+        return PyNNList
 
