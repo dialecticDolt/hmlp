@@ -375,7 +375,7 @@ cdef class PyDistData_CBLK:
             self.c_data = new STAR_CBLK_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
             #Load data object from 2d numpy array
-            vec_sz = darr.shape[0] * darr_shape[1]
+            vec_sz = darr.shape[0] * darr.shape[1]
             with nogil:
                 vec.assign(&darr[0, 0], &darr[0,0] + vec_sz)
                 self.c_data = new STAR_CBLK_DistData[float](m, n, vec, comm.ob_mpi)
