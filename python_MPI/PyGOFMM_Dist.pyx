@@ -302,10 +302,10 @@ cdef class PyData:
     cpdef write(self,str filename):
         self.c_data.write(filename.encode())
 
-    cpdef row(self):
+    cpdef rows(self):
         return self.c_data[0].row()
 
-    cpdef col(self):
+    cpdef cols(self):
         return self.c_data.col()
 
     cpdef size(self):
@@ -363,7 +363,7 @@ cdef class PyDistData_CBLK:
     def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[::1, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
         cdef vector[float] vec
-        
+        cdef int vec_sz
         if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
             fName = <string>fileName.encode('utf-8')
@@ -607,14 +607,8 @@ cdef class PyDistData_RIDS:
         self.c_data.randn(m, s)
    
     def loadRBLK(self, PyDistData_RBLK b):
-        #free(self.c_data)
-        #cdef int[:] iset = np.arange(b.rows()).astype(int)
-        #cdef vector[size_t] vec
-        #vec.assign(&iset[0], &iset[-1])
-        #cdef RIDS_STAR_DistData[float] a(b.rows(), b.cols(), vec, self.our_comm.ob_mpi)
         with nogil:
             self.c_data[0] = (deref(b.c_data))
-        #self.c_data = &a
 
     #@staticmethod
     #def Loop2d(MPI.Comm comm, float[:,:] darr):
@@ -660,12 +654,6 @@ cdef class PyDistData_RIDS:
 
     #    comm.barrier()
 
-
-    #@classmethod
-    #def fromRBLK(cls, PyDistData_RBLK b):
-    #    cdef PyDistData_RIDS ret = cls(b.our_comm, b.rows(), b.cols())
-    #    ret.c_data[0] = (deref(b.c_data))
-    #    return ret
 
     def getRank(self):
         return self.c_data.GetRank()
