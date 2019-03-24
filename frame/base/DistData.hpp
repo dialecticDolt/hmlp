@@ -1356,7 +1356,7 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
      */ 
     std::vector<std::vector<size_t>> RBLKOwnership()
     {
-      /** MPI */
+      /** mpi */
       mpi::Comm comm = this->GetComm();
       int size = this->GetSize();
       int rank = this->GetRank();
@@ -1367,7 +1367,7 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
       {
         size_t rid = (*it);
         /** 
-         *  While in RBLK distribution, rid is owned by 
+         *  while in rblk distribution, rid is owned by 
          *  rank ( rid % size ) at position ( rid / size ) 
          */
         ownership[ rid % size ].push_back( rid );
@@ -1375,19 +1375,106 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
 
       return ownership;
 
-    }; /** end RBLKOwnership() */
+    }; /** end rblkownership() */
+
+
+    std::vector<std::vector<size_t>> ridsownership()
+    {
+      /** mpi */
+      mpi::Comm comm = this->GetComm();
+      int size = this->GetSize();
+      int rank = this->GetRank();
+
+      std::vector<std::vector<size_t>> ownership( size );
+
+      for ( auto it = rids.begin(); it != rids.end(); it ++ )
+      {
+        size_t rid = (*it);
+        /** 
+         *  while in rblk distribution, rid is owned by 
+         *  rank ( rid % size ) at position ( rid / size ) 
+         */
+        ownership[rank].push_back( rid );
+      };
+
+      return ownership;
+
+    }; /** end rblkownership() */
+
 
     /**
     Copy
     **/
 
-    //DistData<RIDS, STAR, T> & operator = (DistData<RIDS, STAR, T> &B){
-    //    assert(rids.size())
-    //    mpi::Comm comm = this->getComm();
-    //    //DistData<RIDS, STAR, T>(A, comm);
-    //    
-    //
-    //   }
+    DistData<RIDS, STAR, T> & operator = (DistData<RIDS, STAR, T> &B)
+    {
+      assert(rids.size() == this->local_row);
+        
+      mpi::Comm comm = this->GetComm();
+      int size = this->GetSize();
+      int rank = this->GetRank();
+
+      printf("Starting Redistribute\n");
+
+      /** allocate buffer for ids **/
+      std::vector<std::vector<size_t>> sendids = this->ridsownership();
+      std::vector<std::vector<size_t>> recvids(size);
+      /** figure out what each rank is requesting **/
+         
+      /** 
+      *  exchange rids: 
+      *
+      *  sendids contain all  required ids from each rank
+      *  recvids contain all requested ids from each rank
+      *
+      */
+      mpi::AlltoallVector( sendids, recvids, comm );
+      
+           
+      std::vector<std::vector<T, ALLOCATOR>> senddata( size );
+      std::vector<std::vector<T, ALLOCATOR>> recvdata( size );
+
+      /*This is just an id vector over the columns (used to extract the submatrix)*/
+      std::vector<size_t> bmap( this->col() );
+      for ( size_t j = 0; j < bmap.size(); j ++ ) bmap[ j ] = j;
+
+      /** extract rows */
+      #pragma omp parallel for 
+      for ( size_t p = 0; p < size; p ++ )
+      {
+        /** recvids should be gids (not local posiiton) */
+        senddata[ p ] = B( recvids[ p ], bmap );
+        assert( senddata[ p ].size() == recvids[ p ].size() * bmap.size() );
+      }
+
+      /** exchange data */
+      mpi::AlltoallVector( senddata, recvdata, comm );
+
+
+      #pragma omp parallel for 
+      for ( size_t p = 0; p < size; p ++ )
+      {
+        assert( recvdata[ p ].size() == sendids[ p ].size() * this->col() );
+
+        size_t ld = recvdata[ p ].size() / this->col();
+
+        assert( ld == sendids[ p ].size() );
+
+
+        for ( size_t i = 0; i < sendids[ p ].size(); i ++ )
+        {
+          size_t rid = sendids[ p ][ i ];
+          for ( size_t j = 0; j < this->col(); j ++ )
+          {
+            (*this)( rid, j ) = recvdata[ p ][ j * ld + i ];
+          }
+        };
+      };
+      mpi::Barrier( comm );
+
+      return (*this);
+    
+    };
 
 
 
