@@ -207,7 +207,6 @@ cdef class PyData:
         free(self.c_data)
 
     #TODO: Add error handling in case non integers are passed
-    #All values are locally indexed
     def __getitem__(self, pos):
         if isinstance(pos, int):
             return self.c_data.getvalue(<size_t>pos,<size_t>0)
@@ -220,7 +219,6 @@ cdef class PyData:
             raise Exception('PyData can only be indexed in 1 or 2 dimensions')
 
     #TODO: Add error handling in case non integers are passed
-    #All values are locally indexed
     def __setitem__(self, pos, float v):
         if isinstance(pos, int):
             self.c_data.setvalue(<size_t>pos,<size_t>0, v)
@@ -261,7 +259,6 @@ cdef class PyData:
         return np_arr
 
     @cython.boundscheck(False)
-    # TODO access submatrix through inputting numpy vectors
     def submatrix(self,np.ndarray[np.intp_t, ndim=1] I not None,
         np.ndarray[np.intp_t,ndim=1] J not None):
 
@@ -357,8 +354,7 @@ cdef class PyDistData_CBLK:
     cdef STAR_CBLK_DistData[float]* c_data
     cdef MPI.Comm our_comm
 
-    #TODO: Add error handling if the user gives the wrong array sizes (at the moment I'm overriding)
-    #      
+    #TODO: Fix loading from local PyData objects
     @cython.boundscheck(False)
     def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[::1, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
@@ -392,8 +388,6 @@ cdef class PyDistData_CBLK:
     def __len__(self):
         return self.c_data.row()*self.c_data.col()
 
-    #TODO: Add error handling in case non integers are passed
-    #All values are locally indexed
     def __getitem__(self, pos):
         if isinstance(pos, int) and self.c_data.col() == 1:
             return deref(self.c_data)(<size_t>pos,<size_t>1)
@@ -409,7 +403,6 @@ cdef class PyDistData_CBLK:
         print("Cython: Running __dealloc___ for PyDistData Object")
         free(self.c_data)
     
-    #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a=0.0, float b=1.0):
         with nogil:
             self.c_data.rand(a, b)
@@ -420,11 +413,6 @@ cdef class PyDistData_CBLK:
     def randn(self, float m=0.0, float s=1.0):
         with nogil:
             self.c_data.randn(m, s)
-
-    #TODO: Resolve ambigious overloading with Data[T]
-    #def loadFile(self, size_t m, size_t n, str fileName):
-    #    cdef string fName = <string>fileName
-    #    self.c_data.read(m, n, fName)
 
     def getCommSize(self):
         return self.c_data.GetSize()
@@ -448,6 +436,7 @@ cdef class PyDistData_RBLK:
     cdef RBLK_STAR_DistData[float]* c_data
     cdef MPI.Comm our_comm
 
+    #TODO: Fix loading from local PyData objects
     @cython.boundscheck(False)
     def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, float[::1, :] darr=None, float[:] arr=None, PyData data=None):
         cdef string fName
@@ -481,36 +470,20 @@ cdef class PyDistData_RBLK:
         print("Cython: Running __dealloc___ for PyDistData Object")
         free(self.c_data)
 
-
+    #TODO: Add a class method for this
     def loadRIDS(self, PyDistData_RIDS b):
-        #free(self.c_data)
-        #cdef RBLK_STAR_DistData[float]* a = new RBLK_STAR_DistData[float](b.rows(), b.cols(), self.our_comm.ob_mpi)
         with nogil:
             self.c_data[0] = (deref(b.c_data))
-        #self.c_data = a
 
-##TODO: Fix these class methods for RIDS/RBLK conversion
-  #  @classmethod
-  #  def fromRIDS(cls, PyDistData_RIDS b):
-  #      cpdef PyDistData_RBLK ret = cls(b.our_comm, b.rows(), b.cols())
-  #      #free(ret.c_data)
-  #      ret.c_data[0] = (deref(b.c_data))
-  #      return ret
-
-
-    #TODO
     def __getitem__(self, pos):
         if isinstance(pos, int) and self.c_data.col() == 1:
-            return deref(self.c_data)(<size_t>pos,<size_t>1)
-        #elif isinstance(pos, int) and self.c_data.row() == 1:
-        #    return deref(self.c_data)(<size_t>1, <size_t>pos)
+            return deref(self.c_data)(<size_t>pos,<size_t>0)
         elif len(pos) == 2:
             i, j = pos
             return deref(self.c_data)(<size_t>i, <size_t>j)
         else:
             raise Exception('PyData can only be indexed in 1 or 2 dimensions')
 
-    #Fill the data object with random uniform data from the interval [a, b]
     def rand(self, float a=0.0, float b=1.0):
         with nogil:
             self.c_data.rand(a, b)
@@ -541,16 +514,19 @@ cdef class PyDistData_RBLK:
         return self.c_data.col_owned()
 
 
-
-#TODO: RIDS & CIDS DistData,  need a numpy constructor 
 cdef class PyDistData_RIDS:
     cdef RIDS_STAR_DistData[float]* c_data
     cdef MPI.Comm our_comm
 
     @cython.boundscheck(False)
-    def __cinit__(self, MPI.Comm comm, size_t m=0, size_t n=0, str fileName=None, int[:] iset=None, float[::1,:] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
+    def __cinit__(self, MPI.Comm comm,size_t m=0, size_t n=0, size_t mper = 0, str fileName=None, int[:] iset=None, float[::1,:] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
         cdef string fName
-        cdef int[:] a = np.arange(m).astype('int32') #TODO this needs a fix so not every process owns everything, static method?
+        rank = comm.Get_rank()
+        if (arr!=None):
+            mper = len(arr)
+        if (darr!=None):
+            mper = darr.size[0]
+        cdef int[:] a = np.arange(rank*mper, rank*mper+mper).astype('int32')
         cdef vector[size_t] vec
         cdef vector[float] dat
         cdef int vec_sz
@@ -563,7 +539,6 @@ cdef class PyDistData_RIDS:
         else:
             vec.assign(&iset[0], &iset[0] + len(iset))
             
-
         # call DistData constructor 
         if fileName and not (data or darr!=None or arr!=None):
             #Load data object from file
@@ -588,7 +563,6 @@ cdef class PyDistData_RIDS:
         elif ddata and not (fileName or darr!=None or data):
             with nogil:
                 self.c_data = new RIDS_STAR_DistData[float](deref(ddata.c_data), comm.ob_mpi)
-
         else:
             with nogil:
                 self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
@@ -614,7 +588,22 @@ cdef class PyDistData_RIDS:
         with nogil:
             self.c_data[0] = (deref(b.c_data))
 
-    #@staticmethod
+    def toNumpy(self):
+        cdef float* data_ptr = self.c_data.rowdata(0)
+        cdef float[:] mv = <float[:self.size()]> data_ptr
+        np_arr = np.asarray(mv)
+        np_arr.resize(self.rows_local(),self.cols_local())
+        return np_arr
+
+    def toArray(self):
+        cdef float* local_data
+        local_data = self.c_data.rowdata(0)
+        cdef float[:] mv = <float[:self.c_data.size()]> local_data
+        np_arr = np.asarray(mv, order='F', dtype='float32')
+        #np_arr.resize(self.rows_local(), self.cols_local())
+        return np_arr
+
+#@staticmethod
     #def Loop2d(MPI.Comm comm, float[:,:] darr):
     #    cdef int rank = comm.Get_rank()
     #    cdef float bla
@@ -671,8 +660,6 @@ cdef class PyDistData_RIDS:
     def __getitem__(self, pos):
         if isinstance(pos, int) and self.c_data.col() == 1:
             return deref(self.c_data)(<size_t>pos,<size_t>0)
-        #elif isinstance(pos, int) and self.c_data.row() == 1:
-        #    return deref(self.c_data)(<size_t>1, <size_t>pos)
         elif len(pos) == 2:
             i, j = pos
             return deref(self.c_data)(<size_t>i, <size_t>j)
@@ -684,44 +671,16 @@ cdef class PyDistData_RIDS:
         rids_vec = self.c_data.getRIDS()
         return np.asarray(rids_vec)
 
+    def rows_local(self):
+        return self.c_data.row_owned()
 
-    #@cython.boundscheck(False)
-    #@classmethod 
-    #def FromNumpy(cls,MPI.Comm comm,np.ndarray[float, ndim=2, mode="c"] arr_np ):
-    #    # get sizes
-    #    cdef size_t m,n
-    #    m = <size_t> arr_np.shape[0]
-    #    n = <size_t> arr_np.shape[1]
-    #    
-    #    # construct std::vector
-    #    #cdef vector[float] arr_cpp = vector[float](m*n)
-    #    #arr_cpp.assign(&arr_np[0,0], &arr_np[-1,-1])
-
-    #    # construct PyData obj
-    #    cpdef PyDistData_RIDS ret = cls(comm,m,n)
-    #    #cdef Data[float]* bla = new Data[float](m,n,arr_cpp)
-    #    cdef Data[float]* bla 
-    #    with nogil:
-    #        bla = new Data[float](m,n,&arr_np[0,0],True)
-    #    ret.c_data = bla
-    #    return ret
-
-    #def toNumpy(self):
-    #    cdef float* data_ptr = self.c_data.rowdata(0)
-    #    cdef float[:] mv = <float[:self.size()]> data_ptr
-    #    np_arr = np.asarray(mv)
-    #    np_arr.resize(self.row(),self.col())
-    #    return np_arr
-
-#    def rows_local(self):
-#        return self.c_data.row_owned()
-#
-#    def cols_local(self):
-#        return self.c_data.col_owned()
+    def cols_local(self):
+        return self.c_data.col_owned()
 
 cdef class PyDistPairData:
     cdef STAR_CBLK_DistData[pair[float, size_t]]* c_data
 
+    #TODO: Loading from file, how to handle tuples?
     def __cinit__(self, MPI.Comm comm, size_t m, size_t n, str fileName=None, localdata=None):
         cdef string fName
         if not (fileName or localdata): 
@@ -729,7 +688,6 @@ cdef class PyDistPairData:
                 self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi)
         elif fileName and not (localdata):
             fName = <string>fileName.encode('utf-8')
-            #TODO: Error handling 
             with nogil:
                 self.c_data = new STAR_CBLK_DistData[pair[float, size_t]](m, n, comm.ob_mpi, fName)
         elif localdata and not (fileName):
@@ -769,6 +727,7 @@ cdef class PyDistPairData:
         np_gids = np.asarray(mv_gids)
         return (np_distances, np_gids)
 
+    #TODO: Pass back as a numpy array of dtype=object (tuple) (Minimize copying)
     #def toNumpy2(self):
     #    cdef int local_cols
     #    local_cols = self.cols_local()
@@ -799,12 +758,6 @@ cdef class PyDistPairData:
     def cols_local(self):
         return self.c_data.col_owned()
 
-    #THIS IS A LOCAL WRITE
-    #def write(self, str fileName):
-    #    cdef string fName = <string>fileName
-    #    self.c_data.write(fName)
-
-   
 #Python Class for Kernel Evaluation Object kernel_s
 #   TODO:
 #           -"Template" on float/double fused type
@@ -892,7 +845,13 @@ cdef class PyDistKernelMatrix:
     def dim(self):
         return self.c_matrix.dim()
 
+    def __getitem__(self, pos):
+        if len(pos) == 2:
+            i, j = pos
+            return deref(self.c_matrix)(<size_t>i, <size_t>j)
 
+    def getvalue(self, i, j):
+        return self[i, j]
 
 #Python class for Kernel Matrix Tree
 ctypedef Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
@@ -938,13 +897,10 @@ cdef class PyTreeKM:
             with nogil:
                 self.c_tree = c_compress[centersplit[DistKernelMatrix[float, float], two, float], randomsplit[DistKernelMatrix[float, float], two, float], float, DistKernelMatrix[float, float]](deref(K.c_matrix), deref(c_NNdata), c_csplit, c_rsplit, deref(conf.c_config),comm.ob_mpi)
 
-    ##TODO: Evaluate is NOT currently memory safe!!!
-    ##         - Make __cinit__ take in pointer to DistData object
-
     def evaluateRIDS(self, PyDistData_RIDS rids):
         if not self.cStatus:
             raise Exception("You must run compress before running evaluate")
-        result = PyDistData_RIDS(self.our_comm, m=rids.rows(), n=rids.cols())
+        result = PyDistData_RIDS(self.our_comm, m=rids.rows(), n=rids.cols(), mper=rids.rows_local())
         cdef RIDS_STAR_DistData[float]* bla
         with nogil:
             bla = Evaluate_Python_RIDS[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
@@ -1013,3 +969,73 @@ def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="
         PyNNList.c_data = NNList;
         return PyNNList
 
+#Alternative (compact notation) GOFMM Kernel Matrix
+cdef class KernelMatrix:
+    cdef PyKernel kernel
+    cdef PyTreeKM tree
+    cdef PyDistKernelMatrix K
+    cdef PyConfig config
+    cdef MPI.Comm comm_mpi
+    cdef int is_compressed 
+    cdef int is_secacc
+    cdef int is_factorized    
+
+    @cython.nonecheck(False)
+    def __cinit__(self, MPI.Comm comm, PyDistData_CBLK sources, PyDistData_CBLK targets=None, str kstring="GAUSSIAN", PyConfig conf=None, float bandwidth=1):
+        self.comm_mpi = comm
+        self.kernel = PyKernel(kstring)
+        self.kernel.setBandwidth(bandwidth)
+        self.config = conf
+        self.K = PyDistKernelMatrix(comm, self.kernel, sources, targets)
+        self.tree = PyTreeKM(comm)
+        self.is_compressed = 0
+        self.is_factorized = 0
+
+    def compress(self, float stol=0.001, float budget=0.01, size_t m = 128, size_t k=64, size_t s = 32, bool sec_acc=True, str metric_type="ANGLE_DISTANCE", bool sym=True, bool adapt_ranks=True):
+        with cython.nonecheck(True):
+            if (self.config != None):
+                self.tree.compress(self.comm_mpi, self.K, config=self.config)
+            else:
+                self.tree.compress(self.comm_mpi, self.K, stol, budget, m, k, s, sec_acc, metric_type, sym, adapt_ranks)
+        self.is_compressed = 1
+
+    def solve(self, PyData w, float l):
+        if not self.is_factorized:
+            self.tree.factorize(l)
+            self.is_factorized = 1
+        if self.is_factorized:
+            self.tree.solve(w)
+
+    def setConfig(self, PyConfig conf):
+        self.config = conf
+        if(self.is_compressed):
+            print("Recompressing K with new configuration parameters...")
+            self.compress()
+    
+    def setComm(self, MPI.Comm comm):
+        self.comm_mpi = comm
+
+    def getValue(self, size_t i, size_t j):
+        return self.K.getvalue(i, j)
+
+    def evaluate(self, PyDistData_RIDS rids):
+        if (self.is_compressed):
+            return self.tree.evaluateRIDS(rids)
+        elif (self.config!=None):
+            self.compress()
+            self.is_compressed = 1
+            return self.tree.evaluateRIDS(rids)
+        else:
+            raise Exception("KernelMatrix must be compressed before evaluate is run. Please either run compress() or provide a configuration object")
+
+    def getComm(self):
+        return self.comm_mpi
+        
+    def getTree(self):
+        return self.tree
+  
+    def setCustomFunctions(self, f, g):
+        return self.kernel.setCustomFunction(f, g)
+
+    def setBandwidth(self, float b):
+        return  self.kernel.setBandwidth(b)

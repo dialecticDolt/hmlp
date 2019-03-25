@@ -69,4 +69,4 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespa
         void BcasIndices(vector[size_t]&, int, libmpi.MPI_Comm)
         void RequestIndices(const vector[vector[size_t]]&)
         size_t dim()
-        
+        T operator () (size_t i, size_t j)         
