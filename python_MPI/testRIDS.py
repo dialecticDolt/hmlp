@@ -62,6 +62,7 @@ RIDS_contiguous = PyDistData_RIDS(MPI.COMM_WORLD, d, m, arr=localdata, iset=loca
 
 printOwnership(RIDS_contiguous)
 
+np.random.seed(3)
 globalrids = np.asfortranarray(np.arange(start=0, stop = m).astype('int32'))
 np.random.shuffle(globalrids)
 localrids = globalrids[rank:rank+m_per]
