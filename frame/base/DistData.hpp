@@ -1378,23 +1378,47 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
     }; /** end rblkownership() */
 
 
-    std::vector<std::vector<size_t>> ridsownership()
+    std::vector<std::vector<size_t>> ridsownership(std::vector<size_t> rids_in)
     {
       /** mpi */
       mpi::Comm comm = this->GetComm();
       int size = this->GetSize();
       int rank = this->GetRank();
 
-      std::vector<std::vector<size_t>> ownership( size );
+      /** set up stuff to send our rids to everyone else */
+      std::vector< std::vector<size_t> > rids_all( size );
+      std::vector< std::vector<size_t> > rids_copy( size );
+      for(size_t i = 0; i<rids_copy.size(); i++) rids_copy[i] = rids_in;
 
-      for ( auto it = rids.begin(); it != rids.end(); it ++ )
+
+      /** send rids we want to own, clear our dummy copy */
+      mpi::AlltoallVector(rids_copy,rids_all,comm);
+      rids_copy.clear();
+      rids_copy.shrink_to_fit();
+
+      /** set up ownership -- which rids of ours (output) are owned by which process (input) */
+      std::vector<std::vector<size_t>> ownership( size );
+      for ( auto it = rids.begin(); it != this->rids.end(); it ++ )
       {
         size_t rid = (*it);
         /** 
-         *  while in rblk distribution, rid is owned by 
-         *  rank ( rid % size ) at position ( rid / size ) 
+         * Find the rank that owns rid in rids in
          */
-        ownership[rank].push_back( rid );
+        size_t rank_rid = -1;
+        for ( size_t rids_ii = 0; rids_ii < size; rids_ii ++)
+        {
+            auto rid_it = std::find(rids_all[rids_ii].begin(), rids_all[rids_ii].end(),rid);
+
+            if(rid_it != rids_all[rids_ii].end())
+            {
+                rank_rid = rids_ii;
+                break;
+            }
+        }
+
+        // print for debugging
+        //std::cout << "Rank: "<< rank << " rid: " << rid << " owned by: "<< rank_rid << std::endl;
+        ownership[rank_rid].push_back( rid );
       };
 
       return ownership;
@@ -1417,19 +1441,18 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
       printf("Starting Redistribute\n");
 
       /** allocate buffer for ids **/
-      std::vector<std::vector<size_t>> sendids = this->ridsownership();
+      std::vector<std::vector<size_t>> sendids = this->ridsownership(B.getRIDS());
       std::vector<std::vector<size_t>> recvids(size);
       /** figure out what each rank is requesting **/
          
       /** 
       *  exchange rids: 
       *
-      *  sendids contain all  required ids from each rank
+      *  sendids contain all required ids from each rank
       *  recvids contain all requested ids from each rank
       *
       */
       mpi::AlltoallVector( sendids, recvids, comm );
-      
            
       std::vector<std::vector<T, ALLOCATOR>> senddata( size );
       std::vector<std::vector<T, ALLOCATOR>> recvdata( size );
