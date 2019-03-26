@@ -525,7 +525,7 @@ cdef class PyDistData_RIDS:
         if (arr!=None):
             mper = len(arr)
         if (darr!=None):
-            mper = darr.size[0]
+            mper = darr.shape[0]
         cdef int[:] a = np.arange(rank*mper, rank*mper+mper).astype('int32')
         cdef vector[size_t] vec
         cdef vector[float] dat
