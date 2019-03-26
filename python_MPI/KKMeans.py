@@ -62,9 +62,9 @@ class GOFMM_Kernel(object):
         GOFMM_y.redistribute(GOFMM_x)
         return GOFMM_y
 
-    def redistribute(self, X, d, n, form="petsc"):
+    def redistribute(self, X, d, n, nper, form="petsc"):
         with X as x:
-            x = x.reshape(n, d)
+            x = x.reshape(nper, d)
             x = np.asfortranarray(x)
             #x = np.asfortranarray(np.transpose(x))
             GOFMM_x = PyGOFMM.PyDistData_RIDS(self.comm, n, d, darr=x.astype('float32'))
@@ -97,7 +97,7 @@ class GOFMM_Kernel(object):
                     x[i] = GOFMM_b[i, 0]
 
 
-def generateKMeansLookups(A, GOFMM_point_classes, nclasses):
+def KMeansLookup(A, GOFMM_point_classes, nclasses):
     #generate class indicator matrix of ones
     a = 1 
 
@@ -132,9 +132,9 @@ classes = PETSc.Vec().createWithArray(classes)
 
 
 gofmm = GOFMM_Kernel(comm_mpi, N, d, source_points, config=conf) #set up python context for gofmm
-redistributed_points = gofmm.redistribute(source_points, d, N, form='hmlp') #redistribute to HMLP Dist Data 
-redistributed_true_classes = gofmm.redistribute(true_classes, 1, N, form='hmlp')
-redistributed_classes = gofmm.redistribute(classes, 1, N, form="hmlp")
+redistributed_points = gofmm.redistribute(source_points, d, N, nper=N_per, form='hmlp') #redistribute to HMLP Dist Data 
+redistributed_true_classes = gofmm.redistribute(true_classes, 1, N, nper=N_per, form='hmlp')
+redistributed_classes = gofmm.redistribute(classes, 1, N, nper=N_per, form="hmlp")
 
 #check that classes are still with corresponding points
 points_rids = redistributed_points.getRIDS()
@@ -149,15 +149,20 @@ A = PETSc.Mat().createPython( [N, N], comm=comm_petsc)
 A.setPythonContext(gofmm)
 A.setUp()
 
+#Renaming for convenience
+classes = redistributed_classes
+points = redistributed_points
+
 #####################
 #Start K Means
+A.setUp()
 #Let 
 #   - DKH = D^-1 K H
 #   - HKH = H^t K H
 #   - HDH = H^t D H
 
 #Generate these matricies
-
+DKH = KMeansLookup(A, points, classes)
 
 
 
