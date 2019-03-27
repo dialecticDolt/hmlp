@@ -936,6 +936,10 @@ cdef class PyTreeKM:
             DistSolve[float, km_float_tree](deref(self.c_tree), deref(w.c_data))
         return w
 
+    def test_error(self,size_t ntest = 100,size_t nrhs = 10):
+        with nogil:
+            SelfTesting[km_float_tree]( deref(self.c_tree), ntest, nrhs)
+
 def FindAllNeighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="GEOMETRY_DISTANCE", leafnode=128):
     cdef STAR_CBLK_DistData[pair[float, size_t]]* NNList
     cdef randomsplit[DistKernelMatrix[float, float], two, float] c_rsplit
