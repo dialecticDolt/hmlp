@@ -599,8 +599,8 @@ cdef class PyDistData_RIDS:
         cdef float* local_data
         local_data = self.c_data.rowdata(0)
         cdef float[:] mv = <float[:self.c_data.size()]> local_data
-        np_arr = np.asarray(mv, order='F', dtype='float32')
-        #np_arr.resize(self.rows_local(), self.cols_local())
+        np_arr = np.asarray(mv, order='F', dtype='float32').reshape((self.rows_local(),self.cols_local()),order='F')
+        #np_arr = np_arr.reshape(self.rows_local(), self.cols_local(),order='F')
         return np_arr
 
 #@staticmethod
