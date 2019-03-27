@@ -32,6 +32,12 @@ class GOFMM_Kernel(object):
     def __dealloc__(self):
         self.rt.finalize()
 
+    def getSize(self):
+        return self.size
+
+    def getMPIComm(self):
+        return self.comm
+
     #This deep copies the data three times:
     #Once from PETSC -> DistData (could fix with new constructor)
     #Once from stack -> heap in Chenhans code  (could fix by changing hmlp::Evaluate)
@@ -70,7 +76,7 @@ class GOFMM_Kernel(object):
             GOFMM_x = PyGOFMM.PyDistData_RIDS(self.comm, n, d, darr=x.astype('float32'))
             GOFMM_y = self.redistribute_hmlp(GOFMM_x)
             if(form=="petsc"):
-                return PETSc.Vec().createWithArray(np.copy(GOFMM_y.toArray()))
+                return PETSc.Vec().createWithArray(np.copy(GOFMM_y.toArray())) #TODO: Fix toArray()
             elif(form=="hmlp"):
                 return GOFMM_y
             else:
@@ -79,7 +85,6 @@ class GOFMM_Kernel(object):
     
     def getDiagonal(self, mat, result):
         local_gids = self.K.getTree().getGIDS()
-        print(local_gids)
         y = np.empty([self.size, 1], dtype='float32')
         with result as y:
             for i in range(len(local_gids)):
@@ -97,9 +102,76 @@ class GOFMM_Kernel(object):
                     x[i] = GOFMM_b[i, 0]
 
 
-def KMeansLookup(A, GOFMM_point_classes, nclasses):
-    #generate class indicator matrix of ones
-    a = 1 
+def KMeansLookup(A, GOFMM_classes, nclasses=2):
+    #generate class indicator matrix H
+    gofmm = A.getPythonContext()
+    comm = gofmm.getMPIComm()
+    rids = GOFMM_classes.getRIDS()
+    local_rows = len(rids)
+    problem_size = A.getSize()[0]
+    local_H = np.zeros([local_rows, nclasses], dtype='float32', order='F')
+    for i in range(local_rows):
+        local_H[i, (int)(GOFMM_classes[rids[i], 0]-1) ] = 1.0
+
+   # H = PyGOFMM.PyDistData_RIDS(comm, problem_size, nclasses, iset=rids.astype('int32'), darr=np.asfortranarray(np.transpose(local_H)))
+    H = PyGOFMM.PyDistData_RIDS(comm, problem_size, nclasses, iset=rids.astype('int32'), darr=local_H)
+
+    print("H DistData object, RID order")
+    print(H[rids[0], 0])
+    print(H[rids[0], 1])
+    print(H[rids[1], 0])
+    print(H[rids[1], 1])
+
+    print(" ")
+    print("H local numpy array, self ordering")
+    print(local_H[0, 0])
+    print(local_H[0, 1])
+    print(local_H[1, 0])
+    print(local_H[1, 1])
+
+    #generate vector of ones
+    local_ones = np.ones([local_rows, 1], dtype='float32', order='F')
+    Ones = PyGOFMM.PyDistData_RIDS(comm, problem_size, 1, iset=rids.astype('int32'), darr=local_ones)
+
+    D = gofmm.mult_hmlp(Ones)
+    KH = gofmm.mult_hmlp(H)
+    
+    print("Result of K * Ones")
+    print(D[rids[0], 0]) 
+
+    print("Result of K * H")
+    print(KH[rids[0], 0])
+    print(KH[rids[0], 1])
+    print("Sum of ", KH[rids[0], 0] + KH[rids[0], 1])
+   
+
+    print("Dist H to Array() ") 
+    print(H.toArray())
+    print("\nLocal Numpy array() ")
+    print(local_H)
+
+    #Generate HKH, HDH, DKH
+    HKH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+    HDH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+    DKH = np.zeros([local_rows, nclasses], dtype='float32', order='F')
+
+    #TODO: Check this in the morning if the indicies are correct
+    for i in range(nclasses):
+        for j in range(nclasses):
+            for r in rids:
+                HKH_local[i, j] += H[r, j] * KH[r, i]
+                HDH_local[i, j] += H[r, j] * D[r, 0] * H[r, i]
+
+    for i in range(local_rows):
+        for j in range(nclasses): 
+            DKH[i, j] = 1/D[rids[i], 0] * KH[rids[i], j]
+    
+    HKH = np.copy(HKH_local)
+    HDH = np.copy(HDH_local)
+    comm.Allreduce(HKH_local, HKH, op=MPI.SUM)
+    comm.Allreduce(HDH_local, HDH, op=MPI.SUM)
+
+    return (DKH, HKH, HDH) 
 
 petsc4py.init(comm=MPI.COMM_WORLD)
 nprocs = MPI.COMM_WORLD.Get_size()
@@ -108,7 +180,7 @@ N_per = 2000
 N = N_per*nprocs
 d = 3
 
-conf = PyGOFMM.PyConfig("GEOMETRY_DISTANCE", N, 128, 64, 128, 0.0001, 0.01, False)
+conf = PyGOFMM.PyConfig("GEOMETRY_DISTANCE", N, 128, 64, 128, 0.0001, 0, True)
 comm_petsc = PETSc.COMM_WORLD
 comm_mpi = MPI.COMM_WORLD
 
@@ -155,14 +227,15 @@ points = redistributed_points
 
 #####################
 #Start K Means
-A.setUp()
+
 #Let 
 #   - DKH = D^-1 K H
 #   - HKH = H^t K H
 #   - HDH = H^t D H
 
 #Generate these matricies
-DKH = KMeansLookup(A, points, classes)
-
+(DKH, HKH, HDH) = KMeansLookup(A, classes)
+print(HKH)
+print(HDH)
 
 
