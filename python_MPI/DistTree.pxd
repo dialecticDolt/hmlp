@@ -39,6 +39,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpig
 
     cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ]* Compress[CSPLIT, RSPLIT, T,SPDMATRIX]( SPDMATRIX&, STAR_CBLK_DistData[pair[T, size_t]]&, centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&,libmpi.MPI_Comm)
 
+    cdef void SelfTesting[TREE]( TREE&, size_t, size_t)
     #Evaluate (Matvec)
 
     RIDS_STAR_DistData[T]* Evaluate_Python_RIDS[NNPRUNE, TREE, T](TREE& tree, RIDS_STAR_DistData[T]& ddata) except +
