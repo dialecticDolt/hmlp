@@ -597,11 +597,11 @@ cdef class PyDistData_RIDS:
 
     def toArray(self):
         cdef float* local_data
-        local_data = self.c_data.rowdata(0)
+        local_data = self.c_data.coldata(0)
         cdef float[:] mv = <float[:self.c_data.size()]> local_data
         np_arr = np.asarray(mv, order='F', dtype='float32')
-        #np_arr.resize(self.rows_local(), self.cols_local())
-        return np_arr
+        np_arr.resize(self.rows_local(), self.cols_local())
+        return np_arr #np.transpose(np_arr)
 
 #@staticmethod
     #def Loop2d(MPI.Comm comm, float[:,:] darr):
