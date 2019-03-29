@@ -5,6 +5,11 @@ import petsc4py
 from petsc4py import PETSc
 import slepc4py
 from slepc4py import SLEPc
+import matplotlib.pyplot as plt
+
+import matplotlib
+matplotlib.interactive(False)
+
 
 
 class GOFMM_Kernel(object):
@@ -14,7 +19,7 @@ class GOFMM_Kernel(object):
         self.rt.init_with_MPI(comm)
         self.comm = comm
         if not petsc:
-            self.K = PyGOFMM.KernelMatrix(comm, sources, targets, kstring, config)
+            self.K = PyGOFMM.KernelMatrix(comm, sources, targets, kstring, config, 1)
         self.size = N
         if petsc:
             if(targets==None):
@@ -68,11 +73,11 @@ class GOFMM_Kernel(object):
         GOFMM_y.redistribute(GOFMM_x)
         return GOFMM_y
 
-    def redistribute(self, X, d, n, nper, form="petsc"):
+    def redistribute(self, X, d, n, nper, form="petsc", transpose=True):
         with X as x:
-            x = x.reshape(nper, d)
+            if(transpose):
+                x = x.reshape(nper, d, order='C')
             x = np.asfortranarray(x)
-            #x = np.asfortranarray(np.transpose(x))
             GOFMM_x = PyGOFMM.PyDistData_RIDS(self.comm, n, d, darr=x.astype('float32'))
             GOFMM_y = self.redistribute_hmlp(GOFMM_x)
             if(form=="petsc"):
@@ -101,8 +106,34 @@ class GOFMM_Kernel(object):
                 for i in range(len(x)):
                     x[i] = GOFMM_b[i, 0]
 
+#For standard K Means
+def computeCenters(A, GOFMM_points, GOFMM_classes, nclasses=2):
+    gofmm = A.getPythonContext()
+    comm = gofmm.getMPIComm()
+    nprocs = comm.Get_size()
+    rids = GOFMM_classes.getRIDS()
+    local_rows = len(rids)
+    d = GOFMM_points.cols()    
 
-def KMeansLookup(A, GOFMM_classes, nclasses=2):
+    centroids_local = np.zeros([nclasses, d], dtype='float32', order='F')
+    centroids = np.copy(centroids_local)
+
+    counts = np.zeros([nclasses, 1], dtype='float32')
+    for r in rids:
+        c = (int)(GOFMM_classes[r, 0] - 1)
+        for l in range(d):
+            centroids_local[c, l] +=  GOFMM_points[r, l]
+        counts[c] += 1
+
+    for i in range(nclasses):
+        centroids_local[i, :] = centroids_local[i, :]/counts[i]
+    
+    comm.Allreduce(centroids_local, centroids, op=MPI.SUM)
+
+    return centroids/nprocs
+
+#setup lookup matricies
+def KMeansPrep(A, GOFMM_classes, nclasses):
     #generate class indicator matrix H
     gofmm = A.getPythonContext()
     comm = gofmm.getMPIComm()
@@ -116,46 +147,42 @@ def KMeansLookup(A, GOFMM_classes, nclasses=2):
    # H = PyGOFMM.PyDistData_RIDS(comm, problem_size, nclasses, iset=rids.astype('int32'), darr=np.asfortranarray(np.transpose(local_H)))
     H = PyGOFMM.PyDistData_RIDS(comm, problem_size, nclasses, iset=rids.astype('int32'), darr=local_H)
 
-    print("H DistData object, RID order")
-    print(H[rids[0], 0])
-    print(H[rids[0], 1])
-    print(H[rids[1], 0])
-    print(H[rids[1], 1])
-
-    print(" ")
-    print("H local numpy array, self ordering")
-    print(local_H[0, 0])
-    print(local_H[0, 1])
-    print(local_H[1, 0])
-    print(local_H[1, 1])
-
     #generate vector of ones
     local_ones = np.ones([local_rows, 1], dtype='float32', order='F')
     Ones = PyGOFMM.PyDistData_RIDS(comm, problem_size, 1, iset=rids.astype('int32'), darr=local_ones)
 
+    #generate test vector of half ones and half zeros
+    rank = comm.Get_rank()
+    if rank==0:
+        local_test1 = np.ones([local_rows, 1], dtype='float32', order='F')
+    else:
+        local_test1 = np.zeros([local_rows, 1], dtype='float32', order='F')
+    global_test1 = PyGOFMM.PyDistData_RIDS(comm, problem_size, 1, iset=rids.astype('int32'), darr=local_test1)
+
+
+    rank = comm.Get_rank()
+    if rank==1:
+        local_test2 = np.ones([local_rows, 1], dtype='float32', order='F')
+    else:
+        local_test2 = np.zeros([local_rows, 1], dtype='float32', order='F')
+    global_test2 = PyGOFMM.PyDistData_RIDS(comm, problem_size, 1, iset=rids.astype('int32'), darr=local_test2)
+
+
+    DT1 = gofmm.mult_hmlp(global_test1)
+    DT2 = gofmm.mult_hmlp(global_test2)
     D = gofmm.mult_hmlp(Ones)
     KH = gofmm.mult_hmlp(H)
-    
-    print("Result of K * Ones")
-    print(D[rids[0], 0]) 
 
-    print("Result of K * H")
-    print(KH[rids[0], 0])
-    print(KH[rids[0], 1])
-    print("Sum of ", KH[rids[0], 0] + KH[rids[0], 1])
-   
-
-    print("Dist H to Array() ") 
-    print(H.toArray())
-    print("\nLocal Numpy array() ")
-    print(local_H)
+    print(DT1[rids[0], 0])
+    print(DT2[rids[0], 0])
+    print(D[rids[0], 0])    
 
     #Generate HKH, HDH, DKH
     HKH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
     HDH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
     DKH = np.zeros([local_rows, nclasses], dtype='float32', order='F')
 
-    #TODO: Check this in the morning if the indicies are correct
+    #TODO: Recheck if the indicies are correct
     for i in range(nclasses):
         for j in range(nclasses):
             for r in rids:
@@ -166,38 +193,41 @@ def KMeansLookup(A, GOFMM_classes, nclasses=2):
         for j in range(nclasses): 
             DKH[i, j] = 1/D[rids[i], 0] * KH[rids[i], j]
     
-    HKH = np.copy(HKH_local)
-    HDH = np.copy(HDH_local)
+    HKH = np.zeros(HKH_local.shape, dtype='float32', order='F')
+    HDH = np.zeros(HDH_local.shape, dtype='float32', order='F')
     comm.Allreduce(HKH_local, HKH, op=MPI.SUM)
     comm.Allreduce(HDH_local, HDH, op=MPI.SUM)
-
-    return (DKH, HKH, HDH) 
+    return (D, DKH, HKH, HDH) 
 
 petsc4py.init(comm=MPI.COMM_WORLD)
 nprocs = MPI.COMM_WORLD.Get_size()
+rank = MPI.COMM_WORLD.Get_rank()
 
-N_per = 2000
+N_per = 4000
 N = N_per*nprocs
 d = 3
-
-conf = PyGOFMM.PyConfig("GEOMETRY_DISTANCE", N, 128, 64, 128, 0.0001, 0, True)
+print("I'm rank: , ", rank)
+conf = PyGOFMM.PyConfig("GEOMETRY_DISTANCE", N, 128, 64, 128, 0.0001, 0.01, True)
 comm_petsc = PETSc.COMM_WORLD
 comm_mpi = MPI.COMM_WORLD
 
 #Set up artificial points (two classes)
-class_1 = np.random.randn(d, (int)(np.floor(N_per/2)))
-class_2 = np.random.randn(d, (int)(np.ceil(N_per/2))) + 10
+class_1 = np.random.randn(d, (int)(np.floor(N_per/2))) + 10
+class_2 = np.random.randn(d, (int)(np.ceil(N_per/2)))
 test_points = np.concatenate((class_1, class_2), axis=1) #data points shape = (d, N_per)
 true_classes = np.ones([1, N_per]) #class vector (pi)
 classes = np.ones([1, N_per])
 for i in range(true_classes.shape[1]):
-    if(i>(N_per/2)):
+    if(i>=(N_per/2)):
         true_classes[0, i] = 2
-    if(np.random.rand() > 0.5):
+    if(np.random.rand() > 0.75):
         classes[0, i] = 2
+    #if(np.random.rand() < 0.25):
+    #    classes[0, i] = 3;
 
 
 test_points = np.asfortranarray(test_points.astype('float32'))
+#print(test_points)
 source_points = PETSc.Vec().createWithArray(test_points)
 true_classes = PETSc.Vec().createWithArray(true_classes)
 classes = PETSc.Vec().createWithArray(classes)
@@ -212,9 +242,9 @@ redistributed_classes = gofmm.redistribute(classes, 1, N, nper=N_per, form="hmlp
 points_rids = redistributed_points.getRIDS()
 classes_rids = redistributed_points.getRIDS()
 print(np.array_equal(points_rids, classes_rids))
-#dim = 2
+
 #for i in points_rids:
-#    print("Point: ", redistributed_points[i, dim], "Class: ", redistributed_classes[i, 0])
+#    print("RID: ", i, " Class: ", redistributed_true_classes[i, 0], "Point", redistributed_points[i, 0], ", ", redistributed_points[i, 1], ", ", redistributed_points[i, 2])
 
 #set up gofmm operator
 A = PETSc.Mat().createPython( [N, N], comm=comm_petsc)
@@ -224,6 +254,7 @@ A.setUp()
 #Renaming for convenience
 classes = redistributed_classes
 points = redistributed_points
+true_classes = redistributed_true_classes
 
 #####################
 #Start K Means
@@ -232,10 +263,55 @@ points = redistributed_points
 #   - DKH = D^-1 K H
 #   - HKH = H^t K H
 #   - HDH = H^t D H
+k = 2
 
-#Generate these matricies
-(DKH, HKH, HDH) = KMeansLookup(A, classes)
-print(HKH)
-print(HDH)
+#Main loop
+
+#print(classes.toArray())
+#print(true_classes.toArray())
+#print(np.array_equal(classes, true_classes))
+#print(classes.getRIDS())
+np_points = points.toArray()
+np_classes = classes.toArray()
+#plt.scatter(np_points[:, 0], np_points[:, 1], c=np_classes.flatten())
+#plt.show()
+
+maxitr = 1
+for i in range(maxitr):
+    #Generate these matricies
+    (D, DKH, HKH, HDH) = KMeansPrep(A, classes, k)
+
+    #Get diagonal (alternatively just assume Diag=1)
+    #Diag = A.getDiagonal()
+    rids = points.getRIDS()
+    local_rows = len(rids)
+    d = points.cols()
+    Diag = np.ones([local_rows, 1])
+    #Compute similarity 
+    Similarity = np.zeros([local_rows, k], dtype='float32', order='F')
+    for i in range(local_rows):
+        for p in range(k):
+            Similarity[i, p] = Diag[i]/(D[rids[i], 0]*D[rids[i], 0]) - 2 * DKH[i, p]/HDH[p, p] + HKH[p, p]/(HDH[p, p] * HDH[p, p])
+
+    #print(Similarity)
+    #Compute fit Need complement of H_local
+    #quality = np.zeros([1, k], dtype='float32', order='F')
+    #for i in range(k):
+    #    quality[1, i] += HKH[i, i]
+
+    for i in range(local_rows):
+        classes[rids[i], 0] = np.argmin(Similarity[i, :])+1
+    print(classes.toArray())
+    print(classes[rids[0], 0])
+    print(classes[rids[1], 0])
+
+np_classes = classes.toArray()
+np_true_classes = true_classes.toArray()
+
+plt.scatter(np_points[:, 0], np_points[:, 1], c=np_classes.flatten())
+plt.show()
 
 
+#print(classes.toArray())
+#print(true_classes.toArray())
+#print(np.array_equal(classes, true_classes))

@@ -15,6 +15,7 @@ cimport mpi4py.libmpi as libmpi
 #Import from cython: cpp
 from libcpp.pair cimport pair
 from libcpp cimport vector
+from libcpp.map cimport map
 
 #Import from cython: c
 from libc.math cimport sqrt
@@ -517,6 +518,7 @@ cdef class PyDistData_RBLK:
 cdef class PyDistData_RIDS:
     cdef RIDS_STAR_DistData[float]* c_data
     cdef MPI.Comm our_comm
+    cdef map[size_t, size_t] rid2row
 
     @cython.boundscheck(False)
     def __cinit__(self, MPI.Comm comm,size_t m=0, size_t n=0, size_t mper = 0, str fileName=None, int[:] iset=None, float[::1,:] darr=None, float[:] arr=None, PyTreeKM tree=None, PyData data=None, PyDistData_RIDS ddata=None):
@@ -567,6 +569,8 @@ cdef class PyDistData_RIDS:
             with nogil:
                 self.c_data = new RIDS_STAR_DistData[float](m, n, vec, comm.ob_mpi)
 
+        self.rid2row = self.c_data.getMap()
+
     def __dealloc__(self):
         print("Cython: Running __dealloc___ for PyDistData Object")
         free(self.c_data)
@@ -601,6 +605,12 @@ cdef class PyDistData_RIDS:
         cdef float[:] mv = <float[:self.c_data.size()]> local_data
         np_arr = np.asarray(mv, order='F', dtype='float32').reshape((self.rows_local(),self.cols_local()),order='F')
         return np_arr
+
+    def __setitem__(self, pos, float v):
+        i, j = pos
+        i = self.rid2row[i]
+        self.c_data.setvalue(<size_t>i, <size_t>j, v)
+
 
 #@staticmethod
     #def Loop2d(MPI.Comm comm, float[:,:] darr):

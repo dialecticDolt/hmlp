@@ -3,6 +3,7 @@ from libcpp cimport bool as bool_t
 from libcpp.vector cimport vector
 from libcpp.string cimport string
 from libcpp.pair cimport pair
+from libcpp.map cimport map
 cimport  mpi4py.libmpi as libmpi
 
 
@@ -153,7 +154,8 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         #bookkeeping
         vector[vector[size_t]] RBLKOwnership() except +
         vector[size_t] getRIDS()
-        
+        map[size_t, size_t] getMap()
+ 
     cdef cppclass STAR_STAR_DistData[T](DistDataBase[T]):
         #This is an empty class in chenhan's code
         STAR_STAR_DistData(size_t, size_t, int, libmpi.MPI_Comm) except +
