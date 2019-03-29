@@ -174,6 +174,9 @@ def KMeansPrep(A, GOFMM_classes, nclasses):
 
     KH = gofmm.mult_hmlp(H)
     #print("RID: ", rids[0])
+    if True:
+        np.savetxt('D_'+str(rank), D.toArray())
+        np.savetxt('rids_'+str(rank), rids)
     if 2031 in rids:
         print("RID: 2031 on rank", rank)
         print("\tOnes on Rank0, Zeros elsewhere")
