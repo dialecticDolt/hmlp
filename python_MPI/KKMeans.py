@@ -171,11 +171,17 @@ def KMeansPrep(A, GOFMM_classes, nclasses):
     DT1 = gofmm.mult_hmlp(global_test1)
     DT2 = gofmm.mult_hmlp(global_test2)
     D = gofmm.mult_hmlp(Ones)
-    KH = gofmm.mult_hmlp(H)
 
-    print(DT1[rids[0], 0])
-    print(DT2[rids[0], 0])
-    print(D[rids[0], 0])    
+    KH = gofmm.mult_hmlp(H)
+    #print("RID: ", rids[0])
+    if 2031 in rids:
+        print("RID: 2031 on rank", rank)
+        print("\tOnes on Rank0, Zeros elsewhere")
+        print("\tResult of K times [111, 000]: ", DT1[2031, 0])
+        print("\tZeros on Rank0, Ones elsewhere")
+        print("\tResult of K times [000, 111]: ", DT2[2031, 0])
+        print("\tArray of all ones")
+        print("\tResult of K times [1111,1111]: ", D[2031, 0])    
 
     #Generate HKH, HDH, DKH
     HKH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
@@ -203,28 +209,39 @@ petsc4py.init(comm=MPI.COMM_WORLD)
 nprocs = MPI.COMM_WORLD.Get_size()
 rank = MPI.COMM_WORLD.Get_rank()
 
-N_per = 4000
+N_per = (int)(4000/nprocs)
 N = N_per*nprocs
 d = 3
-print("I'm rank: , ", rank)
+print("Points per processor", N_per)
+print("Total problem size", N)
+print("I'm rank: ", rank)
 conf = PyGOFMM.PyConfig("GEOMETRY_DISTANCE", N, 128, 64, 128, 0.0001, 0.01, True)
 comm_petsc = PETSc.COMM_WORLD
 comm_mpi = MPI.COMM_WORLD
-
+np.random.seed(10)
 #Set up artificial points (two classes)
-class_1 = np.random.randn(d, (int)(np.floor(N_per/2))) + 10
-class_2 = np.random.randn(d, (int)(np.ceil(N_per/2)))
+#class_1 = np.random.randn(d, (int)(np.floor(N_per/2)))+2
+#class_2 = np.random.randn(d, (int)(np.ceil(N_per/2)))
+#test_points = np.concatenate((class_1, class_2), axis=1) #data points shape = (d, N_per)
+
+
+#Set up artificial points (two classes) that are the same no matter how many processors
+class_1 = np.random.randn(d, (int)(np.floor(N/2)))+5
+class_2 = np.random.randn(d, (int)(np.ceil(N/2)))
 test_points = np.concatenate((class_1, class_2), axis=1) #data points shape = (d, N_per)
+
+print("This is the point with GID 2031 at creation: ", test_points[:, 2031])
+
+test_points = test_points[:, rank*N_per:(rank+1)*N_per]
 true_classes = np.ones([1, N_per]) #class vector (pi)
 classes = np.ones([1, N_per])
 for i in range(true_classes.shape[1]):
-    if(i>=(N_per/2)):
+    if(np.linalg.norm(test_points[:, i])>=2):
         true_classes[0, i] = 2
-    if(np.random.rand() > 0.75):
+    if(np.random.rand() > 0.5):
         classes[0, i] = 2
     #if(np.random.rand() < 0.25):
     #    classes[0, i] = 3;
-
 
 test_points = np.asfortranarray(test_points.astype('float32'))
 #print(test_points)
@@ -241,10 +258,12 @@ redistributed_classes = gofmm.redistribute(classes, 1, N, nper=N_per, form="hmlp
 #check that classes are still with corresponding points
 points_rids = redistributed_points.getRIDS()
 classes_rids = redistributed_points.getRIDS()
-print(np.array_equal(points_rids, classes_rids))
+#print(np.array_equal(points_rids, classes_rids))
 
 #for i in points_rids:
-#    print("RID: ", i, " Class: ", redistributed_true_classes[i, 0], "Point", redistributed_points[i, 0], ", ", redistributed_points[i, 1], ", ", redistributed_points[i, 2])
+print("This is the point after redistribution")
+if 2031 in points_rids:
+    print("RID: ", 2031, " Class: ", redistributed_true_classes[2031, 0], "Point: (", redistributed_points[2031, 0], ", ", redistributed_points[2031, 1], ", ", redistributed_points[2031, 2], ") is on rank", rank)
 
 #set up gofmm operator
 A = PETSc.Mat().createPython( [N, N], comm=comm_petsc)
@@ -301,9 +320,9 @@ for i in range(maxitr):
 
     for i in range(local_rows):
         classes[rids[i], 0] = np.argmin(Similarity[i, :])+1
-    print(classes.toArray())
-    print(classes[rids[0], 0])
-    print(classes[rids[1], 0])
+    #print(classes.toArray())
+    #print(classes[rids[0], 0])
+    #print(classes[rids[1], 0])
 
 np_classes = classes.toArray()
 np_true_classes = true_classes.toArray()
