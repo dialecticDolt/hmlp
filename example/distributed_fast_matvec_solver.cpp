@@ -20,6 +20,7 @@
 
 /** Use MPI-GOFMM templates. */
 #include <gofmm_mpi.hpp>
+#include <algorithm>
 /** Use dense SPD matrices. */
 #include <containers/SPDMatrix.hpp>
 /** Use implicit kernel matrices (only coordinates are stored). */
@@ -39,7 +40,7 @@ int main( int argc, char *argv[] )
     /** Use float as data type. */
     using T = float;
     /** [Required] Problem size. */
-    size_t n = 2001;
+    size_t n = 4000;
     /** Maximum leaf node size (not used in neighbor search). */
     size_t m = 128;
     /** [Required] Number of nearest neighbors. */
@@ -54,6 +55,9 @@ int main( int argc, char *argv[] )
     size_t nrhs = 10;
     /** Regularization for the system (K+lambda*I). */
     T lambda = 1.0;
+    
+    // rand seed
+    srand(1);
 
     /** MPI (Message Passing Interface): check for THREAD_MULTIPLE support. */
     int  provided;
@@ -69,59 +73,69 @@ int main( int argc, char *argv[] )
     HANDLE_ERROR( hmlp_init( &argc, &argv, CommGOFMM ) );
 
     /** [Step#1] Create a configuration for generic SPD matrices. */
-    gofmm::Configuration<T> config1( ANGLE_DISTANCE, n, m, k, s, stol, budget );
-    /** [Step#2] Create a dense random SPD matrix. */
-    SPDMatrix<T> K1( n, n ); K1.randspd( 0.0, 1.0 );
-    /** Broadcast K to all other rank. */
-    mpi::Bcast( K1.data(), n * n, 0, CommGOFMM );
-    /** [Step#3] Create randomized and center splitters. */
-    mpigofmm::randomsplit<SPDMatrix<T>, 2, T> rkdtsplitter1( K1 );
-    mpigofmm::centersplit<SPDMatrix<T>, 2, T> splitter1( K1 );
-    /** [Step#4] Perform the iterative neighbor search. */
-    auto neighbors1 = mpigofmm::FindNeighbors( K1, rkdtsplitter1, config1, CommGOFMM );
-    printf( "finish find Neighbors\n" ); fflush( stdout );
-    /** [Step#5] Compress the matrix with an algebraic FMM. */
-    auto* tree_ptr1 = mpigofmm::Compress( K1, neighbors1, splitter1, rkdtsplitter1, config1, CommGOFMM );
-    auto& tree1 = *tree_ptr1;
+    //gofmm::Configuration<T> config1( ANGLE_DISTANCE, n, m, k, s, stol, budget,false );
+    ///** [Step#2] Create a dense random SPD matrix. */
+    //SPDMatrix<T> K1( n, n ); K1.randspd( 0.0, 1.0 );
+    ///** Broadcast K to all other rank. */
+    //mpi::Bcast( K1.data(), n * n, 0, CommGOFMM );
+    ///** [Step#3] Create randomized and center splitters. */
+    //mpigofmm::randomsplit<SPDMatrix<T>, 2, T> rkdtsplitter1( K1 );
+    //mpigofmm::centersplit<SPDMatrix<T>, 2, T> splitter1( K1 );
+    ///** [Step#4] Perform the iterative neighbor search. */
+    //auto neighbors1 = mpigofmm::FindNeighbors( K1, rkdtsplitter1, config1, CommGOFMM );
+    //printf( "finish find Neighbors\n" ); fflush( stdout );
+    ///** [Step#5] Compress the matrix with an algebraic FMM. */
+    //auto* tree_ptr1 = mpigofmm::Compress( K1, neighbors1, splitter1, rkdtsplitter1, config1, CommGOFMM );
+    //auto& tree1 = *tree_ptr1;
 
-    //printf( "Here\n" ); fflush( stdout );
-    /** Report the source and destination rank of an index. */
-    for ( int gid = comm_rank; gid < n; gid += comm_size )
-    {
-      //printf( "Here before\n" ); fflush( stdout );
-      printf( "gid %4d source [BLK] %2d destination [IDS] %2d\n", 
-          gid, gid % comm_size, tree1.Index2Rank( gid ) ); fflush( stdout );
-      //printf( "Here after\n" ); fflush( stdout );
-    }
+    ////printf( "Here\n" ); fflush( stdout );
+    ///** Report the source and destination rank of an index. */
+    //for ( int gid = comm_rank; gid < n; gid += comm_size )
+    //{
+    //  //printf( "Here before\n" ); fflush( stdout );
+    //  printf( "gid %4d source [BLK] %2d destination [IDS] %2d\n", 
+    //      gid, gid % comm_size, tree1.Index2Rank( gid ) ); fflush( stdout );
+    //  //printf( "Here after\n" ); fflush( stdout );
+    //}
 
-    /** [Step#6] Compute an approximate MATVEC. */
+    ///** [Step#6] Compute an approximate MATVEC. */
     size_t n_loc = n / comm_size;
     size_t n_cut = n % comm_size;
-    if ( comm_rank < n_cut ) n_loc ++; 
+    size_t n_start = n_loc * (comm_rank);
+    if ( comm_rank < n_cut )
+    {
+        n_loc ++;
+        n_start += comm_rank;
+    }
     /** Initialize w1_local using std::vector. */
     vector<T> w1_local( n_loc * nrhs, 1.0 );
-    /** Use copy constuctor for std::vector. */
-    DistData<RBLK, STAR, T> w1_rblk( n, nrhs, w1_local, CommGOFMM );
-    /** Redistribute from RBLK to RIDS distribution. */
-    DistData<RIDS, STAR, T> w1( n, nrhs, tree1.treelist[ 0 ]->gids, CommGOFMM );
-    w1 = w1_rblk;
-    //DistData<RIDS, STAR, T> w1( n, nrhs, tree1.treelist[ 0 ]->gids, CommGOFMM ); w1.randn();
-    auto u1 = mpigofmm::Evaluate( tree1, w1 );
-    /** Redistribute from RIDS back to RBLK. */
-    DistData<RBLK, STAR, T> u1_rblk( n, nrhs, CommGOFMM );
-    u1_rblk = u1;
-    /** [Step#7] Factorization (HSS using ULV). */
-    mpigofmm::DistFactorize( tree1, lambda ); 
-    /** [Step#8] Solve (K+lambda*I)w = u approximately with HSS. */
-    auto x1 = u1;
-    mpigofmm::DistSolve( tree1, x1 ); 
+    ///** Use copy constuctor for std::vector. */
+    //DistData<RBLK, STAR, T> w1_rblk( n, nrhs, w1_local, CommGOFMM );
+    ///** Redistribute from RBLK to RIDS distribution. */
+    //DistData<RIDS, STAR, T> w1( n, nrhs, tree1.treelist[ 0 ]->gids, CommGOFMM );
+    //w1 = w1_rblk;
+    ////DistData<RIDS, STAR, T> w1( n, nrhs, tree1.treelist[ 0 ]->gids, CommGOFMM ); w1.randn();
+    //auto u1 = mpigofmm::Evaluate( tree1, w1 );
+    ///** Redistribute from RIDS back to RBLK. */
+    //DistData<RBLK, STAR, T> u1_rblk( n, nrhs, CommGOFMM );
+    //u1_rblk = u1;
+    ///** [Step#7] Factorization (HSS using ULV). */
+    //mpigofmm::DistFactorize( tree1, lambda ); 
+    ///** [Step#8] Solve (K+lambda*I)w = u approximately with HSS. */
+    //auto x1 = u1;
+    //mpigofmm::DistSolve( tree1, x1 ); 
 
     /** [Step#1] Create a configuration for kernel matrices. */
-    gofmm::Configuration<T> config2( GEOMETRY_DISTANCE, n, m, k, s, stol, budget );
+    gofmm::Configuration<T> config2( GEOMETRY_DISTANCE, n, m, k, s, stol, budget,true);
     /** [Step#2] Create a Gaussian kernel matrix with random 6D data. */
-    size_t d = 6;
+    size_t d = 3;
     /** Create local random point cloud. */
-    Data<T> X_local( d, n_loc ); X_local.randn();
+    Data<T> X_global( d, n ); X_global.randn();
+    std::vector<size_t> II(d);
+    std::iota(II.begin(),II.end(),0);
+    std::vector<size_t> JJ(n_loc);
+    std::iota(JJ.begin(),JJ.end(),n_start);
+    Data<T> X_local = X_global(II,JJ);
     /** Create distributed random point cloud. */
     DistData<STAR, CBLK, T> X( d, n, X_local, CommGOFMM );
     DistKernelMatrix<T, T> K2( X, CommGOFMM );
@@ -134,13 +148,30 @@ int main( int argc, char *argv[] )
     auto* tree_ptr2 = mpigofmm::Compress( K2, neighbors2, splitter2, rkdtsplitter2, config2, CommGOFMM );
     auto& tree2 = *tree_ptr2;
     /** [Step#6] Compute an approximate MATVEC. */
-    DistData<RIDS, STAR, T> w2( n, nrhs, tree1.treelist[ 0 ]->gids, CommGOFMM ); w2.randn();
+    auto rids = tree2.treelist[0]->gids;
+    DistData<RIDS, STAR, T> w2( n, nrhs, tree2.treelist[ 0 ]->gids, w1_local,CommGOFMM ); 
+    //w2.fill(1.0);
     auto u2 = mpigofmm::Evaluate( tree2, w2 );
-    /** [Step#7] Factorization (HSS using ULV). */
-    mpigofmm::DistFactorize( tree2, lambda ); 
-    /** [Step#8] Solve (K+lambda*I)w = u approximately with HSS. */
-    auto x2 = u2;
-    mpigofmm::DistSolve( tree2, x2 ); 
+    auto rid_post = u2.getRIDS();
+    
+    size_t rid_sel = 2031;
+    auto rid_it =  std::find(rids.begin(), rids.end(), rid_sel);
+    bool cont_rid = rid_it != rids.end();
+
+    if (cont_rid)
+    {
+        std::cout << "Post multiply , rank " << comm_rank << std::endl;
+        std::cout << "    RID pre: " << rid_sel << std::endl;
+        std::cout << "    Val pos: " << u2[rid_sel,0] << std::endl;
+    }
+
+
+
+    ///** [Step#7] Factorization (HSS using ULV). */
+    //mpigofmm::DistFactorize( tree2, lambda ); 
+    ///** [Step#8] Solve (K+lambda*I)w = u approximately with HSS. */
+    //auto x2 = u2;
+    //mpigofmm::DistSolve( tree2, x2 ); 
 
     /** [Step#9] HMLP API call to terminate the runtime. */
     HANDLE_ERROR( hmlp_finalize() );
