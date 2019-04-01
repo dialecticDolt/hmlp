@@ -1346,6 +1346,17 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
     };
 
 
+    /** 
+     * DANGEROUS FUNCTION (use wisely)
+     * overwrites rids/rids2row but does not move data
+     */
+    void UpdateRIDS(std::vector<size_t> new_rids)
+    {
+      this->rids = new_rids;
+
+      for ( size_t i = 0; i < new_rids.size(); i ++ )
+        this->rid2row[ new_rids[ i ] ] = i;      
+    }
 
 
 

@@ -65,32 +65,32 @@ def printOwnership(s,pcomm=comm,prank = print_rank):
 c_data = np.arange(start=d*rank*m_per, stop=d*(rank+1)*m_per).astype('float32')+0.25
 localdata = np.asfortranarray(np.reshape(c_data,(m_per,d),order='F'))
 
-pprint(" -- original data (np) --")
-pprint(localdata[0,0])
-pprint(localdata[0,1])
-pprint(localdata[1,0])
-pprint(localdata[1,1])
+#pprint(" -- original data (np) --")
+#pprint(localdata[0,0])
+#pprint(localdata[0,1])
+#pprint(localdata[1,0])
+#pprint(localdata[1,1])
 
 pprint("Testing organization of RIDS DistData",comm)
 localrids = np.asfortranarray(np.arange(start=rank*m_per, stop=(rank+1)*m_per).astype('int32'))
-#pprint("Orig locals ",comm)
-#pprint(localrids,comm)
+cont_rids = localrids
+pprint("Orig locals ",comm)
+pprint(localrids,comm)
 RIDS_contiguous = PyDistData_RIDS(comm, m,d, darr=localdata, iset=localrids)
 
 
-#pprint("Ownership of contiguous",comm)
-#printOwnership(RIDS_contiguous,comm)
-pprint(" -- RIDS cont obj  --")
-pprint(RIDS_contiguous[localrids[0],0])
-pprint(RIDS_contiguous[localrids[0],1])
-pprint(RIDS_contiguous[localrids[1],0])
-pprint(RIDS_contiguous[localrids[1],1])
+pprint("Ownership of contiguous",comm)
+printOwnership(RIDS_contiguous,comm)
+#pprint(" -- RIDS cont obj  --")
+#pprint(RIDS_contiguous[localrids[0],0])
+#pprint(RIDS_contiguous[localrids[0],1])
+#pprint(RIDS_contiguous[localrids[1],0])
+#pprint(RIDS_contiguous[localrids[1],1])
 
 np.random.seed(3)
 globalrids = np.asfortranarray(np.arange(start=0, stop = m).astype('int32'))
 np.random.shuffle(globalrids)
 localrids = globalrids[(rank*m_per):(rank+1)*m_per]
-#
 #pprint(" ",comm)
 pprint("New locals",comm)
 pprint(localrids,comm)
@@ -99,26 +99,33 @@ pprint(localrids,comm)
 RIDS_arbitrary = PyDistData_RIDS(comm, m,d, iset=localrids)
 
 RIDS_arbitrary.redistribute(RIDS_contiguous)
-#pprint("Ownership of arbitrary",comm)
-#printOwnership(RIDS_arbitrary,comm)
-pprint(" -- RIDS arb obj  --")
-pprint(RIDS_arbitrary[localrids[0],0])
-pprint(RIDS_arbitrary[localrids[0],1])
-pprint(RIDS_arbitrary[localrids[1],0])
-pprint(RIDS_arbitrary[localrids[1],1])
-pprint(RIDS_arbitrary[localrids[d],0])
-pprint(RIDS_arbitrary[localrids[d],1])
+pprint("Ownership of arbitrary",comm)
+printOwnership(RIDS_arbitrary,comm)
+#pprint(" -- RIDS arb obj  --")
+#pprint(RIDS_arbitrary[localrids[0],0])
+#pprint(RIDS_arbitrary[localrids[0],1])
+#pprint(RIDS_arbitrary[localrids[1],0])
+#pprint(RIDS_arbitrary[localrids[1],1])
+#pprint(RIDS_arbitrary[localrids[d],0])
+#pprint(RIDS_arbitrary[localrids[d],1])
 
 
 
 # testing to array functionality
-bla = RIDS_arbitrary.toArray()
+#bla = RIDS_arbitrary.toArray()
+#
+#pprint(" -- np out obj  --")
+#pprint(bla[0,0])
+#pprint(bla[0,1])
+#pprint(bla[1,0])
+#pprint(bla[1,1])
 
-pprint(" -- np out obj  --")
-pprint(bla[0,0])
-pprint(bla[0,1])
-pprint(bla[1,0])
-pprint(bla[1,1])
+
+# test updateRIDS
+RIDS_arbitrary.updateRIDS(cont_rids)
+pprint("Ownership updated")
+printOwnership(RIDS_arbitrary,comm)
+
 
 prt.finalize()
 
