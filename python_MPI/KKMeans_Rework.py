@@ -135,6 +135,8 @@ class GOFMM_Kernel(object):
 def learnMapping(comm, D):
     reference_data = np.loadtxt('D_1p')
     reference_rids = np.loadtxt('rids_1p').astype('int32')
+    
+    print(len(reference_rids))
 
     local_target_rids = D.getRIDS().astype('int32')
     local_target_data = np.asarray(D.toArray(), order='C')
@@ -144,6 +146,8 @@ def learnMapping(comm, D):
 
     recvbuf = comm.allgather(local_target_rids)
     target_rids = np.concatenate(recvbuf, axis=0).astype('int32')
+
+    print(len(target_rids))
 
     ridsMap = dict()
     index1 = 0
@@ -197,11 +201,12 @@ def KMeansPrep(A, GOFMM_classes, D, nclasses, pre_rids, post_rids):
     gofmm = A.getPythonContext()
     comm = gofmm.getMPIComm()
     size = comm.Get_size()
-    rank = comm.Get_size()
+    rank = comm.Get_rank()
     rids = GOFMM_classes.getRIDS()
     local_rows = len(rids)
     problem_size = A.getSize()[0]
     local_H = np.zeros([local_rows, nclasses], dtype='float32', order='F')
+
     for i in range(local_rows):
         local_H[i, (int)(GOFMM_classes[rids[i], 0]-1) ] = 1.0
 
@@ -209,9 +214,9 @@ def KMeansPrep(A, GOFMM_classes, D, nclasses, pre_rids, post_rids):
 
     KH = gofmm.mult_hmlp(H)
 
-    KH = KH.updateRIDS(post_rids)
-    KH = gofmm.redistributeAny_hmlp(KH, pre_rids)
-
+    KH.updateRIDS(pre_rids)
+    KH = gofmm.redistributeAny_hmlp(KH, post_rids)
+    
     #Generate HKH, HDH, DKH
     HKH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
     HDH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
@@ -253,6 +258,12 @@ np.random.seed(10)
 class_1 = np.random.randn(d, (int)(np.floor(N/2)))+5
 class_2 = np.random.randn(d, (int)(np.ceil(N/2)))
 test_points = np.concatenate((class_1, class_2), axis=1) #data points shape = (d, N_per)
+
+offset = 0
+if rank==0:
+    test_points = test_points[:, rank*N_per:(rank+1)*N_per+offset]
+else:
+    test_points = test_points[:, rank*N_per+offset:(rank+1)*N_per+offset]
 
 N_per = test_points.shape[1]
 true_classes = np.ones([1, test_points.shape[1]]) #class vector (pi)
@@ -302,7 +313,7 @@ np_classes = classes.toArray()
 plt.scatter(np_points[:, 0], np_points[:, 1], c=np_classes.flatten())
 plt.show()
 
-maxitr = 1
+maxitr = 10
 rids = classes.getRIDS()
 local_rows = len(rids)
 problem_size = N
@@ -312,12 +323,32 @@ Ones = PyGOFMM.PyDistData_RIDS(comm_mpi, problem_size, 1, iset=rids.astype('int3
 D = gofmm.mult_hmlp(Ones)
 post_rids, pre_rids = learnMapping(comm_mpi, D)
 
-D = D.updateRIDS(pre_rids)
+if rids[10] in rids:
+    print("RIDS[10] ", rids[10])
+    print("D: Before redistribute")
+    print(D[rids[10], 0])
+    darr = D.toArray()
+    print(darr[10, 0])
+
+D.updateRIDS(pre_rids)
 D = gofmm.redistributeAny_hmlp(D, post_rids)
 
+if rids[10] in rids:
+    print("RIDS[10] ", rids[10])
+    print("D: After redistribute")
+    print(D[rids[10], 0])
+    darr = D.toArray()
+    print(darr[10, 0])
+
+if 350 in rids:
+    print(D[350, 0])
+
 print("LOOK HERE FOR MAPPINGS")
-print(post_rids)
-print(pre_rids)
+print("Post RIDS", post_rids)
+print("Pre RIDS", pre_rids)
+rids = points.getRIDS()
+print("Our RIDS BEFORE", rids)
+print("OUR RIDS AFTER", D.getRIDS())
 
 for i in range(maxitr):
     #Generate these matricies
@@ -342,9 +373,19 @@ for i in range(maxitr):
     #print(classes[rids[0], 0])
     #print(classes[rids[1], 0])
 
-np_classes = classes.toArray()
-np_true_classes = true_classes.toArray()
+np__classes = classes.toArray()
+np__true_classes = true_classes.toArray()
 
+#print(np_points)
+#comm = comm_mpi
+#recvbuf = comm.allgather(np__classes)
+#np_classes = np.concatenate(recvbuf, axis=0).astype('int32')
+#
+#recvbuf = comm.allgather(np_points)
+#np_points = np.concatenate(recvbuf, axis=0).astype('float32')
+#
+#print(np_points)
+#
 plt.scatter(np_points[:, 0], np_points[:, 1], c=np_classes.flatten())
 plt.show()
 
