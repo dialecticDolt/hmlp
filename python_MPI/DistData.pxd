@@ -154,6 +154,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         #bookkeeping
         vector[vector[size_t]] RBLKOwnership() except +
         vector[size_t] getRIDS()
+        void UpdateRIDS(vector[size_t])
         map[size_t, size_t] getMap()
  
     cdef cppclass STAR_STAR_DistData[T](DistDataBase[T]):

@@ -611,6 +611,12 @@ cdef class PyDistData_RIDS:
         i = self.rid2row[i]
         self.c_data.setvalue(<size_t>i, <size_t>j, v)
 
+    def updateRIDS(self,int[:] iset):
+        cdef vector[size_t] vec
+        vec.assign(&iset[0],&iset[0] + len(iset))
+        self.c_data.UpdateRIDS(vec)
+        self.rid2row = self.c_data.getMap()
+
 
 #@staticmethod
     #def Loop2d(MPI.Comm comm, float[:,:] darr):
@@ -1052,3 +1058,9 @@ cdef class KernelMatrix:
 
     def setBandwidth(self, float b):
         return  self.kernel.setBandwidth(b)
+    
+    def test_error(self,size_t ntest = 100,size_t nrhs = 10):
+        if(self.is_compressed):
+            self.tree.test_error(ntest,nrhs)
+        else:
+            raise Exception("KernelMatrix must be compressed before error can be tested")
