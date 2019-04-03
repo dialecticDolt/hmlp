@@ -8,6 +8,7 @@ class_1 = np.random.rand(d, (int)(np.floor(N/2)))*2
 class_2 = np.random.rand(d, (int)(np.ceil(N/2)))*2 + 5
 
 points = np.concatenate((class_1, class_2), axis=1) #shape = (d, N_per)
+points = np.asarray(points, dtype='float32', order='F')
 
 points.tofile("points")
 
