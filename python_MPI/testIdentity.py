@@ -52,7 +52,7 @@ def LoadLocalData(ntot,crank,csize,filename):
     #n_start, n_per = LocalCount(crank,csize,ntot)
     #local_data = full_array[:,n_start:(n_start + n_per)]
     cblk_idx = makeCBLKIndex(crank,csize,ntot)
-    local_data = full_data[:,cblk_idx]
+    local_data = full_array[:,cblk_idx]
 
     # ensure fortran ordering
     local_data = np.asfortranarray(local_data.astype('float32'))
@@ -147,7 +147,7 @@ print(" Before: ", bla1, " After: ",bla2)
 # Create multiply vector
 rids = KK.getTree().getGIDS()
 rhs_local,id_idx = CreateRHSLocal(rids,n,nrhs)
-#rhs_local = np.asfortranarray(np.ones([len(rids),nrhs]).astype('float32'))
+rhs_local = np.asfortranarray(np.ones([len(rids),nrhs]).astype('float32'))
 
 # load into distdata and multiply
 ww = pyg.PyDistData_RIDS(comm,m = n, n = nrhs,iset=rids, darr=rhs_local)
