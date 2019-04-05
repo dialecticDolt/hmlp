@@ -163,7 +163,6 @@ if 2031 in rids:
     lid = (int) (bla[0][0])
     uu_npy = uu.toArray()
     print(" U value at 2031    : ", uu[2031,0])
-    print(" U value at 2031(v) : ", uu.vecAccess(lid))
     print(" U value at 2031(np): ", uu_npy[lid])
 PrintKernelInfo(KK,id_idx,rank)
 
