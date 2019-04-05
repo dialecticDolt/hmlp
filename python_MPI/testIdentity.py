@@ -49,8 +49,10 @@ def LoadLocalData(ntot,crank,csize,filename):
     print(" Val should be > 2: ", full_array[0,3000])
 
     # extract my section
-    n_start, n_per = LocalCount(crank,csize,ntot)
-    local_data = full_array[:,n_start:(n_start + n_per)]
+    #n_start, n_per = LocalCount(crank,csize,ntot)
+    #local_data = full_array[:,n_start:(n_start + n_per)]
+    cblk_idx = makeCBLKIndex(crank,csize,ntot)
+    local_data = full_data[:,cblk_idx]
 
     # ensure fortran ordering
     local_data = np.asfortranarray(local_data.astype('float32'))
