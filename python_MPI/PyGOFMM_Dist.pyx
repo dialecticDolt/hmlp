@@ -451,9 +451,8 @@ cdef class PyDistData_RBLK:
             #From local copy of PyData object TODO: Fix this, same problem as CBLK
             self.c_data = new RBLK_STAR_DistData[float](m, n, deref(<Data[float]*>(PyData(data).c_data)), comm.ob_mpi)
         elif darr!=None and not (fileName or data!=None or arr!=None):
-            raise Exception('RBLK does not currently support loading from 2D numpy arrays')
             #Load data object from 2D numpy array
-            vec_sz = darr.shape[0] + darr.shape[1]
+            vec_sz = darr.shape[0] * darr.shape[1]
             with nogil:
                 vec.assign(&darr[0, 0], &darr[0,0] + vec_sz)
                 self.c_data = new RBLK_STAR_DistData[float](m, n, vec, comm.ob_mpi)
@@ -661,7 +660,6 @@ cdef class PyDistData_RIDS:
     #        printf("\n")
 
     #    comm.barrier()
-
 
     def getRank(self):
         return self.c_data.GetRank()
