@@ -8,7 +8,7 @@ cimport  mpi4py.libmpi as libmpi
 from DistData cimport *
 
 
-cdef extern from "/workspace/will/dev/hmlp/frame/containers/KernelMatrix.hpp" namespace "hmlp" nogil:
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/KernelMatrix.hpp" namespace "hmlp" nogil:
 
     ctypedef enum kernel_type:
         GAUSSIAN

@@ -9,7 +9,7 @@ from DistData cimport *
 from DistTree cimport *
 
 
-cdef extern from "/workspace/will/dev/hmlp/gofmm/igofmm_mpi.hpp" namespace "hmlp::mpigofmm" nogil:
+cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/igofmm_mpi.hpp" namespace "hmlp::mpigofmm" nogil:
 
     cdef void DistFactorize[T, TREE](TREE&, T) except +
     cdef void DistSolve[T, TREE](TREE&,Data[T]&) except +

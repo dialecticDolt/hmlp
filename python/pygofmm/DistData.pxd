@@ -9,7 +9,7 @@ cimport  mpi4py.libmpi as libmpi
 
 
 
-cdef extern from "/workspace/will/dev/hmlp/frame/base/DistData.hpp" namespace "hmlp" nogil:
+cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" nogil:
 
     ctypedef enum Distribution_t "Distribution_t":
         CBLK "CBLK",
