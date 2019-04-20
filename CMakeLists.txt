@@ -282,6 +282,30 @@ if(CVENV)
     endif()
   endforeach()
   
+  set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python)
+  set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python)
+  set(SETUP_PY_MPI_TRUE    ${PYTHON_BUILD_DIR}/setup.py)
+  file(GLOB pySRCs RELATIVE 
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/*.pxd
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/*.pyx
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/*.py
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/mltools/*.pxd
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/mltools/*.pyx
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/mltools/*.py
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py)
+  foreach(pyFILE ${pySRCs})
+    set(pyFILE_PATH ${PYTHON_SRC_DIR}/${pyFILE})
+    if(NOT IS_DIRECTORY ${pyFILE_PATH})
+        message(STATUS "Recurse -- configuring file ${pyFILE}")
+        if(${pyFILE} STREQUAL "setup.in.py")
+           configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/setup.py)
+        else()
+           configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/${pyFILE})
+        endif()
+    endif()
+  endforeach()
   
   #set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/new_python/setup.in.py)
   #set(SETUP_PY    ${CMAKE_BINARY_DIR}/new_python/setup.py)
@@ -317,6 +341,7 @@ IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install cython)")
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install numpy==1.11.3)")
   install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install mpi4py)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install petsc4py)")
 endif()
 	## Jump to the virtual environment.
 	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
@@ -331,8 +356,9 @@ endif()
 	
 
 	#install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix=${CMAKE_BINARY_DIR})")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY_MPI} build_ext --build-lib ${CMAKE_BINARY_DIR}/python_MPI/)")
+    #install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
+  #install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY_MPI} build_ext --build-lib ${CMAKE_BINARY_DIR}/python_MPI/)")
+  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY_MPI_TRUE} build_ext --build-lib ${CMAKE_BINARY_DIR}/python/)")
 endif()
 
 
