@@ -40,6 +40,7 @@ cdef class PyDistData_RIDS:
     cdef MPI.Comm our_comm
     cdef map[size_t, size_t] rid2row
     cdef columndata(self, int i)
+    cdef c_mult(self, RIDS_STAR_DistData[float] b)
 
 cdef class PyDistPairData:
     cdef STAR_CBLK_DistData[pair[float, size_t]]* c_data

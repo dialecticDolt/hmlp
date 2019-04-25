@@ -604,6 +604,34 @@ cdef class PyDistData_RIDS:
         self.c_data.UpdateRIDS(vec)
         self.rid2row = self.c_data.getMap()
 
+    def mult(self, PyDistData_RIDS b):
+        return self.c_mult(deref(b.c_data))
+
+    #Compute Self'*B
+    @cython.wraparound(False)
+    @cython.boundscheck(False)
+    @cython.nonecheck(False)
+    cdef c_mult(self, RIDS_STAR_DistData[float] b):
+        cdef float* b_data
+        cdef float* a_data
+        cdef int m, n, i, l, j, r
+        b_data = b.columndata(0)
+        a_data = self.c_data.columndata(0)
+        m = self.cols()
+        n = self.rows()
+        assert(n == b.row())
+        l = b.col()
+        cdef float[:, :] C = np.zeros([m, l], dtype='float32', order='F')
+        print(a_data[1])
+        a_data[1] = 100
+        print(a_data[1])
+        for i in xrange(m):
+            for j in xrange(l):
+                for r in prange(n, nogil=True):
+                    C[i, j] = 1
+        
+        return C
+
     cdef columndata(self, int i):
         cdef float * d
         d = deref(self.c_data).columndata(i)

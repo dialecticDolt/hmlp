@@ -91,7 +91,7 @@ ENDIF()
 IF("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
   # ---[ CLANG/CLANG++
   MESSAGE(STATUS "Clang compiler.")
-  MESSAGE(WARNING "You may need to install OpenMP. [e.g. brew install libomp]") 
+  MESSAGE(WARNING "You may need to install OpenMP. [e.g. brew install libomp]")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -O3 -Xpreprocessor -fopenmp -L/usr/local/opt/libomp/lib -lomp")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -fPIC -D_POSIX_C_SOURCE=200112L")
   SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64\",\"-DHMLP_USE_MPI")
@@ -100,7 +100,7 @@ IF("${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -fopenmp -lm")
 ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
   # ---[ GCC/G++
-  MESSAGE(STATUS "GNU compiler.") 
+  MESSAGE(STATUS "GNU compiler.")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -O3 -fopenmp -m64")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -fPIC -D_POSIX_C_SOURCE=200112L")
   # ---[ Line and branch coverage analysis.
@@ -115,7 +115,7 @@ ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -Wall -pedantic -fPIC -D_POSIX_C_SOURCE=200112L")
   SET(HMLP_CFLAGS "${HMLP_CFLAGS} -DUSE_INTEL")
   #SET(HMLP_PYTHON_CFLAGS     "-std=c++11 -O3 -qopenmp -arch x86_64 -m64")
-  
+
   SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64")
   #SET(HMLP_PYTHON_CFLAGS "-std=c++11\",\"-O3\",\"-qopenmp\",\"-m64\",\"-DHMLP_USE_MPI")
   #SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mkl=parallel")
@@ -156,9 +156,9 @@ if ($ENV{HMLP_USE_BLAS} MATCHES "true")
       #SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L${NETLIBROOT} -lblas -llapack")
       SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BLAS_LINKER_FLAGS} ${LAPACK_LINKER_FLAGS}")
     ELSE()
-      MESSAGE(FATAL_ERROR "Fail to link to BLAS/LAPACK library. Try to set HMLP_USE_BLAS=false.")  
+      MESSAGE(FATAL_ERROR "Fail to link to BLAS/LAPACK library. Try to set HMLP_USE_BLAS=false.")
     ENDIF()
-  ENDIF()     
+  ENDIF()
 ELSE()
   # ---[ HMLP will still compile, but the behavior of GOFMM is undefined.
   MESSAGE(WARNING "Compile without BLAS/LAPACK. GOFMM will not be available.")
@@ -187,7 +187,7 @@ if ($ENV{HMLP_ARCH_MAJOR} MATCHES "arm")
       include_directories ("${QSMLROOT}/include")
     else()
       message( WARNING "QSMLROOT is not defined" )
-      message( FATAL_ERROR "fail to link to a LAPACK library. Try to set HMLP_USE_BLAS=false." )  
+      message( FATAL_ERROR "fail to link to a LAPACK library. Try to set HMLP_USE_BLAS=false." )
     endif()
   else ()
     message( WARNING "compile without BLAS/LAPACK. GOFMM will not be available.")
@@ -196,7 +196,7 @@ endif ()
 
 
 
-# ---[ Vectorization 
+# ---[ Vectorization
 if ($ENV{HMLP_ARCH_MAJOR} MATCHES "arm")
   #set (HMLP_CFLAGS "-mfpu=neon -mfloat-abi=softfp -march=armv8-a")
   set (HMLP_CFLAGS            "${HMLP_CFLAGS} -ftree-vectorize")
@@ -236,16 +236,16 @@ if(CVENV)
   #set(INSTA_SH_IN ${hmlp_SOURCE_DIR}/python/install.in.sh)
   #set(INSTA_SH    ${CMAKE_BINARY_DIR}/python/install.sh)
   #senfigure_file(${INSTA_SH_IN} ${INSTA_SH})
- 
+
   #set(HMLP_PYX_IN ${hmlp_SOURCE_DIR}/python/hmlp.py)
   #set(HMLP_PYX    ${CMAKE_BINARY_DIR}/python/hmlp.pyx)
   #configure_file(${HMLP_PYX_IN} ${HMLP_PYX})
- 
+
   #set(GOFMM_PYX_IN ${hmlp_SOURCE_DIR}/python/gofmm.py)
   #set(GOFMM_PYX    ${CMAKE_BINARY_DIR}/python/gofmm.pyx)
   #configure_file(${GOFMM_PYX_IN} ${GOFMM_PYX})
 
-  
+
   set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/new_python)
   set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/new_python)
   set(SETUP_PY    ${PYTHON_BUILD_DIR}/setup.py)
@@ -263,7 +263,7 @@ if(CVENV)
       endif()
     endif()
   endforeach()
-  
+
   set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python_MPI)
   set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python_MPI)
   set(SETUP_PY_MPI    ${PYTHON_BUILD_DIR}/setup.py)
@@ -281,20 +281,16 @@ if(CVENV)
       endif()
     endif()
   endforeach()
-  
+
   set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python)
   set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python)
   set(SETUP_PY_MPI_TRUE    ${PYTHON_BUILD_DIR}/setup.py)
-  file(GLOB pySRCs RELATIVE 
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/*.pxd
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/*.pyx
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/*.py
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/mltools/*.pxd
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/mltools/*.pyx
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/pygofmm/mltools/*.py
+  file(GLOB_RECURSE pySRCs RELATIVE
     ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
     ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py)
+    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py
+
+    )
   foreach(pyFILE ${pySRCs})
     set(pyFILE_PATH ${PYTHON_SRC_DIR}/${pyFILE})
     if(NOT IS_DIRECTORY ${pyFILE_PATH})
@@ -306,11 +302,11 @@ if(CVENV)
         endif()
     endif()
   endforeach()
-  
+
   #set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/new_python/setup.in.py)
   #set(SETUP_PY    ${CMAKE_BINARY_DIR}/new_python/setup.py)
   #configure_file(${SETUP_PY_IN} ${SETUP_PY})
- 
+
   #set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/PyData.pyx)
   #set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/PyData.pyx)
   #configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
@@ -332,7 +328,7 @@ if(CVENV)
   #configure_file(${TEST_SCRIPT_IN} ${TEST_SCRIPT})
 
   #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
-  
+
 IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
   message(STATUS "Going to install python in build directory..")
   install(CODE "execute_process(COMMAND ${CVENV} --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
@@ -352,8 +348,8 @@ endif()
 	#install(CODE "execute_process(COMMAND easy_install -U pip)")
 	## Install Cython.
 	#install(CODE "execute_process(COMMAND pip install Cython)")
-	
-	
+
+
 
 	#install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix=${CMAKE_BINARY_DIR})")
     #install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
@@ -367,12 +363,12 @@ endif()
 
 # ---[ (OPTIONAL) MPI configurations
 if ($ENV{HMLP_USE_MPI} MATCHES "true")
-  message("MPI is enable") 
+  message("MPI is enable")
   find_package(MPI REQUIRED)
   include_directories(${MPI_CXX_INCLUDE_PATH})
   set(HMLP_CFLAGS          "${HMLP_CFLAGS} -DHMLP_USE_MPI")
 else ()
-  message("MPI is disable") 
+  message("MPI is disable")
 endif ()
 
 
@@ -459,14 +455,14 @@ file (GLOB KERNEL_SRC        ${hmlp_SOURCE_DIR}/kernel/${HMLP_ARCH}/*.cpp)
 file (GLOB PACKAGE_CXX_SRC   ${hmlp_SOURCE_DIR}/package/${HMLP_ARCH}/*.cpp)
 file (GLOB PACKAGE_CU_SRC    ${hmlp_SOURCE_DIR}/package/${HMLP_GPU_ARCH}/*.cu)
 
-FILE(GLOB CC_SRC 
+FILE(GLOB CC_SRC
   frame/external/*.c
   frame/base/*.cpp
   frame/mpi/*.cpp
   kernel/${HMLP_ARCH}/*.cpp
   package/${HMLP_ARCH}/*.cpp)
 
-FILE(GLOB CU_SRC 
+FILE(GLOB CU_SRC
   frame/*.cu
   frame/gofmm/*.cu
   package/${HMLP_GPU_ARCH}/*.cu)
@@ -481,9 +477,9 @@ LIST(APPEND INC include)
 ## Build the shared library.
 ## ---------------------------
 #if ($ENV{HMLP_USE_CUDA} MATCHES "true")
-#  cuda_add_library (hmlp SHARED 
+#  cuda_add_library (hmlp SHARED
 #else ()
-#  add_library (hmlp SHARED ${FRAME_CC_SRC} 
+#  add_library (hmlp SHARED ${FRAME_CC_SRC}
 #    ${FRAME_CXX_SRC} ${FRAME_MPI_CXX_SRC} ${KERNEL_SRC}
 #    ${PACKAGE_CXX_SRC})
 #endif ($ENV{HMLP_USE_CUDA} MATCHES "true")
@@ -551,7 +547,7 @@ INSTALL(DIRECTORY ${hmlp_SOURCE_DIR}/include DESTINATION .)
 
 # Build GOFMM executables.
 # ---------------------------
-FILE(GLOB TEST_CXX_SRC 
+FILE(GLOB TEST_CXX_SRC
   ${hmlp_SOURCE_DIR}/example/*.cpp)
 FOREACH(src ${TEST_CXX_SRC})
   GET_FILENAME_COMPONENT(exe ${src} NAME_WE)
@@ -640,8 +636,8 @@ IF(BUILD_MOCK_TESTS OR BUILD_UNIT_TESTS)
       "${CONFU_DEPENDENCIES_BINARY_DIR}/googletest")
     INCLUDE_DIRECTORIES("${GOOGLETEST_SOURCE_DIR}/googletest/include")
   ENDIF()
-  FILE(GLOB TEST_CXX_SRC 
-    ${hmlp_SOURCE_DIR}/test/*.cpp 
+  FILE(GLOB TEST_CXX_SRC
+    ${hmlp_SOURCE_DIR}/test/*.cpp
     ${hmlp_SOURCE_DIR}/test/*.cu)
   FOREACH(src ${TEST_CXX_SRC})
     GET_FILENAME_COMPONENT(exe ${src} NAME_WE)
@@ -666,14 +662,14 @@ IF(BUILD_MOCK_TESTS OR BUILD_UNIT_TESTS)
     ENDIF()
     SET_TARGET_PROPERTIES(${exe} PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
     SET_TARGET_PROPERTIES(${exe} PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
-    ADD_TEST(${exe} ${exe})  
+    ADD_TEST(${exe} ${exe})
     INSTALL(TARGETS ${exe} DESTINATION bin)
   ENDFOREACH()
 ENDIF()
 
 
 ADD_CUSTOM_TARGET(coverage
-  COMMAND gcovr -r ${hmlp_SOURCE_DIR} -e ${hmlp_SOURCE_DIR}/deps -e ${hmlp_SOURCE_DIR}/example -e ${hmlp_SOURCE_DIR}/test) 
+  COMMAND gcovr -r ${hmlp_SOURCE_DIR} -e ${hmlp_SOURCE_DIR}/deps -e ${hmlp_SOURCE_DIR}/example -e ${hmlp_SOURCE_DIR}/test)
 ADD_CUSTOM_TARGET(coverage-html
   COMMAND gcovr -r ${hmlp_SOURCE_DIR} -e deps -e example -e test --html -o ${hmlp_SOURCE_DIR}/doc/html/coverage.html
   COMMAND gcovr -r ${hmlp_SOURCE_DIR} -e deps -e example -e test --html --html-details -o ${hmlp_SOURCE_DIR}/doc/html/coverage_details.html)
@@ -685,7 +681,7 @@ ADD_CUSTOM_TARGET(coverage-html
 # set(BUILD_SANDBOX $ENV{HMLP_BUILD_SANDBOX})
 # if (BUILD_SANDBOX MATCHES "true")
 #   file (GLOB SANDBOX_ENV ${CMAKE_SOURCE_DIR}/set_env.sh )
-# 
+#
 #   file (GLOB SANDBOX_SRC ${CMAKE_SOURCE_DIR}/frame/blas_lapack_prototypes.hpp
 #                          ${CMAKE_SOURCE_DIR}/frame/hmlp_blas_lapack.cpp
 #                          ${CMAKE_SOURCE_DIR}/frame/hmlp_blas_lapack.cu
@@ -697,15 +693,15 @@ ADD_CUSTOM_TARGET(coverage-html
 #                          #${CMAKE_SOURCE_DIR}/frame/hmlp_device.cpp
 #                          #${CMAKE_SOURCE_DIR}/frame/hmlp_device.hpp
 #                          ${CMAKE_SOURCE_DIR}/frame/hmlp_util.hpp )
-# 
+#
 #                        #file (GLOB SANDBOX_EXT ${CMAKE_SOURCE_DIR}/frame/external/*)
 #   file (GLOB SANDBOX_PRI ${CMAKE_SOURCE_DIR}/frame/primitives/gnbx.hpp)
 #   file (GLOB SANDBOX_PKG ${CMAKE_SOURCE_DIR}/package/x86_64/sandybridge/gnbx.cpp)
 #   file (GLOB SANDBOX_EXE ${CMAKE_SOURCE_DIR}/test/test_gnbx.cpp)
-# 
+#
 #   #file (GLOB SANDBOX_INC ${CMAKE_SOURCE_DIR}/include/*)
 #   install(FILES ${SANDBOX_ENV} DESTINATION ${CMAKE_BINARY_DIR}/sandbox)
-#   install(FILES ${CMAKE_SOURCE_DIR}/cmake/sandbox_CMakeLists.txt DESTINATION 
+#   install(FILES ${CMAKE_SOURCE_DIR}/cmake/sandbox_CMakeLists.txt DESTINATION
 #     ${CMAKE_BINARY_DIR}/sandbox RENAME CMakeLists.txt)
 #   install(FILES ${SANDBOX_SRC} DESTINATION ${CMAKE_BINARY_DIR}/sandbox/frame)
 #   #install(FILES ${SANDBOX_EXT} DESTINATION ${CMAKE_BINARY_DIR}/sandbox/frame/external)
