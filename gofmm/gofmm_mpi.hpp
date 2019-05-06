@@ -3752,22 +3752,57 @@ hmlpError_t compressionFailureFrontier( TREE & tree )
   return HMLP_ERROR_SUCCESS;
 };
 
+/**
+ * @brief Computes a direct multiply with a distributed test data object 
+ * and outputs the GLOBAL result as a data object.
+ * WARNING: Test data is replicated on EVERY process, do not call with large
+ * test datasets.
+ */	
+template<typename TREE, typename T>
+Data<T> TestMultiply( TREE tree, DistData<STAR,CBLK,T> Xte, DistData<RIDS,STAR,T> w ){
+	/** Distribute data */
+	Data<T> Xte_global = Xte.GatherData();
 
+	/** Call and return test multiply sub-routine */
+	return TestMultiply( tree, Xte_global, w);
+};
 
+/**
+ * @brief Computes a direct multiply with a GLOBAL test data object 
+ * and outputs the GLOBAL result.
+ * Every process is assumed to have all the data to compute the interactions 
+ * with a test set.
+ */	
+template<typename TREE, typename T>
+Data<T> TestMultiply( TREE tree, Data<T> Xte, DistData<RIDS, STAR, T> w )
+{
+	/** Init, etc. */
+	Data<T> loc_exact = Data<T>(Xte.col(),w.col_owned());
+	Data<T> glb_exact = Data<T>(Xte.col(),w.col_owned());
+	auto &K = *tree.setup.K;
 
+	/** Form J and then extract data we own */
+	//auto &J = tree.getOwnedIndices(); TODO: when merging with new GOFMM this shold be changed
+	std::vector<size_t> J = tree.getGIDS();
+	Data<T> Y = K.getSourceData(J);
+	
+	/** Compute K(Xte, Y) */
+	Data<T> Kab = K.callKernel(Xte, Y);
 
+	/** Gemm w/ vec_in */
+	xgemm( "N", "N", Kab.row(), w.col_owned(), w.row_owned(),
+		1.0,       Kab.data(),       Kab.row(),
+    	w.data(),         w.row_owned(),
+		0.0, loc_exact.data(), loc_exact.row() ); 		
+	
+	/** All reduce result */
+	mpi::Allreduce( loc_exact.data(), glb_exact.data(), 
+  		loc_exact.size(), MPI_SUM, tree.GetComm() );
+	
+	/** Return global data obj */
+	return glb_exact;
 
-
-
-
-
-
-
-
-
-
-
-
+};
 
 
 
@@ -4300,8 +4335,8 @@ pair<T, T> ComputeError( TREE &tree, size_t gid, Data<T> potentials )
   auto &K = *tree.setup.K;
   auto &w = *tree.setup.w;
 
-  auto  I = vector<size_t>( 1, gid );
-  auto &J = tree.treelist[ 0 ]->gids;
+  vector<size_t> I = vector<size_t>( 1, gid );
+  vector<size_t> J = tree.treelist[ 0 ]->gids;
 
   /** Bcast gid and its parameter to all MPI processes. */
   K.BcastIndices( I, gid % comm_size, tree.GetComm() );

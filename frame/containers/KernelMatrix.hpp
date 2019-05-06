@@ -487,6 +487,20 @@ class DistKernelMatrix : public DistVirtualMatrix<T, Allocator>,
       return KIJ;
     };
 
+	/** return source data */
+	Data<T> getSourceData( const vector<size_t>& J )
+	{
+		return this->sources_user(this->all_dimensions, J);
+	}; 
+
+	/** Compute exact kernel product of new data using same kernel */
+	Data<T> callKernel( Data<T> Xs, Data<T> Xt)
+	{
+		Data<T> KIJ(Xs.col(),Xt.col());
+		this->kernel( nullptr, Xs.data(), Xt.data(), d, KIJ.data(), Xs.col(), Xt.col() );
+		return KIJ;
+	}
+
 
     /** */
     virtual Data<T> GeometryDistances( const vector<size_t>& I, const vector<size_t>& J ) override
