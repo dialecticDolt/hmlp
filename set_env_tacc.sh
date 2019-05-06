@@ -10,7 +10,9 @@ module load TACC
 module load intel
 module load impi
 module load cmake
-module load python
+module load python3
+module load petsc/3.9
+module load slepc
 
 ## "REQUIRED" CONFIGURATION
 ## ======================================
@@ -21,6 +23,9 @@ export CXX=icpc
 
 ## Whether use BLAS or not?
 export HMLP_USE_BLAS=true
+
+## For python building
+export VENV_BIN=virtualenv
 
 ## Make sure MKLROOT is defined in your system. (icc/icpc)
 export MKLROOT=${MKLROOT}
