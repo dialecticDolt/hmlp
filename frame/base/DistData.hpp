@@ -613,8 +613,51 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
       return (*this);
     };
 
+	/*
+	 * @brief Collects all data into a Data object.
+	 * WARNING: This means the entire object is duplicated
+	 * across processes. 
+	 */
+	Data<T> GatherData()
+	{
+    	/** MPI */
+    	mpi::Comm comm = this->GetComm();
+    	int size = this->GetSize();
+    	int rank = this->GetRank();
 
+    	/** allocate buffer for data */
+    	vector<vector<T, ALLOCATOR>> senddata( size );
+    	vector<vector<T, ALLOCATOR>> recvdata( size );
+    	
+    	/** Copy our data over (needs to be deep) */
+    	#pragma omp parallel for
+    	for ( size_t p = 0; p < size; p ++ )
+    	{
+    	  senddata[ p ] = std::vector<T,ALLOCATOR>(this->begin(), this->end());
+    	}
 
+    	/** exchange data */
+    	mpi::AlltoallVector( senddata, recvdata, comm );
+		
+		/** reorder into data object*/
+		Data<T> all_data(this->row(), this->col());
+		#pragma omp parallel for 
+		for (size_t j = 0; j < this->col(); j++){
+			// which processor to pick from, depends on cblk
+			size_t p = j % size;
+			size_t j_p = j / size;
+			size_t ld= this->row();
+
+			// load in column
+			for (size_t i = 0; i < this->row(); i++){
+				all_data(i,j) = recvdata[p][j_p * ld + i];
+			};
+		};
+
+		// Wait for everybody, then return
+    	mpi::Barrier( comm ); 
+		return all_data;
+	};
 
 
 
