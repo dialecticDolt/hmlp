@@ -11,6 +11,7 @@ from DistInverse cimport *
 #Import MPI
 cimport mpi4py.MPI as MPI
 cimport mpi4py.libmpi as libmpi
+from mpi4py import MPI
 
 #Import from cython: cpp
 from libcpp.pair cimport pair
@@ -33,6 +34,24 @@ from cython.parallel cimport prange
 import numpy as np
 cimport numpy as np
 np.import_array()
+
+def getCBLKOwnership(int N, int rank, int nprocs):
+    cblk_idx = np.asarray(np.arange(rank, N, nprocs), dtype='int32', order='F')
+    return cblk_idx
+
+def CBLK_Distribute(MPI.Comm comm, points):
+    cdef int N, d, nprocs, rank
+    N = np.size(points[0, :])
+    d = np.size(points[:, 0])
+    nprocs = comm.Get_size()
+    rank = comm.Get_rank()
+    points = np.asarray(points, dtype='float32', order='F')
+    index = getCBLKOwnership(N, rank, nprocs)
+    CBLK_points = points[:, index]
+    CBLK_points = np.asarray(CBLK_points, dtype='float32', order='F')
+    sources = PyDistData_CBLK(comm, d, N, darr=CBLK_points)
+    return (sources, index)
+
 
 cdef class PyRuntime:
 
@@ -927,11 +946,22 @@ cdef class PyTreeKM:
         result = PyDistData_RIDS(self.our_comm, m=rids.rows(), n=rids.cols(), mper=rids.rows_local())
         cdef RIDS_STAR_DistData[float]* bla
         with nogil:
-            bla = Evaluate_Python_RIDS[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
-        free(result.c_data)
+            #bla = Evaluate_Python_RIDS[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data)) 
+            bla = Python_Evaluate[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
+        del result.c_data
         result.c_data = bla
         return result
 
+    def evaluate(self, PyDistData_RIDS rids):
+        if not self.cStatus:
+            raise Exception("You must run compress before running evaluate")
+        result = PyDistData_RIDS(self.our_comm, m=rids.rows(), n=rids.cols(), mper=rids.rows_local())
+        cdef RIDS_STAR_DistData[float]* bla
+        with nogil:
+            bla = Python_Evaluate[nnprune, km_float_tree, float](deref(self.c_tree), deref(rids.c_data))
+        del result.c_data
+        result.c_data = bla
+        return result
 
     def evaluateRBLK(self, PyDistData_RBLK rblk):
         if not self.cStatus:
@@ -1047,7 +1077,7 @@ cdef class KernelMatrix:
             self.is_compressed = 1
             return self.tree.evaluateRIDS(rids)
         else:
-            raise Exception("KernelMatrix must be compressed before evaluate is run. Please either run compress() or provide a configuration object")
+            raise Exception("KernelMatrix must be compressed before evaluate is run. Please either run compress() or set the configuration object")
 
     def getComm(self):
         return self.comm_mpi
@@ -1070,20 +1100,178 @@ cdef class KernelMatrix:
         else:
             raise Exception("KernelMatrix must be compressed before error can be tested")
 
+    def __getitem__(self, pos):
+        if isinstance(pos, tuple) and len(pos) == 2:
+            i, j = pos
+            return self.getValue(i, j)
+        else:
+            raise Exception('PyData can only be indexed in 2 dimensions')
 
-#REWRITE KKMEANS
 
-ctypedef np.float_t cFLOAT
-#KernelKMeans
-#Move class vector to indicator vector
-#Initialize GOFMM context
-#Run main loop
-@cython.wraparound(False)
+
+
 @cython.boundscheck(False)
+@cython.wraparound(False)
 @cython.nonecheck(False)
-cdef KKMeansHelper(PyTreeKM gofmm, PyDistData_CBLK classes, int nclasses):
-    cdef int j, k
-    cdef np.ndarray[cFLOAT, ndim=1] a
-#    a = np.zeros(1, 10)
-#    for i in prange(10, nogil=True):
-#        a[0, i] = i
+def FastKKMeans(KernelMatrix K, float[:, :] points, int nclasses, gids, classvec=None, maxiter=10, init="random"):
+    cdef int N, n_local, d
+    cdef int c, i, j, k, p, itr, u
+    cdef MPI.Comm comm
+    cdef int[:] rids = K.getTree().getGIDS().astype('int32') #get local row gofmm-tree ordering
+    
+    N = K.getSize()
+    n_local = len(rids)
+    comm = K.getComm()
+    nprocs = comm.size
+    rank = comm.rank
+    d = len(points[:, 0])
+   
+    cdef float[:, :] centers = np.zeros([d, nclasses], dtype='float32')
+    cdef int[:] center_ind = np.zeros([nclasses], dtype='int32')
+    cdef float[:] dlist = np.zeros([n_local], dtype='float32')
+    cdef float minimumDist, currentDist
+    init = "random_poin"
+    if classvec is None:
+        classvec = np.zeros([n_local], order='F', dtype='float32')
+        for i in xrange(n_local):
+            classvec[i] = np.random.randint(1, nclasses+1)
+        GOFMM_classes = PyDistData_RIDS(comm, N, 1, iset=rids, arr=classvec)
+    if classvec is None and init=="random_points":
+        centers = np.zeros([nclasses])
+        if rank == 0:
+            centers = np.random.randint(0, n_local, size=nclasses)
+        comm.Bcast(classvec, root=0)
+        classvec = np.zeros([n_local], dtype='float32')
+        for j in xrange(n_local):
+            mD = -1
+            for k in xrange(nclasses):
+                cind = centers[k] 
+                cD = 2 - 2*K[cind, j]
+                if (cD < mD) or (mD==-1):
+                    mD = cD
+                    c = k
+            classvec[j] = c
+        GOFMM_classes = PyDistData_RIDS(comm, N, 1, iset=rids, arr=classvec)
+
+    #    classvec = np.zeros([n_local], dtype='float32')
+    #    if rank ==0:
+    #        for k in xrange(nclasses):
+    #            center_ind[k] = np.random.randint(0, n_local)
+    #    comm.Bcast(center_ind, root=0)
+        #Pick k random points to be the centers
+        #for k in xrange(nclasses):
+        #    if rank == 0:
+        #        u = np.random.randint(0, nprocs)
+        #    u = shareNumber(comm, u, 0)
+        #    if u==rank:
+        #        u = np.random.randint(0, n_local)
+        #        centers[:, k] = points[:, u]
+
+    #Initialize classvector from centers 
+    #    for j in xrange(n_local):
+    #        minimumDist = -1.0
+    #        for k in xrange(nclasses):
+    #            c_ind = center_ind[k]
+    #            currentDist = K[c_ind, c_ind] + K[j, j] - 2*K[c_ind, j]
+    #            if (currentDist < minimumDist) or (minimumDist == -1.0):
+    #                minimumDist = currentDist
+    #                c = k
+    #        classvec[j] = c
+    #    print(np.asarray(classvec))
+    #    sys.stdout.flush()
+    #    print(len(classvec))
+    #    print(len(rids))
+    #    GOFMM_classes = PyGOFMM.PyDistData_RIDS(comm, N, 1, iset=rids, arr=classvec)
+    #    print("hey")
+    if classvec is not None:
+        #load class data into PyGOFMM DistData object, NOTE: two copies are made here
+        Temp = PyDistData_RIDS(comm, m=N, n=1, arr=classvec, iset=gids)
+        GOFMM_classes = PyDistData_RIDS(comm, m=N, n=1, iset=rids)
+        GOFMM_classes.redistribute(Temp)
+
+    #initialize class indicator block
+    cdef float[:, :] H_local = np.zeros([n_local, nclasses], dtype='float32', order='F')
+    for i in xrange(n_local):
+        H_local[i, <int>(GOFMM_classes[rids[i], 0] - 1)] = 1.0
+
+    #copy class indicator block to DistData object
+    H = PyDistData_RIDS(comm, N, nclasses, iset=rids, darr=H_local)
+
+    #form D
+    cdef float[:, :] local_ones = np.ones([n_local, 1], dtype='float32', order='F')
+    Ones = PyDistData_RIDS(comm, N, 1, iset=rids, darr=local_ones)
+    D = K.evaluate(Ones)
+
+    cdef float[:, :] npD = D.toArray() #create local numpy copy in order to use shared memory parallelism for similarity computation
+    cdef float[:, :] Diag = np.ones([n_local, 1], dtype='float32', order='F')
+    matD = np.diag(npD)
+    print(matD)
+    #allocate storage for lookup matricies
+    cdef float[:, :] HKH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+    cdef float[:, :] HKH = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+    cdef float[:, :] HDH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+    cdef float[:, :] HDH = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+    cdef float[:, :] DKH = np.zeros([n_local, nclasses], dtype='float32', order='F')
+    cdef float[:, :] Similarity = np.zeros([n_local, nclasses], dtype='float32', order='F')
+    cdef float[:, :] npKH
+    cdef float[:, :] npH
+    #start main loop
+    for itr in xrange(maxiter):
+        
+        #update DKH, HKH, HDH
+        KH = K.evaluate(H)
+        npKH = KH.toArray()
+        npH = H.toArray()
+        
+        HKH_local = np.matmul(npH.T, npKH)
+        print(np.asarray(HKH_local))
+        HDH_local = np.matmul(npH.T,np.asarray(npD[:, 0])*np.asarray(npKH))
+        print(np.asarray(HDH_local))
+        HDH_local = np.zeros([nclasses, nclasses], dtype='float32')
+        HKH_local = np.zeros([nclasses, nclasses], dtype='float32')
+        #TODO: Replace this with shared memory parallel version or MKL
+        for i in xrange(nclasses):
+            for j in xrange(nclasses):
+                for r in rids:
+                    HKH_local[i, j] += H[r, j]*KH[r, i]
+                    HDH_local[i, j] += H[r, j]*D[r, 0]*H[r, i]
+
+        print(np.asarray(HKH_local))
+        print(np.asarray(HDH_local))
+        #TODO: Replace this with shared memory parallel version or MKL
+        for i in xrange(n_local):
+            for j in xrange(nclasses):
+                DKH[i, j] = 1/npD[i, 0] * KH[rids[i], j]
+
+        HKH = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+        HDH = np.zeros([nclasses, nclasses], dtype='float32', order='F')
+        
+        comm.Allreduce(HKH_local, HKH, op=MPI.SUM)
+        comm.Allreduce(HDH_local, HDH, op=MPI.SUM)
+        
+        #update similarity
+        for i in prange(n_local, nogil=True):
+            for p in xrange(nclasses):
+                #Ignore the degenerate case (probably not the best solution)
+                if (npD[i, 0] == 0) or (HDH[p, p]==0):
+                    Similarity[i, p] = 0
+                    continue
+                Similarity[i, p] = Diag[i, 0]/(npD[i, 0]*npD[i, 0]) - 2*DKH[i, p]/HDH[p, p] + HKH[p, p]/(HDH[p, p]* HDH[p, p])
+        
+        #update classvector 
+        for i in xrange(n_local):
+            GOFMM_classes[rids[i], 0] = np.argmin(Similarity[i, :])+1
+        print(GOFMM_classes.toArray())
+        
+        #update class indicator matrix H
+        H_local = np.zeros([n_local, nclasses], dtype='float32', order='F')
+        for i in xrange(n_local):
+            H_local[i, <int>(GOFMM_classes[rids[i], 0] - 1)] = 1.0
+        
+        #copy class indicator matrix to DistData object
+        H = PyDistData_RIDS(comm, N, nclasses, iset=rids, darr=H_local)
+
+    classes = PyDistData_RIDS(comm, m=N, n=1, iset=gids)
+    classes.redistribute(GOFMM_classes)
+
+    return classes.toArray()

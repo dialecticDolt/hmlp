@@ -3531,8 +3531,6 @@ class DistSkeletonKIJTask : public Task
 //}; /** end class SkeletonTask */
 
 
-
-
 /**
  *
  */ 
@@ -3656,8 +3654,6 @@ class DistSkeletonizeTask : public hmlp::Task
 }; /** end class DistSkeletonTask */
 
 
-
-
 /**
  *  @brief
  */ 
@@ -3696,7 +3692,6 @@ class InterpolateTask : public Task
     };
 
 }; /** end class InterpolateTask */
-
 
 
 template<typename TREE>
@@ -3753,9 +3748,178 @@ hmlpError_t compressionFailureFrontier( TREE & tree )
 };
 
 
+template<bool NNPRUNE = true, typename TREE, typename T>
+DistData<RIDS, STAR, T>* Python_Evaluate( TREE &tree, DistData<RIDS, STAR, T> &weights )
+{
+  try
+  {
+    /** MPI Support. */
+    int size; mpi::Comm_size( tree.GetComm(), &size );
+    int rank; mpi::Comm_rank( tree.GetComm(), &rank );
+    /** Derive type NODE and MPINODE from TREE. */
+    using NODE    = typename TREE::NODE;
+    using MPINODE = typename TREE::MPINODE;
+
+    /** All timers */
+    double beg, time_ratio, evaluation_time = 0.0;
+    double direct_evaluation_time = 0.0, computeall_time, telescope_time, let_exchange_time, async_time;
+    double overhead_time;
+    double forward_permute_time, backward_permute_time;
+
+    /** Clean up all r/w dependencies left on tree nodes. */
+    tree.DependencyCleanUp();
+
+    /** n-by-nrhs, initialize potentials. */
+    size_t n    = weights.row();
+    size_t nrhs = weights.col();
+
+    /** Potentials must be in [RIDS,STAR] distribution */
+    auto &gids_owned = tree.treelist[ 0 ]->gids;
+    DistData<RIDS, STAR, T>* potentials = new DistData<RIDS, STAR, T>( n, nrhs, gids_owned, tree.GetComm() );
+    potentials->setvalue( 0.0 );
+
+    /** Provide pointers. */
+    tree.setup.w = &weights;
+    tree.setup.u = potentials;
+
+    /** TreeView (downward traversal) */
+    gofmm::TreeViewTask<NODE>           seqVIEWtask;
+    mpigofmm::DistTreeViewTask<MPINODE> mpiVIEWtask;
+    /** Telescope (upward traversal) */
+    gofmm::UpdateWeightsTask<NODE, T>           seqN2Stask;
+    mpigofmm::DistUpdateWeightsTask<MPINODE, T> mpiN2Stask;
+    /** L2L (sum of direct evaluations) */
+    //mpigofmm::DistLeavesToLeavesTask<NNPRUNE, NODE, T> seqL2Ltask;
+    //mpigofmm::L2LReduceTask<NODE, T> seqL2LReducetask;
+    mpigofmm::L2LReduceTask2<NODE, T> seqL2LReducetask2;
+    /** S2S (sum of low-rank approximation) */
+    //gofmm::SkeletonsToSkeletonsTask<NNPRUNE, NODE, T>           seqS2Stask;
+    //mpigofmm::DistSkeletonsToSkeletonsTask<NNPRUNE, MPINODE, T> mpiS2Stask;
+    //mpigofmm::S2SReduceTask<NODE, T>    seqS2SReducetask;
+    //mpigofmm::S2SReduceTask<MPINODE, T> mpiS2SReducetask;
+    mpigofmm::S2SReduceTask2<NODE, NODE, T>    seqS2SReducetask2;
+    mpigofmm::S2SReduceTask2<MPINODE, NODE, T> mpiS2SReducetask2;
+    /** Telescope (downward traversal) */
+    gofmm::SkeletonsToNodesTask<NNPRUNE, NODE, T>           seqS2Ntask;
+    mpigofmm::DistSkeletonsToNodesTask<NNPRUNE, MPINODE, T> mpiS2Ntask;
+
+     /** Global barrier and timer */
+    mpi::Barrier( tree.GetComm() );
+
+      //{
+      //  /** Stage 1: TreeView and upward telescoping */
+      //  beg = omp_get_wtime();
+      //  tree.DependencyCleanUp();
+      //  tree.DistTraverseDown( mpiVIEWtask );
+      //  tree.LocaTraverseDown( seqVIEWtask );
+      //  tree.LocaTraverseUp( seqN2Stask );
+      //  tree.DistTraverseUp( mpiN2Stask );
+      //  hmlp_run();
+      //  mpi::Barrier( tree.GetComm() );
+      //  telescope_time = omp_get_wtime() - beg;
+
+      //  /** Stage 2: LET exchange */
+      //  beg = omp_get_wtime();
+      //  ExchangeLET<T>( tree, string( "skelweights" ) );
+      //  mpi::Barrier( tree.GetComm() );
+      //  ExchangeLET<T>( tree, string( "leafweights" ) );
+      //  mpi::Barrier( tree.GetComm() );
+      //  let_exchange_time = omp_get_wtime() - beg;
+
+      //  /** Stage 3: L2L */
+      //  beg = omp_get_wtime();
+      //  tree.DependencyCleanUp();
+      //  tree.LocaTraverseLeafs( seqL2LReducetask2 );
+      //  hmlp_run();
+      //  mpi::Barrier( tree.GetComm() );
+      //  direct_evaluation_time = omp_get_wtime() - beg;
+
+      //  /** Stage 4: S2S and downward telescoping */
+      //  beg = omp_get_wtime();
+      //  tree.DependencyCleanUp();
+      //  tree.LocaTraverseUnOrdered( seqS2SReducetask2 );
+      //  tree.DistTraverseUnOrdered( mpiS2SReducetask2 );
+      //  tree.DistTraverseDown( mpiS2Ntask );
+      //  tree.LocaTraverseDown( seqS2Ntask );
+      //  hmlp_run();
+      //  mpi::Barrier( tree.GetComm() );
+      //  computeall_time = omp_get_wtime() - beg;
+      //}
 
 
+    /** Global barrier and timer */
+    potentials->setvalue( 0.0 );
+    mpi::Barrier( tree.GetComm() );
+    
+    /** Stage 1: TreeView and upward telescoping */
+    beg = omp_get_wtime();
+    tree.DependencyCleanUp();
+    tree.DistTraverseDown( mpiVIEWtask );
+    tree.LocaTraverseDown( seqVIEWtask );
+    tree.ExecuteAllTasks();
+    /** Stage 2: redistribute weights from IDS to LET. */
+    AsyncExchangeLET<T>( tree, string( "leafweights" ) );
+    /** Stage 3: N2S. */
+    tree.LocaTraverseUp( seqN2Stask );
+    tree.DistTraverseUp( mpiN2Stask );
+    /** Stage 4: redistribute skeleton weights from IDS to LET. */
+    AsyncExchangeLET<T>( tree, string( "skelweights" ) );
+    /** Stage 5: L2L */
+    tree.LocaTraverseLeafs( seqL2LReducetask2 );
+    /** Stage 6: S2S */
+    tree.LocaTraverseUnOrdered( seqS2SReducetask2 );
+    tree.DistTraverseUnOrdered( mpiS2SReducetask2 );
+    /** Stage 7: S2N */
+    tree.DistTraverseDown( mpiS2Ntask );
+    tree.LocaTraverseDown( seqS2Ntask );
+    overhead_time = omp_get_wtime() - beg;
+    tree.ExecuteAllTasks();
+    async_time = omp_get_wtime() - beg;
+    
 
+
+    /** Compute the breakdown cost */
+    evaluation_time += direct_evaluation_time;
+    evaluation_time += telescope_time;
+    evaluation_time += let_exchange_time;
+    evaluation_time += computeall_time;
+    time_ratio = 100 / evaluation_time;
+
+    if ( rank == 0 && REPORT_EVALUATE_STATUS )
+    {
+      printf( "========================================================\n");
+      printf( "GOFMM evaluation phase\n" );
+      printf( "========================================================\n");
+      //printf( "Allocate ------------------------------ %5.2lfs (%5.1lf%%)\n", 
+      //    allocate_time, allocate_time * time_ratio );
+      //printf( "Forward permute ----------------------- %5.2lfs (%5.1lf%%)\n", 
+      //    forward_permute_time, forward_permute_time * time_ratio );
+      printf( "Upward telescope ---------------------- %5.2lfs (%5.1lf%%)\n", 
+          telescope_time, telescope_time * time_ratio );
+      printf( "LET exchange -------------------------- %5.2lfs (%5.1lf%%)\n", 
+          let_exchange_time, let_exchange_time * time_ratio );
+      printf( "L2L ----------------------------------- %5.2lfs (%5.1lf%%)\n", 
+          direct_evaluation_time, direct_evaluation_time * time_ratio );
+      printf( "S2S, S2N ------------------------------ %5.2lfs (%5.1lf%%)\n", 
+          computeall_time, computeall_time * time_ratio );
+      //printf( "Backward permute ---------------------- %5.2lfs (%5.1lf%%)\n", 
+      //    backward_permute_time, backward_permute_time * time_ratio );
+      printf( "========================================================\n");
+      printf( "Evaluate ------------------------------ %5.2lfs (%5.1lf%%)\n", 
+          evaluation_time, evaluation_time * time_ratio );
+      printf( "Evaluate (Async) ---------------------- %5.2lfs (%5.2lfs)\n", 
+          async_time, overhead_time );
+      printf( "========================================================\n\n");
+    }
+
+    return potentials;
+  }
+  catch ( const exception & e )
+  {
+    cout << e.what() << endl;
+    exit( 1 );
+  }
+}; /** end Evaluate() */
 
 
 
@@ -3982,6 +4146,7 @@ DistData<RIDS, STAR, T>* Evaluate_Python_RIDS( TREE &tree, DistData<RIDS, STAR, 
 {
     DistData<RIDS, STAR, T> temp = mpigofmm::Evaluate<NNPRUNE, TREE, T>(tree, weights);
     DistData<RIDS, STAR, T>* u_rids = new DistData<RIDS, STAR, T>(temp, weights.GetComm());
+
     return u_rids;
 }; /** end Evaluate() */
 

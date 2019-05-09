@@ -71,7 +71,7 @@ int main( int argc, char *argv[] )
     mpi::Comm_rank( CommGOFMM, &comm_rank );
     /** [Step#0] HMLP API call to initialize the runtime. */
     HANDLE_ERROR( hmlp_init( &argc, &argv, CommGOFMM ) );
-
+    int iterations = 100;
     /** [Step#1] Create a configuration for generic SPD matrices. */
     //gofmm::Configuration<T> config1( ANGLE_DISTANCE, n, m, k, s, stol, budget,false );
     ///** [Step#2] Create a dense random SPD matrix. */
@@ -151,19 +151,25 @@ int main( int argc, char *argv[] )
     auto rids = tree2.treelist[0]->gids;
     DistData<RIDS, STAR, T> w2( n, nrhs, tree2.treelist[ 0 ]->gids, w1_local,CommGOFMM ); 
     //w2.fill(1.0);
-    auto u2 = mpigofmm::Evaluate( tree2, w2 );
-    auto rid_post = u2.getRIDS();
-    
-    size_t rid_sel = 2031;
-    auto rid_it =  std::find(rids.begin(), rids.end(), rid_sel);
-    bool cont_rid = rid_it != rids.end();
-
-    if (cont_rid)
-    {
-        std::cout << "Post multiply , rank " << comm_rank << std::endl;
-        std::cout << "    RID pre: " << rid_sel << std::endl;
-        std::cout << "    Val pos: " << u2[rid_sel,0] << std::endl;
+    DistData<RIDS, STAR, T>* u2;
+    for(int i = 0; i< iterations;i++){
+        u2 = mpigofmm::Python_Evaluate( tree2, w2 );
+        delete u2;
     }
+    
+    u2 = mpigofmm::Python_Evaluate( tree2, w2 );
+    //auto rid_post = u2.getRIDS();
+    
+    //size_t rid_sel = 2031;
+    //auto rid_it =  std::find(rids.begin(), rids.end(), rid_sel);
+    //bool cont_rid = rid_it != rids.end();
+
+    //if (cont_rid)
+   // {
+    //    std::cout << "Post multiply , rank " << comm_rank << std::endl;
+    //    std::cout << "    RID pre: " << rid_sel << std::endl;
+    //    std::cout << "    Val pos: " << u2[rid_sel,0] << std::endl;
+   // }
 
 
 
@@ -175,6 +181,44 @@ int main( int argc, char *argv[] )
 
     /** [Step#9] HMLP API call to terminate the runtime. */
     HANDLE_ERROR( hmlp_finalize() );
+
+    
+    HANDLE_ERROR( hmlp_init( &argc, &argv, CommGOFMM ) );
+
+    /** [Step#1] Create a configuration for kernel matrices. */
+    gofmm::Configuration<T> config3( GEOMETRY_DISTANCE, n, m, k, s, stol, budget,true);
+    /** [Step#2] Create a Gaussian kernel matrix with random 6D data. */
+    /** Create local random point cloud. */
+    Data<T> X_global2( d, n ); X_global.randn();
+    std::vector<size_t> II2(d);
+    std::iota(II2.begin(),II2.end(),0);
+    std::vector<size_t> JJ2(n_loc);
+    std::iota(JJ2.begin(),JJ2.end(),n_start);
+    Data<T> X_local2 = X_global(II2,JJ2);
+    /** Create distributed random point cloud. */
+    DistData<STAR, CBLK, T> X2( d, n, X_local2, CommGOFMM );
+    DistKernelMatrix<T, T> K3( X, CommGOFMM );
+    /** [Step#3] Create randomized and center splitters. */
+    mpigofmm::randomsplit<DistKernelMatrix<T, T>, 2, T> rkdtsplitter3( K3 );
+    mpigofmm::centersplit<DistKernelMatrix<T, T>, 2, T> splitter3( K3 );
+    /** [Step#4] Perform the iterative neighbor search. */
+    auto neighbors3 = mpigofmm::FindNeighbors( K3, rkdtsplitter3, config3, CommGOFMM );
+    /** [Step#5] Compress the matrix with an algebraic FMM. */
+    auto* tree_ptr3 = mpigofmm::Compress( K3, neighbors3, splitter3, rkdtsplitter3, config3, CommGOFMM );
+    auto& tree3 = *tree_ptr3;
+    /** [Step#6] Compute an approximate MATVEC. */
+    auto rids2 = tree3.treelist[0]->gids;
+    DistData<RIDS, STAR, T> w3( n, nrhs, tree3.treelist[ 0 ]->gids, w1_local,CommGOFMM ); 
+    //w2.fill(1.0);
+    DistData<RIDS, STAR, T>* u3;
+    for(int i = 0; i< iterations;i++){
+        u3 = mpigofmm::Python_Evaluate( tree2, w2 );
+        delete u3;
+    }
+
+
+    HANDLE_ERROR( hmlp_finalize() );
+
     /** Finalize Message Passing Interface. */
     mpi::Finalize();
   }
