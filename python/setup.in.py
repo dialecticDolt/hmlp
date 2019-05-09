@@ -85,7 +85,7 @@ setup(
     ext_modules=extensions,
     package_data={
         '':['*.pxd']
-    }
+    },
     zip_safe=False,
     include_package_data=True,
     cmdclass = {'build_ext': build_ext}

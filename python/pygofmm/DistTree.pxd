@@ -41,7 +41,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpig
 
     cdef void SelfTesting[TREE]( TREE&, size_t, size_t)
     #Evaluate (Matvec)
-
+    RIDS_STAR_DistData[T]* Python_Evaluate[NNPRUNE, TREE, T](TREE& tree, RIDS_STAR_DistData[T]& ddata) except+
     RIDS_STAR_DistData[T]* Evaluate_Python_RIDS[NNPRUNE, TREE, T](TREE& tree, RIDS_STAR_DistData[T]& ddata) except +
     RBLK_STAR_DistData[T]* Evaluate_Python_RBLK[NNPRUNE, TREE, T](TREE&, RBLK_STAR_DistData[T]&) except +
     
