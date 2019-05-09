@@ -342,7 +342,8 @@ def KMeans(MPI.Comm comm, float[:, :] points, int nclasses, classvec = None, max
     cdef int n_local
     cdef int i,l, d, index
     cdef int nprocs, rank
-
+    cdef double s_tinit, e_tinit, s_tup, e_tup, s_tcc, e_tcc
+    cdef double center_time, update_time
     nprocs = comm.Get_size()
     rank = comm.Get_rank()
 
@@ -361,6 +362,7 @@ def KMeans(MPI.Comm comm, float[:, :] points, int nclasses, classvec = None, max
     cdef float[:, :] centroids = np.zeros([d, nclasses], dtype='float32')
     cdef float[:, :] temp_centroids = np.zeros([d, nclasses], dtype='float32')
 
+    s_tinit = MPI.Wtime()
     if init == "random":
         for i in range(nclasses):
             if rank ==0:
@@ -373,14 +375,24 @@ def KMeans(MPI.Comm comm, float[:, :] points, int nclasses, classvec = None, max
 
     elif init == "++":
         centroids = distributed_kmeans_pp(comm, points, nclasses)
+    e_tinit= MPI.Wtime()
 
+    center_time = 0
+    update_time = 0
     cdef float distance, temp_dist
     for l in xrange(maxiter):
         #reassign classes
+        s_tup = MPI.Wtime()
         updateClasses(points, classes, centroids, nclasses)
+        e_tup = MPI.Wtime()
+        update_time += e_tup - s_tup
         #find centroids
+        s_tcc = MPI.Wtime()
         centroids = computeCenters(comm, points, classes, nclasses)
-    return np.asarray(classes)
+        e_tcc = MPI.Wtime()
+        center_time += e_tcc - s_tcc
+
+    return (np.asarray(classes), e_tinit -s_tinit, center_time, update_time) 
 
 
 @cython.boundscheck(False)
@@ -445,8 +457,10 @@ cdef computeCenters(MPI.Comm comm, float[:, :] points, int[:] classes, int nclas
 @cython.nonecheck(False)
 def NMI(MPI.Comm comm, int[:] truth, int[:] clusters, int nclasses):
     #Compute entropy of true labelings
+    cdef double start_time, end_time
     cdef int i, j, k, c
     cdef float t, h_y, h_c
+    start_time = MPI.Wtime()
     h_y = 0.0
     h_c = 0.0
     cdef int n_local = len(truth)
@@ -489,14 +503,17 @@ def NMI(MPI.Comm comm, int[:] truth, int[:] clusters, int nclasses):
     cdef float[:] I = np.zeros([nclasses], dtype='float32')
     for i in xrange(nclasses):
         for j in xrange(nclasses):
-            t = counts[i, j]/clust_counts[i]
+            t = 0
+            if clust_counts[i]:
+                t = counts[i, j]/clust_counts[i]
             if t>0:
                 I[i] += t*log2(t)
     cdef float h_yc = 0.0
     for i in xrange(nclasses):
         h_yc -= clust_counts[i]/N_total * I[i]
-
-    return (2*(h_y - h_yc)/(h_y + h_c))
+    end_time = MPI.Wtime()
+    print(end_time)
+    return ( (2*(h_y - h_yc)/(h_y + h_c)), end_time - start_time )
 
 
 
@@ -507,7 +524,7 @@ def NMI(MPI.Comm comm, int[:] truth, int[:] clusters, int nclasses):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-def KKMeans(PyGOFMM.KernelMatrix K, float[:, :] points, int nclasses, gids, classvec=None, maxiter=10, init="random"):
+def KKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10, init="random"):
     cdef int N, n_local, d
     cdef int c, i, j, k, p, itr, u
     cdef MPI.Comm comm
@@ -518,7 +535,6 @@ def KKMeans(PyGOFMM.KernelMatrix K, float[:, :] points, int nclasses, gids, clas
     comm = K.getComm()
     nprocs = comm.size
     rank = comm.rank
-    d = len(points[:, 0])
    
     cdef float[:, :] centers = np.zeros([d, nclasses], dtype='float32')
     cdef int[:] center_ind = np.zeros([nclasses], dtype='int32')
@@ -905,7 +921,9 @@ def SpecCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     cdef int c, i, j, k, p, itr
     cdef MPI.Comm comm
     cdef int[:] rids = K.getTree().getGIDS().astype('int32') #get local row gofmm-tree ordering
-    
+    cdef double stime, etime
+    cdef double eig_time
+
     N = K.getSize()
     n_local = len(rids)
     comm = K.getComm()
@@ -932,7 +950,10 @@ def SpecCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     E.setFromOptions()
     E.setDimensions(nclasses)
     E.setDeflationSpace(x)
+    stime = MPI.Wtime()
     E.solve()
+    etime = MPI.Wtime()
+    eig_time= stime - etime
     
     its = E.getIterationNumber()
     eps_type = E.getType()
@@ -963,14 +984,14 @@ def SpecCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     print(spectral_points)
     
     #Run K Means on Spectral Domain. Note these points are in RIDS/TREE ordering
-    classes = KMeans(comm, spectral_points, nclasses, maxiter=20, init="++")
+    classes, init_time, center_time, update_time  = KMeans(comm, spectral_points, nclasses, maxiter=20, init="++")
     #rearrange from rids->CBLK ordering. 
     classes = np.asarray(classes, dtype='float32')
     GIDS_Owned = PyGOFMM.getCBLKOwnership(N, rank, nprocs)
     CBLK_classes = PyGOFMM.PyDistData_RIDS(comm, N, 1, iset=GIDS_Owned)
     RIDS_classes = PyGOFMM.PyDistData_RIDS(comm, N, 1, iset=rids, arr=classes)
     CBLK_classes.redistribute(RIDS_classes)
-    return CBLK_classes.toArray()
+    return (CBLK_classes.toArray(), eig_time, center_time, update_time, init_time)
     #TODO: use the gofmm context syntax instead
     #GIDS_Owned = PyGOFMM.getCBLKOwnership(N, rank, nprocs)
     #spectral_sources = PyGOFMM.PyDistData_RIDS(comm, N, nclasses-1, iset=GIDS_Owned)
@@ -994,6 +1015,7 @@ def DiffusionMap(PyGOFMM.KernelMatrix K, float eps, int[:] gids):
     cdef MPI.Comm comm
     cdef int[:] rids = K.getTree().getGIDS().astype('int32') #get local row gofmm-tree ordering
     cdef float last_eig
+    cdef double stime, etime, eig_time
 
     N = K.getSize()
     n_local = len(rids)
@@ -1008,7 +1030,7 @@ def DiffusionMap(PyGOFMM.KernelMatrix K, float eps, int[:] gids):
     x, b = A.createVecs()
     x.set(1.0)
     space = []
-    
+    stime = MPI.Wtime()
     last_eig = 1
     eigvecs = []
     eigvals = []
@@ -1033,6 +1055,8 @@ def DiffusionMap(PyGOFMM.KernelMatrix K, float eps, int[:] gids):
             if last_eig < eps:
                 break
 
+    etime = MPI.Wtime()
+    eig_time = etime - stime
     print(eigvals)
     #turn eigenvectors into [N x nvec] point cloud in reduced space
     nvec = len(eigvecs)
@@ -1049,7 +1073,7 @@ def DiffusionMap(PyGOFMM.KernelMatrix K, float eps, int[:] gids):
     SpecDistData = PyGOFMM.PyDistData_RIDS(comm, N, nvec, iset=gids)
     SpecDistData.redistribute(tempSpecDistData)
     ##print(SpecDistData.toArray())
-    return np.copy(SpecDistData.toArray())
+    return (np.copy(SpecDistData.toArray()), eig_time)
     #return spectral_points
 
 
