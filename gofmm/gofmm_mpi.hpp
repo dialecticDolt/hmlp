@@ -3973,7 +3973,6 @@ Data<T> TestMultiply( TREE tree, Data<T> Xte, DistData<RIDS, STAR, T> w )
 	return glb_exact;
 
 };
->>>>>>> f4343292cc894103fc7385d89cb53e29f4d2ec40
 
 
 
