@@ -247,13 +247,6 @@ cdef class PyData:
         ret.c_data = bla
         return ret
 
-    def toNumpy(self):
-        cdef float* data_ptr = self.c_data.rowdata(0)
-        cdef float[:] mv = <float[:self.size()]> data_ptr
-        np_arr = np.asarray(mv)
-        np_arr.resize(self.row(),self.col())
-        return np_arr
-
     @cython.boundscheck(False)
     def submatrix(self,np.ndarray[np.intp_t, ndim=1] I not None,
         np.ndarray[np.intp_t,ndim=1] J not None):
@@ -340,6 +333,17 @@ cdef class PyData:
         del self.c_data
         self.c_data = new Data[float]( deref(other.c_data) )
 
+    def toNumpy(self):
+        cdef float* data_ptr = self.c_data.rowdata(0)
+        cdef float[:] mv = <float[:self.size()]> data_ptr
+        np_arr = np.asarray(mv, order='F', dtype='float32').reshape((self.rows(),self.cols()),order='F')
+        return np_arr
+
+    def toArray(self):
+        cdef float* data_ptr = self.c_data.rowdata(0)
+        cdef float[:] mv = <float[:self.size()]> data_ptr
+        np_arr = np.asarray(mv, order='F', dtype='float32').reshape((self.rows(),self.cols()),order='F')
+        return np_arr
 
 
 #Python Class for Distributed Data Object - Columnwise
@@ -944,6 +948,27 @@ cdef class PyTreeKM:
         result.c_data = bla
         return result
 
+    def evaluateTest(self, PyData Xte, PyDistData_RIDS rids):
+        result = PyData( m= Xte.cols(), n = rids.cols())
+        cdef Data[float]* bla; 
+        with nogil:
+            bla = TestMultiply[km_float_tree,float]( deref(self.c_tree), deref(Xte.c_data), deref(rids.c_data))
+        
+        free(result.c_data)
+        result.c_data = bla
+        return result
+    	
+    def evaluateDistributedTest(self, PyDistData_CBLK Xte, PyDistData_RIDS rids):
+        result = PyData( m= Xte.cols(), n = rids.cols())
+        cdef Data[float]* bla; 
+        with nogil:
+            bla = TestMultiply[km_float_tree,float]( deref(self.c_tree), deref(Xte.c_data), deref(rids.c_data))
+        
+        free(result.c_data)
+        result.c_data = bla
+        return result
+
+
     def factorize(self, float reg):
         if not self.cStatus:
             raise Exception("You must run compress before running factorize")
@@ -1048,6 +1073,12 @@ cdef class KernelMatrix:
             return self.tree.evaluateRIDS(rids)
         else:
             raise Exception("KernelMatrix must be compressed before evaluate is run. Please either run compress() or provide a configuration object")
+
+    def evaluateTest(self, PyData Xte, PyDistData_RIDS rids):
+        return self.tree.evaluateTest( Xte, rids)
+	
+    def evaluateDistributedTest(self, PyData Xte, PyDistData_RIDS rids):
+        return self.tree.evaluateDistributedTest( Xte, rids)
 
     def getComm(self):
         return self.comm_mpi
