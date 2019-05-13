@@ -82,6 +82,9 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         #reads column major file
         STAR_CBLK_DistData(size_t, size_t, libmpi.MPI_Comm, string&) except +
         void read(size_t m, size_t n, string&) except +
+		
+		# Gather data onto one process
+        Data[T] GatherData()
         
         #operator overloading
         # ()
