@@ -419,7 +419,7 @@ bool Task::IsNested() { return is_created_in_epoch_session; };
 
 
 
-/** @breief (Default) ReadWrite constructor. */ 
+/** @brief (Default) ReadWrite constructor. */ 
 ReadWrite::ReadWrite() {};
 
 /** Clean both read and write sets. */

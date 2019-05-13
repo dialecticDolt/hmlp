@@ -162,6 +162,9 @@ class Data : public ReadWrite, public vector<T, Allocator>
       resize( m, n );
     };
 
+    ~Data(){ this->clear(); //printf("DELETING\n");  
+        };
+
     Data( size_t m, size_t n ) { resize( m, n ); };
 
     Data( size_t m, size_t n, T initT ) { resize( m, n, initT ); };
