@@ -158,9 +158,9 @@ def KMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10
     return classes.toArray()
 
 #pure python implementation of KDE
-def KDE(PyGOFMM.KernelMatrix K, int nclasses,int[:] gids, classvec):
+def KDE(PyGOFMM.KernelMatrix K, int nclasses,int[:] gids, float[:] classvec):
     cdef int N, n_local
-    cdef int i
+    cdef int i,ci,j
     cdef MPI.Comm comm
     cdef int[:] rids = K.getTree().getGIDS().astype('int32') #get local row gofmm-tree ordering
     
@@ -183,11 +183,41 @@ def KDE(PyGOFMM.KernelMatrix K, int nclasses,int[:] gids, classvec):
 
     # Compute multiply
     density_hmlp = K.evaluate(ww_hmlp)
-    density_user = PyGOFMM.PyDistData_RIDS(comm,m = N,n=1, iset = gids)
+    density_user = PyGOFMM.PyDistData_RIDS(comm,m = N,n=nclasses, iset = gids)
     density_user.redistribute(density_hmlp)
 
-    # output density after redistributing
-    return density_user.toArray()
+    # output density after redistributing and subtracting local contributions
+    return density_user.toArray() - ww_hmlp_loc #TODO current default removes self interactions. keep?
+
+def TestKDE(PyGOFMM.KernelMatrix K, int nclasses, int [:] gids, float[:] classvec, float[:,:] Xte):
+    cdef int N, n_local
+    cdef int i,ci,j
+    cdef MPI.Comm comm
+    cdef int[:] rids = K.getTree().getGIDS().astype('int32') #get local row gofmm-tree ordering
+    
+    N = K.getSize()
+    n_local = len(rids)
+    comm = K.getComm()
+
+    #load class data into PyGOFMM DistData object, TODO: necessary for creation of ww_hmlp?
+    classes_user = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, arr=classvec, iset=gids)
+    classes_hmlp = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, iset=rids)
+    classes_hmlp.redistribute(classes_user)
+
+    #initialize class indicator block
+    cdef float[:, :] ww_hmlp_loc= np.zeros([n_local, nclasses], dtype='float32', order='F')
+    for i in xrange(n_local): #TODO fix loop?
+        ww_hmlp_loc[i, <int>(classes_hmlp[rids[i], 0] - 1)] = 1.0
+
+    #copy class indicator block to DistData object
+    ww_hmlp = PyGOFMM.PyDistData_RIDS(comm, N, nclasses, iset=rids, darr=ww_hmlp_loc)
+
+    # Compute multiply
+    cdef PyGOFMM.PyData Xte_py = PyGOFMM.PyData( m = Xte.shape[0], n = Xte.shape[1], darr = Xte)
+    density_test = K.evaluateTest(Xte_py, ww_hmlp)
+
+    # return
+    return density_test.toArray()
 
 cdef class GOFMM_Handler(object):
     cdef PyGOFMM.KernelMatrix K
