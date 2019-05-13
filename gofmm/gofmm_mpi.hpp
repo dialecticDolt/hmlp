@@ -3759,7 +3759,7 @@ hmlpError_t compressionFailureFrontier( TREE & tree )
  * test datasets.
  */	
 template<typename TREE, typename T>
-Data<T> TestMultiply( TREE tree, DistData<STAR,CBLK,T> Xte, DistData<RIDS,STAR,T> w ){
+Data<T>* TestMultiply( TREE tree, DistData<STAR,CBLK,T> Xte, DistData<RIDS,STAR,T> w ){
 	/** Distribute data */
 	Data<T> Xte_global = Xte.GatherData();
 
@@ -3774,7 +3774,7 @@ Data<T> TestMultiply( TREE tree, DistData<STAR,CBLK,T> Xte, DistData<RIDS,STAR,T
  * with a test set.
  */	
 template<typename TREE, typename T>
-Data<T> TestMultiply( TREE tree, Data<T> Xte, DistData<RIDS, STAR, T> w )
+Data<T>* TestMultiply( TREE tree, Data<T> Xte, DistData<RIDS, STAR, T> w )
 {
 	/** Init, etc. */
 	Data<T> loc_exact = Data<T>(Xte.col(),w.col_owned());
@@ -3800,7 +3800,8 @@ Data<T> TestMultiply( TREE tree, Data<T> Xte, DistData<RIDS, STAR, T> w )
   		loc_exact.size(), MPI_SUM, tree.GetComm() );
 	
 	/** Return global data obj */
-	return glb_exact;
+    Data<T>* py_copy = new Data<T>(glb_exact);
+	return py_copy;
 
 };
 
