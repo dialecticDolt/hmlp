@@ -33,7 +33,7 @@ except:
 
 #TODO: Add branching statement if HMLP_USE_MLI is true
 os.environ["CC"] = "mpicc"
-os.environ["CXX"] = "mpic++"
+os.environ["CXX"] = "mpicxx"
 
 #include directories
 inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
@@ -85,7 +85,7 @@ setup(
     ext_modules=extensions,
     package_data={
         '':['*.pxd']
-    }
+    },
     zip_safe=False,
     include_package_data=True,
     cmdclass = {'build_ext': build_ext}
