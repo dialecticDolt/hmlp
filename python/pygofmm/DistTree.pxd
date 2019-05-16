@@ -45,6 +45,9 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpig
     RIDS_STAR_DistData[T]* Evaluate_Python_RIDS[NNPRUNE, TREE, T](TREE& tree, RIDS_STAR_DistData[T]& ddata) except +
     RBLK_STAR_DistData[T]* Evaluate_Python_RBLK[NNPRUNE, TREE, T](TREE&, RBLK_STAR_DistData[T]&) except +
     
+	#Test evaluate (dist/shared test sets)
+    Data[T]* TestMultiply[TREE, T](TREE&, STAR_CBLK_DistData[T], RIDS_STAR_DistData[T]) except +
+    Data[T]* TestMultiply[TREE, T](TREE&, Data[T], RIDS_STAR_DistData[T]) except +
     
     #Find Nearest Neighbors
     STAR_CBLK_DistData[pair[T, size_t]]* FindNeighbors_Python[SPLITTER, T, MATRIX](MATRIX&, SPLITTER, Configuration[T]&, libmpi.MPI_Comm, size_t) except + 
