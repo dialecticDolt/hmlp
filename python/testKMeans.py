@@ -17,13 +17,13 @@ rank = comm.Get_rank()
 rt = PyGOFMM.PyRuntime()
 rt.init_with_MPI(comm)
 
-N = 10000
+N = 100000*nprocs+8
 d = 5
 
 
 #Construct the point set
 np.random.seed(10)
-class_1 = np.random.randn(d, (int)(np.floor(N/3))) + 5
+class_1 = np.random.randn(d, (int)(np.floor(N/3))) + 4
 class_2 = np.random.randn(d, (int)(np.floor(N/3)))
 class_3 = np.random.randn(d, (int)(np.ceil(N/3)))
 test_points = np.asarray(np.concatenate((class_1, class_2, class_3), axis=1), dtype='float32')
@@ -59,8 +59,8 @@ sources, GIDS_Owned = PyGOFMM.CBLK_Distribute(comm, test_points)
 #print(len(GIDS_Owned))
 
 #Setup and compress the kernel matrix
-config = PyGOFMM.PyConfig("GEOMETRY_DISTANCE", N, 128, 64, 128, 0.001, 0.05, False)
-K = PyGOFMM.KernelMatrix(comm, sources, conf=config, bandwidth=0.9)
+config = PyGOFMM.PyConfig("GEOMETRY_DISTANCE", N, 128, 64, 128, 0.0001, 0, False)
+K = PyGOFMM.KernelMatrix(comm, sources, conf=config, bandwidth=1.3)
 end_s = MPI.Wtime()
 
 start_co = MPI.Wtime()
@@ -75,7 +75,7 @@ start_c = MPI.Wtime()
 if spec:
     classes, eig_time, center_time, update_time, init_time  = alg.SpecCluster(K, nclasses, gids=GIDS_Owned)
 else:
-    classes = PyGOFMM.FastKKMeans(K,  nclasses, maxiter=30, gids=GIDS_Owned)
+    classes, matvec_time, np_time, sim_time, com_time = PyGOFMM.FastKKMeans(K,  nclasses, maxiter=20, gids=GIDS_Owned)
 end_c = MPI.Wtime()
 
 #classes = alg.KKMeans(K, test_points, 3, maxiter=40, gids=GIDS_Owned)
@@ -103,6 +103,11 @@ if spec:
     print("KMeans- Centroids: ", center_time)
     print("KMeans- Update: ", update_time)
     print("Eigenvectors: ", -1*eig_time)
+else:
+    print("MV", matvec_time)
+    print("NP", np_time)
+    print("SI", sim_time)
+    print("com", com_time)
 
 #plt.scatter(points[:, 0], points[:, 1], c=classes.flatten())
 #plt.show()

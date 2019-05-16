@@ -1152,11 +1152,11 @@ def FastKKMeans(KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10, i
             classvec[j] = c
         GOFMM_classes = PyDistData_RIDS(comm, N, 1, iset=rids, arr=classvec)
 
-    if classvec is not None:
-        #load class data into PyGOFMM DistData object, NOTE: two copies are made here
-        Temp = PyDistData_RIDS(comm, m=N, n=1, arr=classvec, iset=gids)
-        GOFMM_classes = PyDistData_RIDS(comm, m=N, n=1, iset=rids)
-        GOFMM_classes.redistribute(Temp)
+    #if classvec is not None:
+    #    #load class data into PyGOFMM DistData object, NOTE: two copies are made here
+    #    Temp = PyDistData_RIDS(comm, m=N, n=1, arr=classvec, iset=gids)
+    #    GOFMM_classes = PyDistData_RIDS(comm, m=N, n=1, iset=rids)
+    #    GOFMM_classes.redistribute(Temp)
 
     #initialize class indicator block
     cdef float[:, :] H_local = np.zeros([n_local, nclasses], dtype='float32', order='F')
@@ -1173,7 +1173,7 @@ def FastKKMeans(KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10, i
 
     cdef float[:] npD = D.toArray().flatten() #create local numpy copy in order to use shared memory parallelism for similarity computation
     cdef float[:] Diag = np.ones([n_local], dtype='float32', order='F')
-    matD = np.diag(npD)
+    #matD = np.diag(npD)
     #allocate storage for lookup matricies
     cdef float[:, :] HKH_local = np.zeros([nclasses, nclasses], dtype='float32', order='F')
     cdef float[:, :] HKH = np.zeros([nclasses, nclasses], dtype='float32', order='F')
@@ -1186,13 +1186,19 @@ def FastKKMeans(KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10, i
     cdef int r
     cdef float[:, :] c_classes 
     #start main loop
+    cdef float sim_time = 0
+    cdef float np_time = 0
+    cdef float matvec_time = 0
+    cdef float com_time = 0
     for itr in xrange(maxiter):
         
         #update DKH, HKH, HDH
+        time = MPI.Wtime()
         KH = K.evaluate(H)
         npKH = KH.toArray()
         npH = H.toArray()
-        
+        matvec_time += MPI.Wtime() - time
+
         #HKH_local = np.matmul(npH.T, npKH)
         #print(np.asarray(HKH_local))
         #HDH_local = np.matmul(npH.T,np.matmul(matD, np.asarray(npH)))
@@ -1209,7 +1215,7 @@ def FastKKMeans(KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10, i
         #print(np.asarray(HKH_local))
         #print(np.asarray(HDH_local))
 
-
+        time = MPI.Wtime()
         HDH_local = np.zeros([nclasses, nclasses], dtype='float32')
         HKH_local = np.zeros([nclasses, nclasses], dtype='float32')
         #TODO: Replace this with shared memory parallel version or MKL
@@ -1233,6 +1239,9 @@ def FastKKMeans(KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10, i
         comm.Allreduce(HKH_local, HKH, op=MPI.SUM)
         comm.Allreduce(HDH_local, HDH, op=MPI.SUM)
         
+        np_time += MPI.Wtime() - time
+
+        time = MPI.Wtime()
         #update similarity
         for i in prange(n_local, nogil=True):
             for p in xrange(nclasses):
@@ -1253,12 +1262,14 @@ def FastKKMeans(KernelMatrix K, int nclasses, gids, classvec=None, maxiter=10, i
             H_local[i, <int>(c_classes[i, 0] - 1)] = 1.0
         
         #copy class indicator matrix to DistData object
-        H = PyDistData_RIDS(comm, N, nclasses, iset=rids, darr=H_local)
+        H = PyDistData_RIDS(comm, N, nclasses, iset=rids, darr=H_local)		
+        sim_time += MPI.Wtime() - time
 
+    time = MPI.Wtime()
     classes = PyDistData_RIDS(comm, m=N, n=1, iset=gids)
     classes.redistribute(GOFMM_classes)
-
-    return classes.toArray()
+    com_time = MPI.Wtime() - time
+    return (classes.toArray(), matvec_time, np_time, sim_time, com_time)
 
 
 @cython.boundscheck(False)
