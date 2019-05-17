@@ -537,7 +537,7 @@ def KKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxiter=1
     nprocs = comm.size
     rank = comm.rank
    
-    cdef float[:, :] centers = np.zeros([d, nclasses], dtype='float32')
+    cdef float[:] centers = np.zeros([nclasses], dtype='float32')
     cdef int[:] center_ind = np.zeros([nclasses], dtype='int32')
     cdef float[:] dlist = np.zeros([n_local], dtype='float32')
     cdef float minimumDist, currentDist
@@ -818,21 +818,25 @@ cdef class GOFMM_Handler(object):
     @cython.wraparound(False)
     @cython.nonecheck(False)
     def mult(self, mat, X, Y):
+        cdef float[:, :] npD
+        cdef float[:, :] res
+        npD = self.D.toArray()
         with X as x:
             with Y as y:
                 n = len(x)
                 nrhs = 1
                 normedx = np.zeros(np.shape(x), order='F', dtype='float32')
                 for i in range(len(x)):
-                    normedx[i] = 1/np.sqrt(self.D[self.rids[i], 0]) * x[i]
+                    normedx[i] = 1/np.sqrt(npD[i, 0]) * x[i]
                 GOFMM_x = PyGOFMM.PyDistData_RIDS(self.comm, m=self.size, n=nrhs, tree=self.K.getTree(), arr=normedx.astype('float32'))
                 GOFMM_y = self.K.evaluate(GOFMM_x)
+                res = GOFMM_y.toArray()
                 for i in range(len(y)):
                     if self.norm:
                         #y[i] = 1/self.D[self.rids[i], 0] * GOFMM_y[self.rids[i], 0]
-                        y[i] = 1/np.sqrt(self.D[self.rids[i], 0]) * GOFMM_y[self.rids[i], 0]
+                        y[i] = 1/np.sqrt(npD[i, 0]) * res[i, 0]
                     else:
-                        y[i] = GOFMM_y[self.rids[i], 0]
+                        y[i] = res[i, 0]
         return Y
 
     def mult_hmlp(self, GOFMM_x):
@@ -1081,8 +1085,15 @@ def SpecCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
         eigvecs = eigvecs + [vr.copy()]
         evals = evals + [res.real]
         print(res.real)
+
+    EV = eigvecs[0]
+    cdef int localsize = n_local
+    with EV as ev:
+        print(len(ev))
+        localsize = len(ev)
+    print(len(rids))
     #turn eigenvectors into [nclasses x N] point cloud in reduced space
-    spectral_points = np.empty([nclasses-1, n_local], dtype='float32', order='F')
+    spectral_points = np.empty([nclasses-1, len(rids)], dtype='float32', order='F')
     i = 0
     cdef float norm
     for vec in eigvecs:
