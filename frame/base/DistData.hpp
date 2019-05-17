@@ -4,6 +4,8 @@
 #include <Data.hpp>
 #include <hmlp_mpi.hpp>
 
+#include <omp.h>
+
 using namespace std;
 using namespace hmlp;
 
@@ -1450,6 +1452,20 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
       rids_copy.clear();
       rids_copy.shrink_to_fit();
 
+      /** set up which rid2proc vector */
+      size_t nrows = 0;
+      for (size_t i = 0; i < rids_all.size(); i++){
+          nrows += rids_all[i].size();
+      };
+      std::vector< size_t > rid2proc( nrows );
+      for (size_t pi = 0; pi < size; pi++){
+          for( size_t i = 0; i < rids_all[pi].size(); i++){
+              rid2proc[ rids_all[pi][i] ] = pi;
+          }
+      };
+      //rids_all.clear();
+      //rids_all.shrink_to_fit();
+
       /** set up ownership -- which rids of ours (output) are owned by which process (input) */
       std::vector<std::vector<size_t>> ownership( size );
       for ( auto it = rids.begin(); it != this->rids.end(); it ++ )
@@ -1458,20 +1474,21 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
         /** 
          * Find the rank that owns rid in rids in
          */
-        size_t rank_rid = -1;
-        for ( size_t rids_ii = 0; rids_ii < size; rids_ii ++)
-        {
-            auto rid_it = std::find(rids_all[rids_ii].begin(), rids_all[rids_ii].end(),rid);
+      size_t rank_rid = rid2proc[ rid ];
+        //size_t rank_rid = -1;
+        //for ( size_t rids_ii = 0; rids_ii < size; rids_ii ++)
+        //{
+        //    auto rid_it = std::find(rids_all[rids_ii].begin(), rids_all[rids_ii].end(),rid);
 
-            if(rid_it != rids_all[rids_ii].end())
-            {
-                rank_rid = rids_ii;
-                break;
-            }
-        }
+        //    if(rid_it != rids_all[rids_ii].end())
+        //    {
+        //        rank_rid = rids_ii;
+        //        break;
+        //    }
+        //};
 
-        // print for debugging
-        //std::cout << "Rank: "<< rank << " rid: " << rid << " owned by: "<< rank_rid << std::endl;
+        //// print for debugging
+        //if(rank == 0){std::cout << "Rank: "<< rank << " rid: " << rid << " owned by: "<< rank_rid << " or  " << rank_rid2<< std::endl;}
         ownership[rank_rid].push_back( rid );
       };
 
@@ -1495,8 +1512,10 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
       printf("Starting Redistribute\n");
 
       /** allocate buffer for ids **/
+      double beg = omp_get_wtime();
       std::vector<std::vector<size_t>> sendids = this->ridsownership(B.getRIDS());
       std::vector<std::vector<size_t>> recvids(size);
+      double ro_time = omp_get_wtime() - beg;
       /** figure out what each rank is requesting **/
          
       /** 
@@ -1506,8 +1525,11 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
       *  recvids contain all requested ids from each rank
       *
       */
+      beg = omp_get_wtime();
       mpi::AlltoallVector( sendids, recvids, comm );
+      double a2a1_time = omp_get_wtime() - beg;
            
+      beg = omp_get_wtime();
       std::vector<std::vector<T, ALLOCATOR>> senddata( size );
       std::vector<std::vector<T, ALLOCATOR>> recvdata( size );
 
@@ -1523,11 +1545,15 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
         senddata[ p ] = B( recvids[ p ], bmap );
         assert( senddata[ p ].size() == recvids[ p ].size() * bmap.size() );
       }
+      double init_time = omp_get_wtime() - beg;
 
       /** exchange data */
+      beg = omp_get_wtime();
       mpi::AlltoallVector( senddata, recvdata, comm );
+      double a2a2_time = omp_get_wtime() - beg;
 
 
+      beg = omp_get_wtime();
       #pragma omp parallel for 
       for ( size_t p = 0; p < size; p ++ )
       {
@@ -1547,6 +1573,12 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
           }
         };
       };
+      double data_time = omp_get_wtime() - beg;
+    printf("Ro   time: %f\n", ro_time  );
+        printf("A2A1 time: %f\n", a2a1_time);
+        printf("Init time: %f\n", init_time);
+        printf("A2A2 time: %f\n", a2a2_time);
+        printf("Data time: %f\n", data_time);
       mpi::Barrier( comm );
 
       return (*this);
