@@ -40,6 +40,7 @@ from petsc4py import PETSc
 
 #flush
 import sys
+import time
 
 
 def testFunction(PyGOFMM.PyRuntime testparam):
@@ -678,7 +679,33 @@ def KKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxiter=1
 
     return classes.toArray()
 
+# Get vector for KDE multiply
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
+def KDE_Vec( MPI.Comm comm,int N, int nclasses, float[:] classvec, int[:] user_rids, int[:] tree_rids):
+    cdef int n_local = len(tree_rids)
+
+    # redistribute
+    classes_user = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, arr=classvec, iset=user_rids)
+    cdef PyGOFMM.PyDistData_RIDS classes_hmlp = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, iset=tree_rids)
+    classes_hmlp.redistribute(classes_user)
+
+
+    #initialize class indicator block
+    cdef float[:, :] ww_hmlp_loc= np.zeros([n_local, nclasses], dtype='float32', order='F')
+    #for i in xrange(n_local): #TODO fix loop?
+    #    ww_hmlp_loc[i, <int>(classes_hmlp[tree_rids[i], 0] - 1)] = 1.0
+
+    #copy class indicator block to DistData object
+    cdef PyGOFMM.PyDistData_RIDS bla = PyGOFMM.PyDistData_RIDS(comm, N, nclasses, iset=tree_rids, darr=ww_hmlp_loc)
+    return bla
+
+
 #pure python implementation of KDE
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
 def KDE(PyGOFMM.KernelMatrix K, int nclasses,int[:] gids, float[:] classvec):
     cdef int N, n_local
     cdef int i,ci,j
@@ -690,26 +717,47 @@ def KDE(PyGOFMM.KernelMatrix K, int nclasses,int[:] gids, float[:] classvec):
     comm = K.getComm()
 
     #load class data into PyGOFMM DistData object, TODO: necessary for creation of ww_hmlp?
-    classes_user = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, arr=classvec, iset=gids)
-    classes_hmlp = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, iset=rids)
-    classes_hmlp.redistribute(classes_user)
+    vec_start = time.time()
+    #classes_user = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, arr=classvec, iset=gids)
+    #classes_hmlp = PyGOFMM.PyDistData_RIDS(comm, m=N, n=1, iset=rids)
+    #classes_hmlp.redistribute(classes_user)
 
-    #initialize class indicator block
-    cdef float[:, :] ww_hmlp_loc= np.zeros([n_local, nclasses], dtype='float32', order='F')
-    for i in xrange(n_local): #TODO fix loop?
-        ww_hmlp_loc[i, <int>(classes_hmlp[rids[i], 0] - 1)] = 1.0
+    ##initialize class indicator block
+    #cdef float[:, :] ww_hmlp_loc= np.zeros([n_local, nclasses], dtype='float32', order='F')
+    #for i in xrange(n_local): #TODO fix loop?
+    #    ww_hmlp_loc[i, <int>(classes_hmlp[rids[i], 0] - 1)] = 1.0
 
-    #copy class indicator block to DistData object
-    ww_hmlp = PyGOFMM.PyDistData_RIDS(comm, N, nclasses, iset=rids, darr=ww_hmlp_loc)
+    ##copy class indicator block to DistData object
+    #cdef PyGOFMM.PyDistData_RIDS ww_hmlp = PyGOFMM.PyDistData_RIDS(comm, N, nclasses, iset=rids, darr=ww_hmlp_loc)
+    cdef PyGOFMM.PyDistData_RIDS ww_hmlp = KDE_Vec(comm, N, nclasses, classvec, gids, rids)
+    vec_end = time.time()
+    vec_time =vec_end - vec_start
 
     # Compute multiply
-    density_hmlp = K.evaluate(ww_hmlp)
-    density_user = PyGOFMM.PyDistData_RIDS(comm,m = N,n=nclasses, iset = gids)
+    kde_start = time.time()
+    cdef PyGOFMM.PyDistData_RIDS density_hmlp = K.evaluate(ww_hmlp)
+
+    # subtract self interactions (TODO)
+    #density_hmlp.Subtract(ww_hmlp)
+
+    # Redistribute
+    cdef PyGOFMM.PyDistData_RIDS density_user = PyGOFMM.PyDistData_RIDS(comm,m = N,n=nclasses, iset = gids)
     density_user.redistribute(density_hmlp)
+    kde_end = time.time()
+    kde_time = kde_end - kde_start
 
-    # output density after redistributing and subtracting local contributions
-    return density_user.toArray() - ww_hmlp_loc #TODO current default removes self interactions. keep?
+    print("  KDE event  |   Time")
+    print(" ---------------------")
+    print(" vec create  |   ",vec_time)
+    print("   run kde   |   ",kde_time)
+    sys.stdout.flush() 
 
+    # output density 
+    return density_user.toArray() # - ww_hmlp_loc #TODO current default removes self interactions. keep?
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.nonecheck(False)
 def TestKDE(PyGOFMM.KernelMatrix K, int nclasses, int [:] gids, float[:] classvec, float[:,:] Xte):
     cdef int N, n_local
     cdef int i,ci,j
