@@ -11,13 +11,13 @@ rank = comm.Get_rank()
 rt = PyGOFMM.PyRuntime()
 rt.init_with_MPI(comm)
 
-N = 100000*nprocs+8
+N = 10000*nprocs;
 d = 5
 
 
 #Construct the point set
 np.random.seed(10)
-class_1 = np.random.randn(d, (int)(np.floor(N/3))) + 2
+class_1 = np.random.randn(d, (int)(np.floor(N/3))) + 5
 class_2 = np.random.randn(d, (int)(np.floor(N/3)))
 class_3 = np.random.randn(d, (int)(np.ceil(N/3)))
 test_points = np.asarray(np.concatenate((class_1, class_2, class_3), axis=1), dtype='float32')
@@ -41,9 +41,12 @@ PyNNList = PyGOFMM.FindAllNeighbors(comm, N, k, sources)
 distances, gids = PyNNList.toNumpy()
 a = np.median(distances[1:10, 1:])
 b = np.median(distances[:, 1:])
+
+a = 0.2
+a = 5
 bandwidths = np.logspace(np.log2(a), np.log2(b), num=4, base=2)
 
-spec = False;
+spec = True;
 if spec:
         t = "spectral"
 else:
@@ -51,7 +54,7 @@ else:
 
 L = 128 #leafnodesize
 k = 64 #number of neighbors
-tol = 1E-3
+tol = 1E-5
 budget = 0
 
 results = open(t+"_clustering_tol"+str(tol)+"_budget"+str(budget)+"_MPI_"+str(nprocs)+".txt", "a")
@@ -87,7 +90,7 @@ for lam in bandwidths:
                 results.write("Total Clustering Time: "+ str(end_c - start_c)+"\n")
                 if spec:
                         results.write("KMeans++: "+str(init_time)+"\n")
-                        results.write("KMeans - Update Means:"+str(center_time+"\n"))
+                        results.write("KMeans - Update Means:"+str(center_time)+"\n")
                         results.write("KMeans - Compute Classes: "+str(update_time)+"\n")
                         results.write("Eigenvector: "+str(-1*eig_time)+"\n")
                 else:

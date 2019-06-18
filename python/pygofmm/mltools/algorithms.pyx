@@ -1050,6 +1050,7 @@ def SpecCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     comm_petsc = MPI.COMM_WORLD
     A = PETSc.Mat().createPython([N, N], comm = comm_petsc)
     A.setPythonContext(gofmm)
+    A.setSizes( ( (n_local, N), (n_local, N) ) )
     A.setUp()
 
     #don't search for the Perron-Frobenius vector
@@ -1061,7 +1062,6 @@ def SpecCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     E.create()
     E.setOperators(A)
     E.setProblemType(SLEPc.EPS.ProblemType.HEP)
-    E.setFromOptions()
     E.setDimensions(nclasses)
     E.setDeflationSpace(x)
     stime = MPI.Wtime()
