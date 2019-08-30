@@ -121,6 +121,176 @@ using namespace std;
 namespace hmlp
 {
 
+//template<typename T, class Allocator = std::allocator<T>>
+//class Tensor : public ReadWrite, public std::vector<T, Allocator>
+//{
+//  public:
+//
+//    Tensor() : 
+//      std::vector<T, Allocator>() 
+//    {};
+//
+//    Tensor( int32_t num_modes, const uint64_t extent[], const int64_t stride[] ) : 
+//        num_modes_( num_modes ), 
+//        extent_( extent, extent + num_modes ), 
+//        stride_( stride, stride + num_modes )
+//    {
+//      try
+//      {
+//        allocate_();
+//      }
+//      catch ( const std::exception & e )
+//      {
+//        HANDLE_EXCEPTION( e );
+//      }
+//    };
+//
+//    Tensor( 
+//        int32_t num_modes, 
+//        const std::vector<uint64_t> & extent,
+//        const std::vector<int64_t> & stride ) :
+//      num_modes_( num_modes ), 
+//      extent_( extent ), 
+//      stride_( stride )
+//    {
+//      try
+//      {
+//        allocate_();
+//      }
+//      catch ( const std::exception & e )
+//      {
+//        HANDLE_EXCEPTION( e );
+//      }
+//    };
+//
+//    int32_t getNumModes() const noexcept 
+//    {
+//      return num_modes_;
+//    };
+//
+//    uint64_t getExtent( int32_t mode_index ) const noexcept
+//    {
+//      if ( mode_index >= getNumModes() )
+//      {
+//        throw std::exception( "Too many modes in getExtent" );
+//      }
+//      return extent_[ mode_index ];
+//    }
+//
+//    uint64_t getStride( int32_t mode_index ) const noexcept
+//    {
+//      if ( mode_index >= getNumModes() )
+//      {
+//        throw std::exception( "Too many modes in getStride" );
+//      }
+//      return stride_[ mode_index ];
+//    }
+//
+//    template<typename... Args>
+//    T & operator() ( const Args & ... args )
+//    {
+//      auto offset = recuGetOffset_( 0, args );
+//      return (*this).at( offset );
+//    };
+//
+//    template<typename... Args>
+//    T operator() ( const Args & ... args ) const
+//    {
+//      auto offset = recuGetOffset_( 0, args );
+//      return (*this).at( offset );
+//    };
+//
+//
+//
+//
+//  protected:
+//
+//    int32_t num_modes_ = 0;
+//
+//    std::vector<uint64_t> extent_;
+//
+//    std::vector<uint64_t> stride_;
+//
+//    std::vector<int8_t> mode_;
+//
+//    void allocate_() 
+//    {
+//      uint64_t num_elements = 0;
+//
+//      for ( int32_t mode_order = 0; mode_order < getNumModes(); mode_order ++ )
+//      {
+//        auto mode_extent = getExtent( mode_order );
+//        auto max_mode_index = ( mode_extent > 0 ) ? mode_extent - 1 : 0;
+//        num_elements += max_mode_index * getStride( mode_order );
+//      }
+//
+//      (*this).resize( num_elements );
+//    }
+//
+//    uint64_t recuGetOffset_( int32_t mode_index, uint64_t i ) const
+//    {
+//      return i * getStride( mode_index );
+//    }
+//
+//    template<typename... Args>
+//    uint64_t recuGetOffset_( int32_t mode_index, uint64_t i, const Args & ... args ) const
+//    {
+//      return i * getStride( mode_index ) + recuGetOffset_( mode_index + 1, args ); 
+//    }
+//    
+//
+//}; /* end class Tensor */
+//
+//
+//template<typename T, class Allocator = std::allocator<T>>
+//class Matrix : public hmlp::Tensor<T, Allocator>
+//{
+//  public:
+//
+//    Matrix() :
+//      Tensor<T, Allocator>()
+//    {};
+//
+//    Matrix( 
+//        const uint64_t height, 
+//        const uint64_t width ) :
+//      Tensor( 2, { height, width }, { (const uint64_t)1, height } ) 
+//    {};
+//
+//    Matrix( 
+//        const uint64_t height, 
+//        const uint64_t width,
+//        const uint64_t row_stride,
+//        const uint64_t column_stride
+//        ) :
+//      Tensor( 2, { height, width }, { row_stride, column_stride } ) 
+//    {};
+//
+//    uint64_t getHieght() const
+//    {
+//      return getExtent( 0 );
+//    }
+//
+//    uint64_t getWidth() const 
+//    {
+//      return getExtent( 1 );
+//    }
+//
+//    uint64_t getRowStride() const
+//    {
+//      return getStride( 0 );
+//    }
+//
+//    uint64_t getColumnStride() const
+//    {
+//      return getStride( 1 );
+//    }
+//
+//  protected:
+//
+//}; /* end class Matrix */
+//
+
 #ifdef HMLP_MIC_AVX512
 /** use hbw::allocator for Intel Xeon Phi */
 template<class T, class Allocator = hbw::allocator<T> >
@@ -165,18 +335,37 @@ class Data : public ReadWrite, public vector<T, Allocator>
     ~Data(){ this->clear(); //printf("DELETING\n");  
         };
 
-    Data( size_t m, size_t n ) { resize( m, n ); };
-
-    Data( size_t m, size_t n, T initT ) { resize( m, n, initT ); };
-
-    Data( size_t m, size_t n, string &filename ) : Data( m, n )
-    {
-      this->read( m, n, filename );
+    Data( size_t m, size_t n ) 
+    { 
+      resize( m, n ); 
     };
 
-    void resize( size_t m, size_t n ) { resize_( m, n ); };
+    Data( size_t m, size_t n, const T initT ) 
+    { 
+      resize( m, n, initT ); 
+    };
 
-    void resize( size_t m, size_t n, T initT ) { resize_( m, n, initT ); };
+    Data( size_t m, size_t n, const std::string & filename ) : Data( m, n )
+    {
+      try 
+      {
+        HANDLE_ERROR( this->readBinaryFile( m, n, filename ) );
+      }
+      catch ( const std::exception & e )
+      {
+        HANDLE_EXCEPTION( e );
+      }
+    };
+
+    void resize( size_t m, size_t n ) 
+    { 
+      resize_( m, n ); 
+    };
+
+    void resize( size_t m, size_t n, T initT ) 
+    { 
+      resize_( m, n, initT ); 
+    };
 
     void reserve( size_t m, size_t n ) { reserve_( m, n ); };
 
@@ -184,84 +373,156 @@ class Data : public ReadWrite, public vector<T, Allocator>
      *  \brief Make it a 0-by-0 matrix and also call vector::clear() 
      *         and vector::shrink_to_fit().
      */ 
-    void clear() { clear_(); }; 
+    void clear() 
+    { 
+      clear_(); 
+    }; 
 
-    void read( size_t m, size_t n, string &filename )
+    hmlpError_t readBinaryFile( uint64_t m, uint64_t n, const std::string & filename )
     {
-      assert( this->m == m );
-      assert( this->n == n );
-      assert( this->size() == m * n );
-
-      cout << filename << endl;
-
-      ifstream file( filename.data(), ios::in|ios::binary|ios::ate );
-      if ( file.is_open() )
+      if ( this->m != m || this->n != n || this->size() != m * n )
       {
-        auto size = file.tellg();
-        assert( size == m * n * sizeof(T) );
-        file.seekg( 0, ios::beg );
-        file.read( (char*)this->data(), size );
-        file.close();
+        std::cerr << "ERROR: mismatching height or width" << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
       }
+      if ( filename.size() == 0 )
+      {
+        std::cerr << "ERROR: the filename cannot be empty" << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      else
+      {
+        /* Print out filename. */
+        std::cout << filename << endl;
+      }
+
+      std::ifstream file( filename.data(), std::ios::in|std::ios::binary|std::ios::ate );
+
+      if ( !file.is_open() )
+      {
+        std::cerr << "ERROR: fail to open " << filename << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+
+      auto size = file.tellg();
+      if ( size != m * n * sizeof(T) )
+      {
+        std::cerr << "ERROR: only " << file.tellg() << " bytes, expecting " << m * n * sizeof(T) << std::endl;
+        file.close();
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+
+      file.seekg( 0, std::ios::beg );
+      if ( !file.read( (char*)this->data(), size ) )
+      {
+        std::cerr << "ERROR: only " << file.gcount() << " bytes, expecting " << m * n * sizeof(T) << std::endl;
+      }
+      file.close();
+
+      return HMLP_ERROR_SUCCESS;
     };
 
-		void write( std::string &filename )
-		{
-			ofstream myFile ( filename.data(), ios::out | ios::binary );
-      myFile.write( (char*)(this->data()), this->size() * sizeof(T) );
-		};
+    hmlpError_t writeBinaryFile( const std::string & filename )
+    {
+      if ( filename.size() == 0 )
+      {
+        std::cerr << "ERROR: the filename cannot be empty" << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      else
+      {
+        /* Print out filename. */
+        std::cout << filename << endl;
+      }
+      /* Create an ofstream. */
+      std::ofstream file( filename.data(), std::ios::out | std::ios::binary );
+      if ( !file.is_open() )
+      {
+        std::cerr << "ERROR: fail to open " << filename << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      file.write( (char*)(this->data()), this->size() * sizeof(T) );
+      
+      return HMLP_ERROR_SUCCESS;
+    };
 
     template<int SKIP_ATTRIBUTES = 0, bool TRANS = false>
-		void readmtx( size_t m, size_t n, string &filename )
-		{
-      assert( this->m == m );
-      assert( this->n == n );
-      assert( this->size() == m * n );
+    hmlpError_t readmtx( uint64_t height, uint64_t width, const std::string & filename,
+        uint64_t num_skipped_lines = 0, bool transpose = false )
+    {
+      if ( this->getHeight() != height || this->getWidth() != width )
+      {
+        std::cerr << "ERROR: mismatching height or width" << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      if ( filename.size() == 0 )
+      {
+        std::cerr << "ERROR: the filename cannot be empty" << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      else
+      {
+        /* Print out filename. */
+        std::cout << filename << endl;
+      }
 
-      cout << filename << endl;
+      std::ifstream file( filename.data() );
+      std::string line;
 
-      ifstream file( filename.data() );
-			string line;
-			if ( file.is_open() )
-			{
-				size_t j = 0;
-				while ( getline( file, line ) )
-				{
-					if ( j == 0 ) printf( "%s\n", line.data() );
+      if ( !file.is_open() )
+      {
+        std::cerr << "ERROR: fail to open " << filename << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
 
+      /* Line counter starting from zero. */
+      uint64_t num_lines = 0;
+      uint64_t expected_num_lines = num_skipped_lines + ( transpose ? width : height );
+      /* Loop over all lines. */
+      while ( getline( file, line ) )
+      {
+        if ( num_lines >= expected_num_lines )
+        {
+          break;
+        }
+        if ( num_lines < num_skipped_lines )
+        {
+          continue;
+        }
+        /* Replace all ',' and ';' with '\n' */
+        std::replace( line.begin(), line.end(), ',', '\n' );
+        std::replace( line.begin(), line.end(), ';', '\n' );
 
-					if ( j % 1000 == 0 ) printf( "%4lu ", j ); fflush( stdout );
-					if ( j >= n )
-					{
-						printf( "more data then execpted n %lu\n", n );
-					}
+        std::istringstream iss( line );
 
-          /** Replace all ',' and ';' with white space ' ' */
-					replace( line.begin(), line.end(), ',', '\n' );
-					replace( line.begin(), line.end(), ';', '\n' );
-
-					istringstream iss( line );
-
-					for ( size_t i = 0; i < m + SKIP_ATTRIBUTES; i ++ )
-					{
-						T tmp;
-						if ( !( iss >> tmp ) )
-						{
-							printf( "line %lu does not have enough elements (only %lu)\n", j, i );
-					    printf( "%s\n", line.data() );
-							exit( 1 );
-						}
-						if ( i >= SKIP_ATTRIBUTES )
-						{
-							if ( TRANS ) (*this)[ j * m + i ] = tmp;
-							else         (*this)[ i * n + j ] = tmp;
-						}
-					}
-					j ++;
-				}
-				printf( "\nfinish readmatrix %s\n", filename.data() );
-			}
-		};
+        for ( uint64_t i = 0; i < ( transpose ? height : width ); i ++ )
+        {
+          T element;
+          if ( !( iss >> element ) )
+          {
+            file.close();
+            std::cerr << "ERROR: line " << num_lines << " does not have enough elements " << i << std::endl; 
+            return HMLP_ERROR_INVALID_VALUE;
+          }
+          if ( transpose )
+          {
+              (*this)( i, num_lines - num_skipped_lines ) = element;
+          }
+          else
+          {
+              (*this)( num_lines - num_skipped_lines, i ) = element;
+          }
+        }
+        num_lines ++;
+      }
+      file.close();
+      if ( num_lines < expected_num_lines )
+      {
+        std::cerr << "ERROR: does not have enough lines " << num_lines << std::endl; 
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      return HMLP_ERROR_SUCCESS;
+    };
 
 
 
@@ -280,19 +541,95 @@ class Data : public ReadWrite, public vector<T, Allocator>
       return ( this->data() + j * m );
     };
 
-		T getvalue( size_t i ) { return (*this)[ i ]; };
+    T getvalue( size_t i ) { return (*this)[ i ]; };
 
-		void setvalue( size_t i, T v ) { (*this)[ i ] = v; };
+    void setvalue( size_t i, T v ) { (*this)[ i ] = v; };
 
-		T getvalue( size_t i, size_t j ) { return (*this)( i, j ); };
+    T getvalue( size_t i, size_t j ) { return (*this)( i, j ); };
 
-		void setvalue( size_t i, size_t j, T v ) { (*this)( i, j ) = v; };
+    void setvalue( size_t i, size_t j, T v ) { (*this)( i, j ) = v; };
 
     /** ESSENTIAL: return number of coumns */
     size_t row() const noexcept { return m; };
+    uint64_t getHeight() const noexcept 
+    {
+      return m;
+    };
 
     /** ESSENTIAL: return number of rows */
     size_t col() const noexcept { return n; };
+    uint64_t getWidth() const noexcept 
+    {
+      return n;
+    };
+
+
+    Data<T> operator + ( const Data<T>& b ) const
+    {
+      if ( b.row() != this->row() || b.col != this->col() )
+      {
+        throw std::invalid_argument( "Operator Data::operator + must have the same shape" );
+      }
+      auto a = (*this);
+      for ( size_t i = 0; i < a.size(); i ++ )
+      {
+        a[ i ] += b[ i ];
+      }
+      return a;
+    }
+
+    Data<T> operator - ( const Data<T>& b ) const
+    {
+      if ( b.row() != this->row() || b.col() != this->col() )
+      {
+        throw std::invalid_argument( "Operator Data::operator - must have the same shape" );
+      }
+      auto a = (*this);
+      for ( size_t i = 0; i < a.size(); i ++ )
+      {
+        a[ i ] -= b[ i ];
+      }
+      return a;
+    }
+
+    double squaredFrobeniusNorm() const noexcept
+    {
+      double sqfnrm = 0;
+      for ( auto v : *this ) 
+      {
+        sqfnrm += v * v;
+      }
+      return sqfnrm;
+    }
+
+    double sumOfSquaredError( const Data<T>& b ) const
+    {
+      auto c = (*this) - b;
+      return c.squaredFrobeniusNorm();
+    }
+
+    double relativeError( const Data<T>& b )
+    {
+      auto c = (*this) - b;
+      double c_nrm = c.squaredFrobeniusNorm();
+      double b_nrm = b.squaredFrobeniusNorm();
+
+      if ( b_nrm )
+      {
+        return std::sqrt( c_nrm ) / std::sqrt( b_nrm );
+      }
+      else
+      {
+        if ( c_nrm ) 
+        {
+          return 1;
+        }
+        else
+        {
+          return 0;
+        }
+      }
+    };
 
     /** ESSENTIAL: return an element */
     T& operator()( size_t i, size_t j )       { return (*this)[ m * j + i ]; };
@@ -838,18 +1175,17 @@ class SparseData : public ReadWrite
 
 
 
-#ifdef HMLP_MIC_AVX512
-template<class T, class Allocator = hbw::allocator<T> >
-#else
 template<class T, class Allocator = std::allocator<T> >
-#endif
 class OOCData : public ReadWrite
 {
   public:
 
     OOCData() {};
 
-    OOCData( size_t m, size_t n, string filename ) { Set( m, n, filename ); };
+    OOCData( size_t m, size_t n, string filename ) 
+    { 
+      HANDLE_ERROR( initFromFile( m, n, filename ) ); 
+    };
 
     ~OOCData()
     {
@@ -860,33 +1196,44 @@ class OOCData : public ReadWrite
       printf( "finish readmatrix %s\n", filename.data() );
     };
 
-    void Set( size_t m, size_t n, string filename )
+    hmlpError_t initFromFile( size_t m, size_t n, std::string filename )
     {
       this->m = m;
       this->n = n;
       this->filename = filename;
-      /** Open the file */
+
+      /* Get the file size in bytes. */
+      uint64_t file_size = (uint64_t)m * (uint64_t)n * sizeof(T);
+
+      /* Open the file */
       fd = open( filename.data(), O_RDONLY, 0 ); 
-      assert( fd != -1 );
+      /* Return error if fail to open the file. */
+      if ( fd == -1 )
+      {
+        fprintf( stderr, "fail to open %s\n", filename.data() );
+        return HMLP_ERROR_INVALID_VALUE;
+      }
 #ifdef __APPLE__
-      mmappedData = (T*)mmap( NULL, m * n * sizeof(T), 
-          PROT_READ, MAP_PRIVATE, fd, 0 );
-#else /** Assume Linux */
-      mmappedData = (T*)mmap( NULL, m * n * sizeof(T), 
-          PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0 );
+      mmappedData = (T*)mmap( nullptr, file_size, PROT_READ, MAP_PRIVATE, fd, 0 );
+#else /* Assume Linux */
+      mmappedData = (T*)mmap( nullptr, file_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0 );
 #endif
-      assert( mmappedData != MAP_FAILED );
-      cout << filename << endl;
+      /* Return error if fail to map to the file. */
+      if ( mmappedData != MAP_FAILED )
+      {
+        fprintf( stderr, "mmap %s with %lu bytes failure\n", filename.data(), file_size );
+        return HMLP_ERROR_ALLOC_FAILED;
+      }
+      /* Return with no error. */
+      return HMLP_ERROR_SUCCESS;
     };
 
-    //template<typename TINDEX>
     T operator()( size_t i, size_t j ) const 
     {
       assert( i < m && j < n );
       return mmappedData[ j * m + i ];
     };
 
-    //template<typename TINDEX>
     Data<T> operator()( const vector<size_t>& I, const vector<size_t>& J ) const 
     {
       Data<T> KIJ( I.size(), J.size() );
@@ -904,34 +1251,69 @@ class OOCData : public ReadWrite
       return sample; 
     };
 
-    size_t row() const noexcept { return m; };
+    size_t row() const noexcept 
+    { 
+      return m; 
+    };
 
     size_t col() const noexcept { return n; };
 
     template<typename TINDEX>
     double flops( TINDEX na, TINDEX nb ) { return 0.0; };
 
-  private:
+  protected:
+
+    /** Whether the data has been initialized? */
+    bool is_init_ = false;
 
     size_t m = 0;
 
     size_t n = 0;
 
-    string filename;
+    std::string filename;
 
     /** Use mmap */
-    T *mmappedData = NULL;
+    T *mmappedData = nullptr;
 
     int fd = -1;
 
 }; /** end class OOCData */
 
 
+template<typename T>
+hmlpError_t elementwise(const T alpha, const hmlp::Data<T> & A, const T beta, hmlp::Data<T> & B)
+{
+  if (A.row() != B.row() || A.col() != B.col())
+  {
+    return HMLP_ERROR_INVALID_VALUE;
+  }
+  for (auto itA = A.begin(), itB = B.begin(); itA != A.end() && itB != B.end(); itA ++, itB ++)
+  {
+    (*itB) = alpha * (*itA) + beta * (*itB);
+  }
+  return HMLP_ERROR_SUCCESS;
+}
+
+template<typename T>
+hmlpError_t dotProduct(const T alpha, const hmlp::Data<T> & A, const hmlp::Data<T> & B, T & output)
+{
+  if (A.row() != B.row() || A.col() != B.col())
+  {
+    return HMLP_ERROR_INVALID_VALUE;
+  }
+  /* Zero-out output. */
+  output = 0;
+  for (auto itA = A.begin(), itB = B.begin(); itA != A.end() && itB != B.end(); itA ++, itB ++)
+  {
+    output += (*itB) * (*itA);
+  }
+  /* Scale alpha before return. */
+  output *= alpha;
+  return HMLP_ERROR_SUCCESS;
+}
 
 
 
-
-
-}; /** end namespace hmlp */
+}; /* end namespace hmlp */
 
 #endif /** define DATA_HPP */

@@ -22,12 +22,19 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "hmlp::gofmm" n
         pass
 
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/tree_mpi.hpp" namespace "hmlp::mpitree" nogil:
+    cdef cppclass ArgumentBase[SPLITTER, T]:
+        pass
+
     cdef cppclass Tree[SETUP, NODEDATA]:
         Tree(libmpi.MPI_Comm) except +
         vector[size_t] getGIDS()
 
 cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpigofmm" nogil:
-    #used to template Tree    
+    #used to template Tree
+    cdef cppclass Argument[SPDMATRIX, SPLITTER, T]:
+        SPDMATRIX *K
+        FromConfiguration(Configuration[T], SPDMATRIX, SPLITTER, STAR_CBLK_DistData) except +
+
     cdef cppclass Setup[MATRIX, SPLITTER, T]:
         pass
 
@@ -37,7 +44,9 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm_mpi.hpp" namespace "hmlp::mpig
     cdef cppclass randomsplit[MATRIX, int, T]:
         MATRIX *Kptr
 
-    cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ]* Compress[CSPLIT, RSPLIT, T,SPDMATRIX]( SPDMATRIX&, STAR_CBLK_DistData[pair[T, size_t]]&, centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&,libmpi.MPI_Comm)
+    #cdef Tree[Setup[ SPDMATRIX, centersplit[SPDMATRIX,two,T], T ], NodeData[T] ]* Compress[CSPLIT, RSPLIT, T,SPDMATRIX]( SPDMATRIX&, STAR_CBLK_DistData[pair[T, size_t]]&, centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&,libmpi.MPI_Comm)
+
+    cdef Tree[ Argument[SPDMATRIX, centersplit[SPDMATRIX, two, T], T], NodeData[T] ]* Compress[CSPLIT, RSPLIT, T, SPDMATRIX](SPDMATRIX&, STAR_CBLK_DistData[pair[T, size_t]]&, centersplit[SPDMATRIX, two, T], randomsplit[SPDMATRIX, two, T], Configuration[T]&, libmpi.MPI_Comm)
 
     cdef void SelfTesting[TREE]( TREE&, size_t, size_t)
     #Evaluate (Matvec)

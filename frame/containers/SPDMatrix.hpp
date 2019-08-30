@@ -5,8 +5,7 @@
 #include<Data.hpp>
 #include<VirtualMatrix.hpp>
 
-using namespace std;
-using namespace hmlp;
+//using namespace hmlp;
 
 namespace hmlp
 {
@@ -24,47 +23,69 @@ class SPDMatrix : public VirtualMatrix<T>
 
     SPDMatrix() : VirtualMatrix<T>() {};
 
-    SPDMatrix( size_t m, size_t n ) 
-      : VirtualMatrix<T>( m, n ) { K.resize( m, n ); };
-
-    SPDMatrix( size_t m, size_t n, string filename )
-      : VirtualMatrix<T>( m, n )
-    {
-      K.resize( m, n );
-      K.read( m, n, filename );
+    SPDMatrix( uint64_t height, uint64_t width ) 
+      : VirtualMatrix<T>( height, width ) 
+    { 
+      K_.resize( height, width );
     };
 
-    void resize( size_t m, size_t n )
+    SPDMatrix( uint64_t height, uint64_t width, const std::string & filename )
+      : VirtualMatrix<T>( height, width ) 
     {
-      VirtualMatrix<T>::resize( m, n );
-      K.resize( m, n );
+      try
+      {
+        K_.resize( height, width );
+        HANDLE_ERROR( K_.readBinaryFile( height, width, filename ) );
+      }
+      catch ( const std::exception & e )
+      {
+        HANDLE_EXCEPTION( e );
+      }
+    };
+
+    void resize( uint64_t height, uint64_t width )
+    {
+      VirtualMatrix<T>::resize( height, width );
+      K_.resize( height, width );
     };
 
     template<bool USE_LOWRANK=true>
-    void randspd( T a, T b ) { K.randspd( a, b ); };
-
-    void read( size_t m, size_t n, string &filename ) 
+    void randspd( T a, T b ) 
     { 
-      K.read( m, n, filename ); 
+      K_.randspd( a, b ); 
     };
 
-    T operator()( size_t i, size_t j ) { return K( i, j ); };
+    hmlpError_t readBinaryFile( uint64_t height, uint64_t width, const std::string & filename ) 
+    { 
+      return K_.readBinaryFile( height, width, filename ); 
+    };
 
-    Data<T> operator() ( const vector<size_t> &I, 
-                         const vector<size_t> &J )
+    T operator()( uint64_t i, uint64_t j )
+    { 
+      return K_( i, j ); 
+    };
+
+    Data<T> operator() ( const std::vector<uint64_t> &I, 
+                         const std::vector<uint64_t> &J )
     {
-      return K( I, J );
+      return K_( I, J );
     };
 
-    T* data() noexcept { return K.data(); };
+    T* data() noexcept 
+    { 
+      return K_.data(); 
+    };
 
-    const T* data() const noexcept { return K.data(); };
+    const T* data() const noexcept 
+    { 
+      return K_.data(); 
+    };
 
-  private:
+  protected:
 
-    Data<T> K;
+    Data<T> K_;
 
-}; /** end class SPDMatrix */
+}; /* end class SPDMatrix */
 
 
 
@@ -74,27 +95,30 @@ class OOCSPDMatrix : public VirtualMatrix<T>
 {
   public:
 
-    OOCSPDMatrix( size_t m, size_t n, string filename )
-      : VirtualMatrix<T>( m, n )
+    OOCSPDMatrix( uint64_t height, uint64_t width, const std::string & filename )
+      : VirtualMatrix<T>( height, width ) 
     {
-      K.Set( m, n, filename );
+      K_.initFromFile( height, width, filename );
     };
 
-    T operator()( size_t i, size_t j ) { return K( i, j ); };
-
-    Data<T> operator() ( const vector<size_t> &I, 
-                         const vector<size_t> &J )
-    {
-      return K( I, J );
+    T operator()( uint64_t i, uint64_t j ) 
+    { 
+      return K_( i, j ); 
     };
 
- private:
+    Data<T> operator() ( const std::vector<uint64_t> & I, 
+                         const std::vector<uint64_t> & J )
+    {
+      return K_( I, J );
+    };
 
-    OOCData<T> K;
+ protected:
 
-}; /** end class OOCSPDMatrix */
+    OOCData<T> K_;
 
-}; /** end namespace hmlp */
+}; /* end class OOCSPDMatrix */
+
+}; /* end namespace hmlp */
 
 
 #endif /** define SPDMATRIX_HPP */

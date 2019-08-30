@@ -190,7 +190,7 @@ cdef class PyData:
             fName = <string>fileName.encode('utf-8')
             with nogil:
                 self.c_data = new Data[float](m, n)
-                self.c_data.read(m, n, fName)
+                self.c_data.readBinaryFile(m, n, fName)
         elif data and not (fileName or darr!=None or arr!=None):
             #Deep copy from existing data object
             with nogil:
@@ -302,10 +302,10 @@ cdef class PyData:
         cdef string fName
         fName = <string>filename.encode('utf-8')
         with nogil:
-            self.c_data.read(m, n,fName)
+            self.c_data.readBinaryFile(m, n,fName)
 
     def write(self,str filename):
-        self.c_data.write(filename.encode())
+        self.c_data.writeBinaryFile(filename.encode())
 
     def rows(self):
         return self.c_data[0].row()

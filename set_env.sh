@@ -43,8 +43,8 @@ export HMLP_ARTIFACT_PATH=sc18gofmm
 export HMLP_GPU_ARCH_MAJOR=gpu
 export HMLP_GPU_ARCH_MINOR=kepler
 
-## (1) x86_64/sandybridge, 
-## (2) x86_64/haswell, 
+## (1) x86_64/sandybridge,
+## (2) x86_64/haswell,
 ## (3) arm/armv8a
 ## (4) mic/knl
 export HMLP_ARCH_MAJOR=x86_64
@@ -98,12 +98,12 @@ echo "            Variable CXX is unset (REQUIRED),"
 echo ""
 echo "        then you must first export these two variables."
 echo "===================================================================="
-if [ -z ${CC+x} ]; 
-then echo "Variable CC  is unset (REQUIRED)"; 
+if [ -z ${CC+x} ];
+then echo "Variable CC  is unset (REQUIRED)";
 else echo "Variable CC  is set to '$CC'";
 fi
-if [ -z ${CXX+x} ]; 
-then echo "Variable CXX is unset (REQUIRED)"; 
+if [ -z ${CXX+x} ];
+then echo "Variable CXX is unset (REQUIRED)";
 else echo "Variable CXX is set to '$CXX'";
 fi
 echo "===================================================================="
@@ -118,8 +118,8 @@ echo "            Variable MKLROOT is unset (REQUIRED by intel compilers)"
 echo ""
 echo "        then you must first export MKLROOT=/path_to_mkl..."
 echo "===================================================================="
-if [ -z ${MKLROOT+x} ]; 
-then echo "Variable MKLROOT is unset (REQUIRED by intel compilers)"; 
+if [ -z ${MKLROOT+x} ];
+then echo "Variable MKLROOT is unset (REQUIRED by intel compilers)";
 else echo "Variable MKLROOT is set to '$MKLROOT'";
 export LD_PRELOAD=${MKLROOT}/lib/intel64/libmkl_core.so:${MKLROOT}/lib/intel64/libmkl_sequential.so
 fi
@@ -136,8 +136,8 @@ echo "            Variable OPENBLASROOT is unset (REQUIRED by GNU compilers)"
 echo ""
 echo "        then you must first export OPENBLASROOT=/path_to_OpenBLAS..."
 echo "===================================================================="
-if [ -z ${OPENBLASROOT+x} ]; 
-then echo "Variable OPENBLASROOT is unset (REQUIRED by GNU compilers)"; 
+if [ -z ${OPENBLASROOT+x} ];
+then echo "Variable OPENBLASROOT is unset (REQUIRED by GNU compilers)";
 else echo "Variable OPENBLASROOT is set to '$OPENBLASROOT'";
 fi
 echo "===================================================================="
@@ -150,7 +150,7 @@ echo ""
 export HMLP_DIR=$PWD
 echo "HMLP_DIR = $HMLP_DIR"
 
-## Add our default building path  
+## Add our default building path
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${HMLP_DIR}/build/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${MKLROOT}/lib/
 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${OPENBLASROOT}/:${OPENBLASROOT}/lib/

@@ -35,7 +35,7 @@ class CovTask : public Task
 
     int *count = NULL;
 
-    void Set( vector<OOCData<T>> *user_arg, 
+    hmlpError_t Set( vector<OOCData<T>> *user_arg, 
         const vector<size_t> user_ids, 
         const vector<size_t> user_I, 
         const vector<size_t> user_J, Data<T> *user_KIJ, int *user_count )
@@ -46,12 +46,17 @@ class CovTask : public Task
       J    = user_J;
       KIJ  = user_KIJ;
       count = user_count;
+      return HMLP_ERROR_SUCCESS;
     };
 
     /** Directly enqueue. */
-    void DependencyAnalysis() { this->TryEnqueue(); };
+    hmlpError_t DependencyAnalysis() 
+    {
+      this->TryEnqueue(); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute( Worker* user_worker )
     {
       try
       {
@@ -91,8 +96,9 @@ class CovTask : public Task
       }
       catch ( exception & e )
       {
-        cout << "Standard execption: " << e.what() << endl;
+        HANDLE_EXCEPTION( e );
       }
+      return HMLP_ERROR_SUCCESS;
     };
 
 };
@@ -109,9 +115,7 @@ class CovReduceTask : public Task
 
     const size_t batch_size = 32;
 
-    void Set( vector<OOCData<T>> *arg,
-        const vector<size_t> I, 
-        const vector<size_t> J, Data<T> *KIJ )
+    hmlpError_t Set( vector<OOCData<T>> *arg, const vector<size_t> I, const vector<size_t> J, Data<T> *KIJ )
     {
       name = string( "CovReduce" );
       vector<size_t> ids;
@@ -135,18 +139,23 @@ class CovReduceTask : public Task
         subtasks.back()->Set( arg, ids, I, J, KIJ, &count );
         ids.clear();
       }
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void DependencyAnalysis()
+    hmlpError_t DependencyAnalysis()
     {
       for ( auto task : subtasks ) 
       {
         Scheduler::DependencyAdd( task, this );
         task->DependencyAnalysis();
       }
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void Execute( Worker* user_worker ) {};
+    hmlpError_t Execute( Worker* user_worker ) 
+    {
+      return HMLP_ERROR_SUCCESS;
+    };
 };
   
   
@@ -165,7 +174,7 @@ class OOCCovMatrix : public VirtualMatrix<T>
         int ib = min( nb, n - i );
         Samples.resize( Samples.size() + 1 );
         printf( "ib %d d %lu\n", ib, d );
-        Samples.back().Set( ib, d, filename + to_string( i ) );
+        Samples.back().initFromFile( ib, d, filename + to_string( i ) );
         //X.Set( ib, d, filename + to_string( i ) );
       }
 

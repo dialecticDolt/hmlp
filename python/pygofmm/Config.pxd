@@ -13,12 +13,12 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/containers/VirtualMatrix.hpp" nogil:
 
 cdef extern from "${CMAKE_SOURCE_DIR}/include/hmlp.h" nogil:
     ctypedef enum hmlpError_t:
-        HMLP_ERROR_SUCCESS,
-        HMLP_ERROR_NOT_INITIALIZED,
-        HMLP_ERROR_INVALID_VALUE,
-        HMLP_ERROR_EXECUTION_FAILED,
-        HMLP_ERROR_NOT_SUPPORTED,
-        HMMP_ERROR_INTERNAL_ERROR
+        HMLP_ERROR_SUCCESS "HMLP_ERROR_SUCCESS",
+        HMLP_ERROR_NOT_INITIALIZED "HMLP_ERROR_NOT_INITIALIZED",
+        HMLP_ERROR_INVALID_VALUE "HMLP_ERROR_INVALID_VALUE",
+        HMLP_ERROR_EXECUTION_FAILED "HMLP_ERROR_EXECUTION_FAILED",
+        HMLP_ERROR_NOT_SUPPORTED "HMLP_ERROR_NOT_SUPPORTED",
+        HMLP_ERROR_INTERNAL_ERROR "HMLP_ERROR_INTERNAL_ERROR"
 
 
 #Configuration Type: Used as input parameters to gofmm::compress
@@ -41,6 +41,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm" nogil:
         #constructors
         Configuration() except +
         Configuration(DistanceMetric, int, int, int, int, T, T, bool) except +
+
         #getters
         DistanceMetric MetricType()
         int ProblemSize()
@@ -57,7 +58,7 @@ cdef extern from "${CMAKE_SOURCE_DIR}/gofmm/gofmm.hpp" namespace "gofmm" nogil:
 
         #setters
         hmlpError_t setLeafNodeSize(int)
-        hmlpError_t CopyFrom(Configuration&) except +
+        hmlpError_t CopyFrom(Configuration[T]&) except +
         hmlpError_t Set(DistanceMetric, int, int, int, int, T, T, bool)
         hmlpError_t setAdaptiveRanks(bool)
         hmlpError_t setSymmetric(bool)

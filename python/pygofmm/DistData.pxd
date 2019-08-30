@@ -28,8 +28,10 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         Data(size_t, size_t, const vector[T]) except +        
         Data(size_t, size_t, T*, bool) except +
         
-        void read(size_t, size_t, string&) except +
-        void write(string&) except +
+        void readBinaryFile(size_t, size_t, string&) except +
+        void writeBinaryFile(string&) except +
+        void WriteFile(char*) except +
+        void readmtx(size_t, size_t, string&) except +
         void clear()
 
         size_t row()
@@ -46,6 +48,11 @@ cdef extern from "${CMAKE_SOURCE_DIR}/frame/base/DistData.hpp" namespace "hmlp" 
         void randspd(T a, T b)
         bool_t HasIllegalValue()
         void Print()
+
+        #TODO: Overload +, - operators
+        #TODO: Overload () to get element and range (submatrix)
+        #TODO: FroNorm, SSE, Relative Error
+
  
     #Wrapper for Base Distributed Data Class
     cdef cppclass DistDataBase[T](Data[T]):

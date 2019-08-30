@@ -52,7 +52,7 @@ cdef class PyDistKernelMatrix:
     cdef DistKernelMatrix[float, float]* c_matrix
 
 
-ctypedef Tree[Setup[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
+ctypedef Tree[Argument[DistKernelMatrix[float, float], centersplit[DistKernelMatrix[float, float], two , float], float], NodeData[float]] km_float_tree
 
 cdef class PyTreeKM:
     cdef km_float_tree* c_tree

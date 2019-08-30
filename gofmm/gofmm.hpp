@@ -177,6 +177,10 @@ class CommandLineHelper
         /** (Optional) provide Gaussian kernel bandwidth */
         if ( argc > 13 ) sscanf( argv[ 13 ], "%lf", &h );
       }
+      else if ( !spdmatrix_type.compare( "jacobian" ) )
+      {
+        user_matrix_filename = argv[ 10 ];
+      }
       else
       {
         printf( "%s is not supported\n", argv[ 9 ] );
@@ -189,7 +193,7 @@ class CommandLineHelper
     /** (Default) user-defined approximation toleratnce and budget. */
     double stol = 1E-3;
     double budget = 0.0;
-    bool secure_accuracy = true;
+    bool secure_accuracy = false;
     /** (Default) geometric-oblivious scheme. */
     DistanceMetric metric = ANGLE_DISTANCE;
 
@@ -212,39 +216,46 @@ class CommandLineHelper
 template<typename T>
 class Configuration
 {
-	public:
+  public:
 
     typedef size_t sizeType;
     typedef size_t idType;
 
     Configuration() {};
 
-	Configuration( DistanceMetric metric_type,  size_t problem_size, size_t leaf_node_size, size_t neighbor_size, size_t maximum_rank, 
-			T tolerance, T budget, bool secure_accuracy = true ) 
-		{
-		    try{
-                HANDLE_ERROR( Set( metric_type, problem_size, leaf_node_size, 
-                neighbor_size, maximum_rank, tolerance, budget, secure_accuracy ) );
-             }
-            catch ( const exception & e ){
-                cout << e.what() << endl;
-                exit( -1 );
-            }
-		};
+    Configuration( DistanceMetric metric_type,
+        size_t problem_size, size_t leaf_node_size, 
+        size_t neighbor_size, size_t maximum_rank, 
+        T tolerance, T budget, bool secure_accuracy = true ) 
+    {
+      try
+      {
+        HANDLE_ERROR( Set( metric_type, problem_size, leaf_node_size, 
+          neighbor_size, maximum_rank, tolerance, budget, secure_accuracy ) );
+      }
+      catch ( const exception & e )
+      {
+        HANDLE_EXCEPTION( e );
+      }
+    };
 
-	hmlpError_t Set( DistanceMetric metric_type, size_t problem_size, size_t leaf_node_size, size_t neighbor_size, size_t maximum_rank, T tolerance, T budget, bool secure_accuracy ){
-			this->metric_type = metric_type;
-			this->problem_size = problem_size;
-			//this->leaf_node_size_ = leaf_node_size;
-			RETURN_IF_ERROR( setLeafNodeSize( leaf_node_size ) );
-			this->neighbor_size = neighbor_size;
-			this->maximum_rank = maximum_rank;
-			this->tolerance = tolerance;
-			this->budget = budget;
-			this->secure_accuracy = secure_accuracy;
-            /* Return with no error. */
-			return HMLP_ERROR_SUCCESS;
-		};
+    hmlpError_t Set( DistanceMetric metric_type,
+        size_t problem_size, size_t leaf_node_size, 
+        size_t neighbor_size, size_t maximum_rank, 
+        T tolerance, T budget, bool secure_accuracy ) 
+    {
+      this->metric_type = metric_type;
+      this->problem_size = problem_size;
+      //this->leaf_node_size_ = leaf_node_size;
+      RETURN_IF_ERROR( setLeafNodeSize( leaf_node_size ) );
+      this->neighbor_size = neighbor_size;
+      this->maximum_rank = maximum_rank;
+      this->tolerance = tolerance;
+      this->budget = budget;
+      this->secure_accuracy = secure_accuracy;
+      /* Return with no error. */
+      return HMLP_ERROR_SUCCESS;
+    };
 
     hmlpError_t CopyFrom( Configuration<T> &config ) 
     { 
@@ -252,12 +263,12 @@ class Configuration
       return HMLP_ERROR_SUCCESS;
     };
 
-	DistanceMetric MetricType() const noexcept 
-	{ 
-	  return metric_type; 
-	};
+    DistanceMetric MetricType() const noexcept 
+    { 
+      return metric_type; 
+    };
 
-	size_t ProblemSize() const noexcept { return problem_size; };
+    size_t ProblemSize() const noexcept { return problem_size; };
 
     size_t getMaximumDepth() const noexcept { return maximum_depth_; };
 
@@ -275,82 +286,84 @@ class Configuration
       return HMLP_ERROR_SUCCESS;
     };
 
-	size_t getLeafNodeSize() const noexcept 
-	{ 
-	  return leaf_node_size_; 
-	};
+    size_t getLeafNodeSize() const noexcept 
+    { 
+      return leaf_node_size_; 
+    };
+
+    size_t NeighborSize() const noexcept { return neighbor_size; };
+
+    size_t MaximumRank() const noexcept { return maximum_rank; };
+
+    T Tolerance() const noexcept { return tolerance; };
+
+    T Budget() const noexcept { return budget; };
+
+    bool IsSymmetric() const noexcept { return is_symmetric; };
         
-		size_t NeighborSize() const noexcept { return neighbor_size; };
+    hmlpError_t setSymmetric(bool status){
+        this->is_symmetric = status;
+        return HMLP_ERROR_SUCCESS;
+    }
+    
+    bool UseAdaptiveRanks() const noexcept { return use_adaptive_ranks; };
+    
+    hmlpError_t setAdaptiveRanks(bool status){
+        this->use_adaptive_ranks = status;
+        return HMLP_ERROR_SUCCESS;
+    }
+    
+    bool SecureAccuracy() const noexcept { return secure_accuracy; };
 
-		size_t MaximumRank() const noexcept { return maximum_rank; };
+  private:
 
-		T Tolerance() const noexcept { return tolerance; };
+    /** (Default) metric type. */
+    DistanceMetric metric_type = ANGLE_DISTANCE;
 
-	    T Budget() const noexcept { return budget; };
-
-        bool IsSymmetric() const noexcept { return is_symmetric; };
-        
-        hmlpError_t setSymmetric(bool status){
-            this->is_symmetric = status;
-            return HMLP_ERROR_SUCCESS;
-        }
-        
-        bool UseAdaptiveRanks() const noexcept { return use_adaptive_ranks; };
-        
-        hmlpError_t setAdaptiveRanks(bool status){
-            this->use_adaptive_ranks = status;
-            return HMLP_ERROR_SUCCESS;
-        }
-        
-        bool SecureAccuracy() const noexcept { return secure_accuracy; };
-
-	private:
-
-		/** (Default) metric type. */
-		DistanceMetric metric_type = ANGLE_DISTANCE;
-
-		/** (Default) problem size. */
-		size_t problem_size = 0;
+    /** (Default) problem size. */
+    size_t problem_size = 0;
 
         /** (Default) maximum tree depth. By defaultm we use 4 bits = 0-15 levels. */
         size_t maximum_depth_ = 15;
 
-		/** (Default) maximum leaf node size. */
-		sizeType leaf_node_size_ = 64;
+    /** (Default) maximum leaf node size. */
+    sizeType leaf_node_size_ = 64;
 
-		/** (Default) number of neighbors. */
-		size_t neighbor_size = 32;
+    /** (Default) number of neighbors. */
+    size_t neighbor_size = 32;
 
-		/** (Default) maximum off-diagonal ranks. */
-		size_t maximum_rank = 64;
+    /** (Default) maximum off-diagonal ranks. */
+    size_t maximum_rank = 64;
 
-		/** (Default) user error tolerance. */
-		T tolerance = 1E-3;
+    /** (Default) user error tolerance. */
+    T tolerance = 1E-3;
 
-		/** (Default) user computation budget. */
-		T budget = 0.03;
+    /** (Default) user computation budget. */
+    T budget = 0.03;
 
-        /** (Default, Advanced) whether the matrix is symmetric. */
-        bool is_symmetric = true;
-		
-        /** (Default, Advanced) whether or not using adaptive ranks. */
-		bool use_adaptive_ranks = true;
+    /** (Default, Advanced) whether the matrix is symmetric. */
+    bool is_symmetric = true;
 
-        /** (Default, Advanced) whether or not securing the accuracy. */
-        bool secure_accuracy = true;
+    /** (Default, Advanced) whether or not using adaptive ranks. */
+    bool use_adaptive_ranks = true;
+
+    /** (Default, Advanced) whether or not securing the accuracy. */
+    bool secure_accuracy = false;
 
 }; /** end class Configuration */
 
 
 
-/** @brief These are data that shared by the whole local tree. */ 
+/** 
+ *  \brief These are data that shared by the whole local tree. 
+ */ 
 template<typename SPDMATRIX, typename SPLITTER, typename T>
-class Setup : public tree::Setup<SPLITTER, T>,
+class Argument : public tree::ArgumentBase<SPLITTER, T>,
               public Configuration<T>
 {
   public:
 
-    Setup() {};
+    Argument() {};
 
     /** Shallow copy from the config. */
     hmlpError_t FromConfiguration( Configuration<T> &config,
@@ -383,12 +396,7 @@ class Setup : public tree::Setup<SPLITTER, T>,
     bool do_ulv_factorization = true;
 
   private:
-
-
-
-
-
-}; /** end class Setup */
+}; /** end class Argument */
 
 
 /** @brief This class contains all GOFMM related data carried by a tree node. */ 
@@ -476,8 +484,6 @@ class NodeData : public Factor<T>
 }; /** end class Data */
 
 
-
-
 /** @brief This task creates an hierarchical tree view for w<RIDS> and u<RIDS>. */
 template<typename NODE>
 class TreeViewTask : public Task
@@ -486,18 +492,23 @@ class TreeViewTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "TreeView" );
       label = to_string( arg->treelist_id );
       cost = 1.0;
+      return HMLP_ERROR_SUCCESS;
     };
 
     /** Preorder dependencies (with a single source node). */
-    void DependencyAnalysis() { arg->DependOnParent( this ); };
+    hmlpError_t DependencyAnalysis() 
+    { 
+      arg->DependOnParent( this ); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute(Worker* user_worker)
     {
       //printf( "TreeView %lu\n", node->treelist_id );
       auto *node   = arg;
@@ -521,7 +532,7 @@ class TreeViewTask : public Task
       }
 
       /** partition u and w using the hierarchical tree view */
-      if ( !node->isleaf )
+      if ( !node->isLeaf() )
       {
         auto &UL = node->lchild->data.u_view;
         auto &UR = node->rchild->data.u_view;
@@ -536,6 +547,8 @@ class TreeViewTask : public Task
         W.Partition2x1( WL, 
                         WR, node->lchild->n, TOP );
       }
+
+      return HMLP_ERROR_SUCCESS;
     };
 }; /** end class TreeViewTask */
 
@@ -586,16 +599,16 @@ class Summary
 
     void operator() ( NODE *node )
     {
-      if ( rank.size() <= node->l )
+      if ( rank.size() <= node->getGlobalDepth() )
       {
         rank.push_back( hmlp::Statistic() );
         skeletonize.push_back( hmlp::Statistic() );
         updateweight.push_back( hmlp::Statistic() );
       }
 
-      rank[ node->l ].Update( (double)node->data.skels.size() );
-      skeletonize[ node->l ].Update( node->data.skeletonize.GetDuration() );
-      updateweight[ node->l ].Update( node->data.updateweight.GetDuration() );
+      rank[ node->getGlobalDepth() ].Update( (double)node->data.skels.size() );
+      skeletonize[ node->getGlobalDepth() ].Update( node->data.skeletonize.GetDuration() );
+      updateweight[ node->getGlobalDepth() ].Update( node->data.updateweight.GetDuration() );
 
 #ifdef DUMP_ANALYSIS_DATA
       if ( node->parent )
@@ -605,14 +618,14 @@ class Summary
         printf( "#%lu (s%lu), #%lu (s%lu), %lu, %lu\n", 
             node->treelist_id, node->data.skels.size(), 
             parent->treelist_id, parent->data.skels.size(),
-            node->data.skels.size(), node->l );
+            node->data.skels.size(), node->getGlobalDepth() );
       }
       else
       {
         printf( "@TREE\n" );
         printf( "#%lu (s%lu), , %lu, %lu\n", 
             node->treelist_id, node->data.skels.size(), 
-            node->data.skels.size(), node->l );
+            node->data.skels.size(), node->getGlobalDepth() );
       }
 #endif
     };
@@ -648,19 +661,41 @@ class Summary
 template<typename SPDMATRIX, int N_SPLIT, typename T> 
 struct centersplit
 {
-  /** Closure */
-  SPDMATRIX *Kptr = NULL;
+  /** Closure. TODO: this should have be const. */
+  SPDMATRIX *Kptr = nullptr;
   /** (Default) use angle distance from the Gram vector space. */
   DistanceMetric metric = ANGLE_DISTANCE;
   /** Number samples to approximate centroid. */
   size_t n_centroid_samples = 5;
- 
+  /** Whether the splitter has been initialized? */
+  int is_initialized = 0;
+  /** The empty constructor. */ 
   centersplit() {};
+  /** The default constructor. */ 
+  centersplit( SPDMATRIX& K, DistanceMetric metric = ANGLE_DISTANCE )
+  {
+    try
+    {
+      HANDLE_ERROR( set( K, metric ) ); 
+    }
+    catch ( const std::exception & e )
+    {
+      HANDLE_EXCEPTION( e );
+    }
+  };
 
-  centersplit( SPDMATRIX& K ) { this->Kptr = &K; };
+  hmlpError_t set( SPDMATRIX& K, DistanceMetric metric )
+  {
+    this->Kptr = &K;
+    this->metric = metric;
+    /* Set the flag to true. */
+    this->is_initialized = true;
+    /* Return with no error. */
+    return HMLP_ERROR_SUCCESS;
+  };
 
-	/** Overload the operator (). */
-  vector<vector<size_t>> operator() ( vector<size_t>& gids ) const 
+  /** Overload the operator (). */
+  std::vector<std::vector<uint64_t>> operator() ( const std::vector<uint64_t> & gids ) const 
   {
     /** all assertions */
     assert( N_SPLIT == 2 );
@@ -668,13 +703,12 @@ struct centersplit
 
 
     SPDMATRIX &K = *Kptr;
-    vector<vector<size_t>> split( N_SPLIT );
-    size_t n = gids.size();
-    vector<T> temp( n, 0.0 );
+    std::vector<std::vector<uint64_t>> split( N_SPLIT );
+    uint64_t n = gids.size();
+    std::vector<T> temp( n, 0.0 );
 
     /** Collecting column samples of K. */
-    auto column_samples = combinatorics::SampleWithoutReplacement( 
-        n_centroid_samples, gids );
+    auto column_samples = combinatorics::sampleWithoutReplacement( n_centroid_samples, gids );
 
 
     /** Compute all pairwise distances. */
@@ -706,12 +740,14 @@ struct centersplit
     /** Compute all pairwise distances. */
     auto DIQ = K.Distances( this->metric, gids, P );
 
-    for ( size_t i = 0; i < temp.size(); i ++ )
+    for ( uint64_t i = 0U; i < temp.size(); i ++ )
+    {
       temp[ i ] = DIP[ i ] - DIQ[ i ];
+    }
 
     return combinatorics::MedianSplit( temp );
   };
-}; /** end struct centersplit */
+}; /* end struct centersplit */
 
 
 
@@ -726,17 +762,38 @@ struct centersplit
 template<typename SPDMATRIX, int N_SPLIT, typename T> 
 struct randomsplit
 {
-  /** closure */
-  SPDMATRIX *Kptr = NULL;
-
-	/** (default) using angle distance from the Gram vector space */
+  /** Closure. TODO: this should have be const. */
+  SPDMATRIX *Kptr = nullptr;
+  /** (Default) use angle distance from the Gram vector space. */
   DistanceMetric metric = ANGLE_DISTANCE;
-
+  /** Whether the splitter has been initialized? */
+  int is_initialized = 0;
+  /** The empty constructor. */ 
   randomsplit() {};
+  /** The default constructor. */ 
+  randomsplit( SPDMATRIX& K, DistanceMetric metric = ANGLE_DISTANCE )
+  {
+    try
+    {
+      HANDLE_ERROR( set( K, metric ) ); 
+    }
+    catch ( const exception & e )
+    {
+      HANDLE_EXCEPTION( e );
+    }
+  };
 
-  randomsplit( SPDMATRIX& K ) { this->Kptr = &K; };
+  hmlpError_t set( SPDMATRIX& K, DistanceMetric metric )
+  {
+    this->Kptr = &K;
+    this->metric = metric;
+    /* Set the flag to true. */
+    this->is_initialized = true;
+    /* Return with no error. */
+    return HMLP_ERROR_SUCCESS;
+  };
 
-	/** overload with the operator */
+  /** overload with the operator */
   inline vector<vector<size_t> > operator() ( vector<size_t>& gids ) const 
   {
     assert( Kptr && ( N_SPLIT == 2 ) );
@@ -793,7 +850,7 @@ hmlpError_t FindNeighbors( NODE *node, DistanceMetric metric )
   /** k-nearest neighbor search kernel. */
   RETURN_IF_ERROR( K.NeighborSearch( metric, kappa, I, I, candidates, init ) );
   /** Merge and update neighbors. */
-	#pragma omp parallel
+  #pragma omp parallel
   {
     vector<pair<T, size_t> > aux( 2 * kappa );
     #pragma omp for
@@ -817,10 +874,10 @@ class NeighborsTask : public Task
 
     NODE *arg = NULL;
    
-	  /** (Default) using angle distance from the Gram vector space. */
-	  DistanceMetric metric = ANGLE_DISTANCE;
+    /** (Default) using angle distance from the Gram vector space. */
+    DistanceMetric metric = ANGLE_DISTANCE;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "Neighbors" );
@@ -841,16 +898,20 @@ class NeighborsTask : public Task
       mops += flops;
       event.Set( name + label, flops, mops );
       //--------------------------------------
-			
       // TODO: Need an accurate cost model.
       cost = mops / 1E+9;
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void DependencyAnalysis() { arg->DependOnNoOne( this ); };
-
-    void Execute( Worker* user_worker ) 
+    hmlpError_t DependencyAnalysis() 
     { 
-      HANDLE_ERROR( FindNeighbors( arg, metric ) ); 
+      arg->DependOnNoOne( this );
+      return HMLP_ERROR_SUCCESS;
+    };
+
+    hmlpError_t Execute(Worker* user_worker)
+    { 
+      return FindNeighbors( arg, metric ); 
     };
 
 }; /** end class NeighborsTask */
@@ -1011,7 +1072,7 @@ void Interpolate( NODE *node )
   {
     for ( int i = 0; i < s; i ++ )
     {
-  	  proj[ jpvt[ j ] * s + i ] = tmp[ j * s + i ];
+      proj[ jpvt[ j ] * s + i ] = tmp[ j * s + i ];
     }
   }
  
@@ -1027,20 +1088,28 @@ class InterpolateTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "it" );
       label = to_string( arg->treelist_id );
       // Need an accurate cost model.
       cost = 1.0;
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void DependencyAnalysis() { arg->DependOnNoOne( this ); };
+    hmlpError_t DependencyAnalysis() 
+    { 
+      arg->DependOnNoOne( this ); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker ) { Interpolate( arg ); };
-
-}; /** end class InterpolateTask */
+    hmlpError_t Execute(Worker* user_worker)
+    {
+      Interpolate(arg);
+      return HMLP_ERROR_SUCCESS;
+    }
+};
 
 
 
@@ -1073,7 +1142,7 @@ void RowSamples( NODE *node, size_t nsamples )
     auto &snids = data.snids;
     size_t knum = NN.row();
 
-    if ( node->isleaf )
+    if ( node->isLeaf() )
     {
       snids.clear();
 
@@ -1089,14 +1158,15 @@ void RowSamples( NODE *node, size_t nsamples )
       for ( auto it : tmp )
       {
         size_t it_gid = it.second;
-        size_t it_morton = setup.morton[ it_gid ];
+        //size_t it_morton = setup.morton[ it_gid ];
+        auto it_morton = node->info->globalIndexToMortonID( it_gid );
 
         if ( snids.size() >= nsamples ) break;
 
         /** Accept the sample if it does not belong to any near node */
         bool is_near;
         if ( NNPRUNE ) is_near = node->NNNearNodeMortonIDs.count( it_morton );
-        else           is_near = (it_morton == node->morton );
+        else           is_near = (it_morton == node->getMortonID() );
 
         if ( !is_near )
         {
@@ -1154,9 +1224,10 @@ void RowSamples( NODE *node, size_t nsamples )
         //size_t sample = rand() % K.col();
         auto important_sample = K.ImportantSample( 0 );
         size_t sample_gid = important_sample.second;
-        size_t sample_morton = setup.morton[ sample_gid ];
+        //size_t sample_morton = setup.morton[ sample_gid ];
+        auto sample_morton = node->info->globalIndexToMortonID( sample_gid );
 
-        if ( !MortonHelper::IsMyParent( sample_morton, node->morton ) )
+        if ( !MortonHelper::IsMyParent( sample_morton, node->getMortonID() ) )
         {
           amap.push_back( sample_gid );
         }
@@ -1166,8 +1237,9 @@ void RowSamples( NODE *node, size_t nsamples )
     {
       for ( size_t sample = 0; sample < K.col(); sample ++ )
       {
-        size_t sample_morton = setup.morton[ sample ];
-        if ( !MortonHelper::IsMyParent( sample_morton, node->morton ) )
+        //size_t sample_morton = setup.morton[ sample ];
+        auto sample_morton = node->info->globalIndexToMortonID( sample );
+        if ( !MortonHelper::IsMyParent( sample_morton, node->getMortonID() ) )
         {
           amap.push_back( sample );
         }
@@ -1200,7 +1272,7 @@ void SkeletonKIJ( NODE *node )
   auto *lchild = node->lchild;
   auto *rchild = node->rchild;
 
-  if ( node->isleaf )
+  if ( node->isLeaf() )
   {
     /** Use all columns. */
     candidate_cols = node->gids;
@@ -1252,20 +1324,27 @@ class SkeletonKIJTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "par-gskm" );
       label = to_string( arg->treelist_id );
-      /** we don't know the exact cost here */
       cost = 5.0;
-      /** high priority */
       priority = true;
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void DependencyAnalysis() { arg->DependOnChildren( this ); };
+    hmlpError_t DependencyAnalysis() 
+    { 
+      arg->DependOnChildren( this ); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker ) { SkeletonKIJ<NNPRUNE>( arg ); };
+    hmlpError_t Execute(Worker* user_worker)
+    { 
+      SkeletonKIJ<NNPRUNE>(arg); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
 }; /** end class SkeletonKIJTask */ 
 
@@ -1323,7 +1402,7 @@ class SkeletonizeTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "sk" );
@@ -1332,6 +1411,7 @@ class SkeletonizeTask : public Task
       cost = 5.0;
       /** high priority */
       priority = true;
+        return HMLP_ERROR_SUCCESS;
     };
 
     void GetEventRecord()
@@ -1362,12 +1442,19 @@ class SkeletonizeTask : public Task
       arg->data.skeletonize = event;
     };
 
-    void DependencyAnalysis() { arg->DependOnNoOne( this ); };
-
-    void Execute( Worker* user_worker ) 
+    hmlpError_t DependencyAnalysis() 
     { 
-      /** Early return if we do not need to skeletonize. */
-      if ( !arg->parent ) return;
+      arg->DependOnNoOne( this ); 
+      return HMLP_ERROR_SUCCESS;
+    };
+
+    hmlpError_t Execute(Worker* user_worker)
+    { 
+      /* Early return if we do not need to skeletonize. */
+      if (!arg->parent)
+      {
+        return HMLP_ERROR_SUCCESS;
+      }
       /* Check if we need to secure the accuracy? */
       bool secure_accuracy = arg->setup->SecureAccuracy();
       /* Gather per node data and create reference. */
@@ -1376,31 +1463,30 @@ class SkeletonizeTask : public Task
       data.skels.clear();
       data.proj.clear();
       /* If one of my children is not compreesed, so am I. */
-      if ( secure_accuracy && !arg->isleaf ) 
+      if (secure_accuracy && !arg->isLeaf()) 
       {
         /* If both children were not compressed, then this node is above the frontier. */
-        if ( !arg->lchild->data.is_compressed &&  
-             !arg->rchild->data.is_compressed )
+        if ( !arg->lchild->data.is_compressed &&  !arg->rchild->data.is_compressed )
         {
           data.is_compressed = false;
-          return;
+          return HMLP_ERROR_SUCCESS;
         }
         /* If only one of the children compressed, then this node is in the frontier. */
-        if ( !arg->lchild->data.is_compressed || 
-             !arg->rchild->data.is_compressed )
+        if ( !arg->lchild->data.is_compressed || !arg->rchild->data.is_compressed )
         {
           data.is_compressed = false;
           data.setCompressionFailureFrontier();
-          return;
+          return HMLP_ERROR_SUCCESS;
         }
       }
       /* Skeletonization using interpolative decomposition. */
       Skeletonize( arg );
       /* This node does not compressed. It must be in the frontier. */
-      if ( !arg->data.is_compressed )
+      if (!arg->data.is_compressed)
       {
         data.setCompressionFailureFrontier();
       }
+      return HMLP_ERROR_SUCCESS;
     };
 
 }; /** end class SkeletonizeTask */
@@ -1466,12 +1552,12 @@ void UpdateWeights( NODE *node )
 
   //printf( "%lu UpdateWeight w_skel.num() %lu\n", node->treelist_id, w_skel.num() );
 
-  if ( node->isleaf )
+  if ( node->isLeaf() )
   {
     if ( w_leaf.size() )
     {
       //printf( "%8lu w_leaf allocated [%lu %lu]\n", 
-      //    node->morton, w_leaf.row(), w_leaf.col() ); fflush( stdout );
+      //    node->getMortonID(), w_leaf.row(), w_leaf.col() ); fflush( stdout );
       
       /** w_leaf is allocated */
       xgemm
@@ -1488,7 +1574,7 @@ void UpdateWeights( NODE *node )
       /** w_leaf is not allocated, use w_view instead */
       View<T> W = data.w_view;
       //printf( "%8lu n2s W[%lu %lu ld %lu]\n", 
-      //    node->morton, W.row(), W.col(), W.ld() ); fflush( stdout );
+      //    node->getMortonID(), W.row(), W.col(), W.ld() ); fflush( stdout );
       //for ( int i = 0; i < 10; i ++ )
       //  printf( "%lu W.data() + %d = %E\n", node->gids[ i ], i, *(W.data() + i) );
       xgemm
@@ -1517,7 +1603,7 @@ void UpdateWeights( NODE *node )
     //if ( 1 )
     if ( node->treelist_id > 6 )
     {
-      //printf( "%8lu n2s\n", node->morton ); fflush( stdout );
+      //printf( "%8lu n2s\n", node->getMortonID() ); fflush( stdout );
       xgemm
       (
         "N", "N",
@@ -1565,7 +1651,7 @@ class UpdateWeightsTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "n2s" );
@@ -1576,7 +1662,7 @@ class UpdateWeightsTask : public Task
       auto &gids = arg->gids;
       auto &skels = arg->data.skels;
       auto &w = *arg->setup->w;
-      if ( arg->isleaf )
+      if ( arg->isLeaf() )
       {
         auto m = skels.size();
         auto n = w.col();
@@ -1601,6 +1687,7 @@ class UpdateWeightsTask : public Task
       cost = flops / 1E+9;
       /** "HIGH" priority (critical path) */
       priority = true;
+      return HMLP_ERROR_SUCCESS;
     };
 
     void Prefetch( Worker* user_worker )
@@ -1609,7 +1696,7 @@ class UpdateWeightsTask : public Task
       __builtin_prefetch( proj.data() );
       auto &w_skel = arg->data.w_skel;
       __builtin_prefetch( w_skel.data() );
-      if ( arg->isleaf )
+      if ( arg->isLeaf() )
       {
         auto &w_leaf = arg->data.w_leaf;
         __builtin_prefetch( w_leaf.data() );
@@ -1628,7 +1715,7 @@ class UpdateWeightsTask : public Task
       {
         proj.CacheD( device );
         proj.PrefetchH2D( device, 1 );
-        if ( arg->isleaf )
+        if ( arg->isLeaf() )
         {
           auto &w_leaf = arg->data.w_leaf;
           w_leaf.CacheD( device );
@@ -1647,9 +1734,13 @@ class UpdateWeightsTask : public Task
 #endif
     };
 
-    void DependencyAnalysis() { arg->DependOnChildren( this ); };
+    hmlpError_t DependencyAnalysis() 
+    { 
+      arg->DependOnChildren( this ); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute( Worker* user_worker )
     {
 #ifdef HMLP_USE_CUDA 
       hmlp::Device *device = NULL;
@@ -1659,6 +1750,7 @@ class UpdateWeightsTask : public Task
 #else
       UpdateWeights( arg );
 #endif
+      return HMLP_ERROR_SUCCESS;
     };
 
 }; /** end class UpdateWeightsTask */
@@ -1721,7 +1813,7 @@ void SkeletonsToSkeletons( NODE *node )
         assert( u_skel.row() * offset <= FarKab.size() );
 
         //printf( "%8lu s2s %8lu w_skel[%lu %lu]\n", 
-        //    node->morton, (*it)->morton, w_skel.row(), w_skel.col() );
+        //    node->getMortonID(), (*it)->morton, w_skel.row(), w_skel.col() );
         //fflush( stdout );
         xgemm
         (
@@ -1749,8 +1841,8 @@ void SkeletonsToSkeletons( NODE *node )
     }
     else
     {
-      printf( "Far Kab not cached treelist_id %lu, l %lu\n\n",
-					node->treelist_id, node->l ); fflush( stdout );
+      printf( "Far Kab not cached treelist_id %lu, l %u\n\n",
+          node->treelist_id, node->getGlobalDepth() ); fflush( stdout );
 
       /** get submatrix Kad from K */
       auto Kab = K( amap, bmap );
@@ -1782,7 +1874,7 @@ class SkeletonsToSkeletonsTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "s2s" );
@@ -1817,16 +1909,25 @@ class SkeletonsToSkeletonsTask : public Task
       cost = flops / 1E+9;
       /** High priority */
       priority = true;
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void DependencyAnalysis()
+    hmlpError_t DependencyAnalysis()
     {
-      for ( auto it : arg->NNFarNodes ) it->DependencyAnalysis( R, this );
+      for ( auto it : arg->NNFarNodes ) 
+      {
+        it->DependencyAnalysis( R, this );
+      }
       arg->DependencyAnalysis( RW, this );
       this->TryEnqueue();
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void Execute( Worker* user_worker ) { SkeletonsToSkeletons( arg ); };
+    hmlpError_t Execute( Worker* user_worker ) 
+    { 
+      SkeletonsToSkeletons( arg ); 
+      return HMLP_ERROR_SUCCESS;
+    };
 }; /** end class SkeletonsToSkeletonsTask */
 
 
@@ -1860,7 +1961,7 @@ void SkeletonsToNodes( NODE *node )
 
 
 
-  if ( node->isleaf )
+  if ( node->isLeaf() )
   {
     /** Get U view of this node if initialized */
     View<T> U = data.u_view;
@@ -1868,7 +1969,7 @@ void SkeletonsToNodes( NODE *node )
     if ( U.col() == nrhs )
     {
       //printf( "%8lu s2n U[%lu %lu %lu]\n", 
-      //    node->morton, U.row(), U.col(), U.ld() ); fflush( stdout );
+      //    node->getMortonID(), U.row(), U.col(), U.ld() ); fflush( stdout );
       xgemm
       (
         "Transpose", "Non-transpose",
@@ -1881,7 +1982,7 @@ void SkeletonsToNodes( NODE *node )
     else
     {
       //printf( "%8lu use u_leaf u_view [%lu %lu ld %lu]\n", 
-      //    node->morton, U.row(), U.col(), U.ld()  ); fflush( stdout );
+      //    node->getMortonID(), U.row(), U.col(), U.ld()  ); fflush( stdout );
 
       auto &u_leaf = node->data.u_leaf[ 0 ];
 
@@ -1916,7 +2017,7 @@ void SkeletonsToNodes( NODE *node )
     //if ( 1 )
     if ( node->treelist_id > 6 )
     {
-      //printf( "%8lu s2n\n", node->morton ); fflush( stdout );
+      //printf( "%8lu s2n\n", node->getMortonID() ); fflush( stdout );
       xgemm
       (
         "Transpose", "No transpose",
@@ -1962,7 +2063,7 @@ class SkeletonsToNodesTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "s2n" );
@@ -1976,7 +2077,7 @@ class SkeletonsToNodesTask : public Task
       auto &skels = data.skels;
       auto &w = *arg->setup->w;
 
-      if ( arg->isleaf )
+      if ( arg->isLeaf() )
       {
         size_t m = proj.col();
         size_t n = w.col();
@@ -2006,6 +2107,7 @@ class SkeletonsToNodesTask : public Task
       cost = flops / 1E+9;
       /** "HIGH" priority (critical path) */
       priority = true;
+      return HMLP_ERROR_SUCCESS;
     };
 
     void Prefetch( Worker* user_worker )
@@ -2014,7 +2116,7 @@ class SkeletonsToNodesTask : public Task
       __builtin_prefetch( proj.data() );
       auto &u_skel = arg->data.u_skel;
       __builtin_prefetch( u_skel.data() );
-      if ( arg->isleaf )
+      if ( arg->isLeaf() )
       {
         //__builtin_prefetch( arg->data.u_leaf[ 0 ].data() );
         //__builtin_prefetch( arg->data.u_leaf[ 1 ].data() );
@@ -2038,7 +2140,7 @@ class SkeletonsToNodesTask : public Task
         proj.PrefetchH2D( device, stream_id );
         u_skel.CacheD( device );
         u_skel.PrefetchH2D( device, stream_id );
-        if ( arg->isleaf )
+        if ( arg->isLeaf() )
         {
         }
         else
@@ -2054,9 +2156,13 @@ class SkeletonsToNodesTask : public Task
 #endif
     };
 
-    void DependencyAnalysis() { arg->DependOnParent( this ); };
+    hmlpError_t DependencyAnalysis() 
+    { 
+      arg->DependOnParent( this ); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute( Worker* user_worker )
     {
 #ifdef HMLP_USE_CUDA 
       Device *device = NULL;
@@ -2066,6 +2172,7 @@ class SkeletonsToNodesTask : public Task
 #else
     SkeletonsToNodes( arg );
 #endif
+    return HMLP_ERROR_SUCCESS;
     };
 
 }; /** end class SkeletonsToNodesTask */
@@ -2075,7 +2182,7 @@ class SkeletonsToNodesTask : public Task
 template<int SUBTASKID, bool NNPRUNE, typename NODE, typename T>
 void LeavesToLeaves( NODE *node, size_t itbeg, size_t itend )
 {
-  assert( node->isleaf );
+  assert( node->isLeaf() );
 
   double beg, u_leaf_time, before_writeback_time, after_writeback_time;
 
@@ -2198,9 +2305,9 @@ class LeavesToLeavesTask : public Task
 
     size_t itbeg;
 
-	  size_t itend;
+    size_t itend;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "l2l" );
@@ -2217,7 +2324,7 @@ class LeavesToLeavesTask : public Task
       auto &K = *arg->setup->K;
       auto &NearKab = data.NearKab;
 
-      assert( arg->isleaf );
+      assert( arg->isLeaf() );
 
       size_t m = gids.size();
       size_t n = w.col();
@@ -2253,6 +2360,7 @@ class LeavesToLeavesTask : public Task
 
       /** asuume computation bound */
       cost = flops / 1E+9;
+      return HMLP_ERROR_SUCCESS;
     };
 
     void Prefetch( Worker* user_worker )
@@ -2267,20 +2375,22 @@ class LeavesToLeavesTask : public Task
       //arg->data.s2n = event;
     };
 
-    void DependencyAnalysis()
+    hmlpError_t DependencyAnalysis()
     {
-      assert( arg->isleaf );
+      assert( arg->isLeaf() );
       /** depends on nothing */
       this->TryEnqueue();
 
       /** impose rw dependencies on multiple copies */
       //auto &u_leaf = arg->data.u_leaf[ SUBTASKID ];
       //u_leaf.DependencyAnalysis( hmlp::ReadWriteType::W, this );
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute( Worker* user_worker )
     {
       LeavesToLeaves<SUBTASKID, NNPRUNE, NODE, T>( arg, itbeg, itend );
+      return HMLP_ERROR_SUCCESS;
     };
 
 }; /** end class LeavesToLeaves */
@@ -2309,7 +2419,7 @@ template<typename NODE>
 multimap<size_t, size_t> NearNodeBallots( NODE *node )
 {
   /** Must be a leaf node. */
-  assert( node->isleaf );
+  assert( node->isLeaf() );
 
   auto &setup = *(node->setup);
   auto &NN = *(setup.NN);
@@ -2331,7 +2441,8 @@ multimap<size_t, size_t> NearNodeBallots( NODE *node )
       /** If this gid is valid, then compute its morton */
       if ( neighbor_gid >= 0 && neighbor_gid < NN.col() )
       {
-        size_t neighbor_morton = setup.morton[ neighbor_gid ];
+        //size_t neighbor_morton = setup.morton[ neighbor_gid ];
+        auto neighbor_morton = node->info->globalIndexToMortonID( neighbor_gid );
         size_t weighted_ballot = 1.0 / ( value + 1E-3 );
         //printf( "gid %lu i %lu neighbor_gid %lu morton %lu\n", gids[ j ], i, 
         //    neighbor_gid, neighbor_morton );
@@ -2377,17 +2488,17 @@ void NearSamples( NODE *node )
   auto &setup = *(node->setup);
   auto &NN = *(setup.NN);
 
-  if ( node->isleaf )
+  if ( node->isLeaf() )
   {
     auto &gids = node->gids;
     //double budget = setup.budget;
     double budget = setup.Budget();
-    size_t n_nodes = ( 1 << node->l );
+    size_t n_nodes = ( 1 << node->getGlobalDepth() );
 
     /** Add myself to the near interaction list.  */
     node->NearNodes.insert( node );
     node->NNNearNodes.insert( node );
-    node->NNNearNodeMortonIDs.insert( node->morton );
+    node->NNNearNodeMortonIDs.insert( node->getMortonID() );
 
     /** Compute ballots for all near interactions */
     multimap<size_t, size_t> sorted_ballot = NearNodeBallots( node );
@@ -2398,7 +2509,7 @@ void NearSamples( NODE *node )
       /** Exit if we have enough. */ 
       if ( node->NNNearNodes.size() >= n_nodes * budget ) break;
       /** Insert */
-      auto *target = (*node->morton2node)[ (*it).second ];
+      auto *target = node->info->mortonToNodePointer( (*it).second );
       node->NNNearNodeMortonIDs.insert( (*it).second );
       node->NNNearNodes.insert( target );
     }
@@ -2415,7 +2526,7 @@ class NearSamplesTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "near" );
@@ -2429,13 +2540,19 @@ class NearSamplesTask : public Task
       cost = 1.0;
       /** low priority */
       priority = true;
+      return HMLP_ERROR_SUCCESS;
     }
 
-    void DependencyAnalysis() { this->TryEnqueue(); };
+    hmlpError_t DependencyAnalysis() 
+    { 
+      this->TryEnqueue(); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute( Worker* user_worker )
     {
       NearSamples<NODE, T>( arg );
+      return HMLP_ERROR_SUCCESS;
     };
 
 }; /** end class NearSamplesTask */
@@ -2444,16 +2561,16 @@ class NearSamplesTask : public Task
 template<typename TREE>
 void SymmetrizeNearInteractions( TREE & tree )
 {
-  int n_nodes = 1 << tree.getDepth();
-  auto level_beg = tree.treelist.begin() + n_nodes - 1;
+  int n_nodes = 1 << tree.getLocalHeight();
+  //auto level_beg = tree.treelist.begin() + n_nodes - 1;
 
   for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
   {
-    auto *node = *(level_beg + node_ind);
+    auto *node = tree.getLocalNodeAt( tree.getLocalHeight(), node_ind );
     auto & NearMortonIDs = node->NNNearNodeMortonIDs;
     for ( auto & it : NearMortonIDs )
     {
-      auto *target = tree.morton2node[ it ];
+      auto *target = tree.info.mortonToNodePointer( it );
       target->NNNearNodes.insert( node );
       target->NNNearNodeMortonIDs.insert( it );
     }
@@ -2469,13 +2586,14 @@ class CacheNearNodesTask : public Task
 
     NODE *arg;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "c-n" );
       label = to_string( arg->treelist_id );
       /** asuume computation bound */
       cost = 1.0;
+      return HMLP_ERROR_SUCCESS;
     };
 
     void GetEventRecord()
@@ -2497,9 +2615,13 @@ class CacheNearNodesTask : public Task
       event.Set( label + name, flops, mops );
     };
 
-    void DependencyAnalysis() { arg->DependOnNoOne( this ); };
+    hmlpError_t DependencyAnalysis() 
+    { 
+      arg->DependOnNoOne( this ); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute( Worker* user_worker )
     {
       //printf( "%lu CacheNearNodes beg\n", arg->treelist_id ); fflush( stdout );
 
@@ -2541,8 +2663,7 @@ class CacheNearNodesTask : public Task
         printf( "Kab %lu %lu not cache\n", data.NearKab.row(), data.NearKab.col() );
       }
 #endif
-
-      //printf( "%lu CacheNearNodesTask end\n", arg->treelist_id ); fflush( stdout );
+      return HMLP_ERROR_SUCCESS;
     };
 }; /** end class CacheNearNodesTask */
 
@@ -2561,7 +2682,7 @@ template<typename NODE>
 hmlpError_t FindFarNodes( NODE *node, NODE *target )
 {
   /* target must be a leaf node. */
-  if ( !target->isleaf ) return HMLP_ERROR_INVALID_VALUE;
+  if ( !target->isLeaf() ) return HMLP_ERROR_INVALID_VALUE;
 
   /** get a list of near nodes from target */
   set<NODE*> *NearNodes;
@@ -2579,9 +2700,9 @@ hmlpError_t FindFarNodes( NODE *node, NODE *target )
   NearNodes = &target->NearNodes;
 
   /** If this node contains any Near( target ) or isn't skeletonized */
-  if ( !data.is_compressed || node->ContainAny( *NearNodes ) )
+  if ( !data.is_compressed || node->containAnyNodePointer( *NearNodes ) )
   {
-    if ( !node->isleaf )
+    if ( !node->isLeaf() )
     {
       /** Recurs to two children */
       RETURN_IF_ERROR( FindFarNodes( lchild, target ) );
@@ -2604,9 +2725,9 @@ hmlpError_t FindFarNodes( NODE *node, NODE *target )
   NearNodes = &target->NNNearNodes;
 
   /** If this node contains any Near( target ) or isn't skeletonized */
-  if ( !data.is_compressed || node->ContainAny( *NearNodes ) )
+  if ( !data.is_compressed || node->containAnyNodePointer( *NearNodes ) )
   {
-    if ( !node->isleaf )
+    if ( !node->isLeaf() )
     {
       /** Recurs to two children */
       RETURN_IF_ERROR( FindFarNodes( lchild, target ) );
@@ -2615,7 +2736,7 @@ hmlpError_t FindFarNodes( NODE *node, NODE *target )
   }
   else
   {
-    if ( node->setup->IsSymmetric() && ( node->morton < target->morton ) )
+    if ( node->setup->IsSymmetric() && ( node->getMortonID() < target->getMortonID() ) )
     {
       /** since target->morton is larger than the visiting node,
        * the interaction between the target and this node has
@@ -2647,21 +2768,21 @@ hmlpError_t FindFarNodes( NODE *node, NODE *target )
 template<typename TREE>
 void MergeFarNodes( TREE &tree )
 {
-  for ( int l = tree.getDepth(); l >= 0; l -- )
+  for ( int l = tree.getLocalHeight(); l >= 0; l -- )
   {
     size_t n_nodes = ( 1 << l );
-    auto level_beg = tree.treelist.begin() + n_nodes - 1;
+    //auto level_beg = tree.treelist.begin() + n_nodes - 1;
 
     for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
     {
-      auto *node = *(level_beg + node_ind);
+      auto *node = tree.getLocalNodeAt( l, node_ind );
 
       /** if I don't have any skeleton, then I'm nobody's far field */
       if ( !node->data.is_compressed ) continue;
 
-      if ( node->isleaf )
+      if ( node->isLeaf() )
       {
-        FindFarNodes( tree.treelist[ 0 ] /** root */, node );
+        FindFarNodes( tree.getLocalRoot(), node );
       }
       else
       {
@@ -2718,14 +2839,14 @@ void MergeFarNodes( TREE &tree )
   if ( tree.setup.IsSymmetric() )
   {
     /** symmetrinize FarNodes to FarNodes interaction */
-    for ( int l = tree.getDepth(); l >= 0; l -- )
+    for ( int l = tree.getLocalHeight(); l >= 0; l -- )
     {
-      std::size_t n_nodes = 1 << l;
-      auto level_beg = tree.treelist.begin() + n_nodes - 1;
+      sizeType n_nodes = 1 << l;
+      //auto level_beg = tree.treelist.begin() + n_nodes - 1;
 
       for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
       {
-        auto *node = *(level_beg + node_ind);
+        auto *node = tree.getLocalNodeAt( l, node_ind );
         auto &pFarNodes = node->NNFarNodes;
         for ( auto it = pFarNodes.begin(); it != pFarNodes.end(); it ++ )
         {
@@ -2736,7 +2857,7 @@ void MergeFarNodes( TREE &tree )
   }
   
 #ifdef DEBUG_SPDASKIT
-  for ( int l = tree.getDepth(); l >= 0; l -- )
+  for ( int l = tree.getLocalHeight(); l >= 0; l -- )
   {
     std::size_t n_nodes = 1 << l;
     auto level_beg = tree.treelist.begin() + n_nodes - 1;
@@ -2762,7 +2883,7 @@ void MergeFarNodes( TREE &tree )
       }
       if ( pFarNodes.size() )
       {
-        printf( "l %2lu FarNodes(%lu) ", node->l, node->treelist_id );
+        printf( "l %2lu FarNodes(%lu) ", node->getGlobalDepth(), node->treelist_id );
         PrintSet( pFarNodes );
       }
     }
@@ -2783,10 +2904,10 @@ void CacheFarNodes( TREE &tree )
 {
   /** reserve space for w_leaf and u_leaf */
   #pragma omp parallel for schedule( dynamic )
-  for ( size_t i = 0; i < tree.treelist.size(); i ++ )
+  for ( size_t i = 0; i < tree.getLocalNodeSize(); i ++ )
   {
-    auto *node = tree.treelist[ i ];
-    if ( node->isleaf )
+    auto *node = tree.getLocalNodeAt( i );
+    if ( node->isLeaf() )
     {
       node->data.w_leaf.reserve( node->gids.size(), MAX_NRHS );
       node->data.u_leaf[ 0 ].reserve( MAX_NRHS, node->gids.size() );
@@ -2798,9 +2919,9 @@ void CacheFarNodes( TREE &tree )
   {
     /** cache FarKab */
     #pragma omp parallel for schedule( dynamic )
-    for ( size_t i = 0; i < tree.treelist.size(); i ++ )
+    for ( size_t i = 0; i < tree.getLocalNodeSize(); i ++ )
     {
-      auto *node = tree.treelist[ i ];
+      auto *node = tree.getLocalNodeAt( i );
       auto *FarNodes = &node->FarNodes;
       if ( NNPRUNE ) FarNodes = &node->NNFarNodes;
       auto &K = *node->setup->K;
@@ -2836,47 +2957,39 @@ double DrawInteraction( TREE &tree )
   fprintf( pFile, "axis square;" );
   fprintf( pFile, "axis ij;" );
 
-  for ( int l = tree.getDepth(); l >= 0; l -- )
+
+  for ( size_t i = 0; i < tree.getLocalNodeSize(); i ++ )
   {
-    std::size_t n_nodes = 1 << l;
-    auto level_beg = tree.treelist.begin() + n_nodes - 1;
-
-    for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
+    auto *node = tree.getLocalNodeAt( i );
+    if ( NNPRUNE )
     {
-      auto *node = *(level_beg + node_ind);
-
-      if ( NNPRUNE )
+      auto &pNearNodes = node->NNNearNodes;
+      auto &pFarNodes = node->NNFarNodes;
+      for ( auto it = pFarNodes.begin(); it != pFarNodes.end(); it ++ )
       {
-        auto &pNearNodes = node->NNNearNodes;
-        auto &pFarNodes = node->NNFarNodes;
-        for ( auto it = pFarNodes.begin(); it != pFarNodes.end(); it ++ )
-        {
-          double gb = (double)std::min( node->l, (*it)->l ) / tree.getDepth();
-          //printf( "node->l %lu (*it)->l %lu depth %lu\n", node->l, (*it)->l, tree.depth );
-          fprintf( pFile, "rectangle('position',[%lu %lu %lu %lu],'facecolor',[1.0,%lf,%lf]);\n",
-              node->offset,      (*it)->offset,
-              node->gids.size(), (*it)->gids.size(),
-              gb, gb );
-        }
-        for ( auto it = pNearNodes.begin(); it != pNearNodes.end(); it ++ )
-        {
-          fprintf( pFile, "rectangle('position',[%lu %lu %lu %lu],'facecolor',[0.2,0.4,1.0]);\n",
-              node->offset,      (*it)->offset,
-              node->gids.size(), (*it)->gids.size() );
-
-          /** accumulate exact evaluation */
-          exact_ratio += node->gids.size() * (*it)->gids.size();
-        }  
+        double gb = (double)std::min( node->getGlobalDepth(), (*it)->getGlobalDepth() ) / tree.getLocalHeight();
+        //printf( "node->l %lu (*it)->l %lu depth %lu\n", node->l, (*it)->l, tree.depth );
+        fprintf( pFile, "rectangle('position',[%lu %lu %lu %lu],'facecolor',[1.0,%lf,%lf]);\n",
+            node->offset,      (*it)->offset,
+            node->gids.size(), (*it)->gids.size(),
+            gb, gb );
       }
-      else
+      for ( auto it = pNearNodes.begin(); it != pNearNodes.end(); it ++ )
       {
-      }
+        fprintf( pFile, "rectangle('position',[%lu %lu %lu %lu],'facecolor',[0.2,0.4,1.0]);\n",
+            node->offset,      (*it)->offset,
+            node->gids.size(), (*it)->gids.size() );
+        /* accumulate exact evaluation */
+        exact_ratio += node->gids.size() * (*it)->gids.size();
+      }  
     }
   }
+
+  /* To release holding the current image handle in matlab. */
   fprintf( pFile, "hold off;" );
   fclose( pFile );
 
-  return exact_ratio / ( tree.n * tree.n );
+  return exact_ratio / ( tree.getGlobalProblemSize() * tree.getGlobalProblemSize() );
 }; /** end DrawInteration() */
 
 /**
@@ -2896,7 +3009,7 @@ typedef enum
  *
  */ 
 template<typename NODE, typename T>
-hmlpError_t Evaluate( NODE *node, const size_t gid, Data<T> & potentials, const vector<size_t> & neighbors )
+hmlpError_t evaluateWithPruning( NODE *node, const size_t gid, Data<T> & potentials, const vector<size_t> & neighbors )
 {
   auto &K = *node->setup->K;
   auto &w = *node->setup->w;
@@ -2908,11 +3021,11 @@ hmlpError_t Evaluate( NODE *node, const size_t gid, Data<T> & potentials, const 
 
   assert( potentials.size() == nrhs );
 
-  if ( !data.is_compressed || node->ContainAny( neighbors ) )
+  if ( !data.is_compressed || node->containAnyGlobalIndex( neighbors ) )
   {
     auto   I = vector<size_t>( 1, gid );
     auto & J = node->gids;
-    if ( node->isleaf )
+    if ( node->isLeaf() )
     {
       /** I.size()-by-J.size(). */
       auto Kab = K( I, J ); 
@@ -2930,8 +3043,8 @@ hmlpError_t Evaluate( NODE *node, const size_t gid, Data<T> & potentials, const 
     }
     else
     {
-      RETURN_IF_ERROR( Evaluate( lchild, gid, potentials, neighbors ) );
-      RETURN_IF_ERROR( Evaluate( rchild, gid, potentials, neighbors ) );
+      RETURN_IF_ERROR( evaluateWithPruning( lchild, gid, potentials, neighbors ) );
+      RETURN_IF_ERROR( evaluateWithPruning( rchild, gid, potentials, neighbors ) );
     }
   }
   else 
@@ -2946,8 +3059,9 @@ hmlpError_t Evaluate( NODE *node, const size_t gid, Data<T> & potentials, const 
         w_skel.data(),     w_skel.row(),
       1.0, potentials.data(), potentials.row() );          
   }
+  /* Return with no error. */
   return HMLP_ERROR_SUCCESS;
-}; /** end Evaluate() */
+}; /* end evaluateWithPruning() */
 
 
 /** @brief Evaluate potentials( gid ) using treecode.
@@ -2955,10 +3069,9 @@ hmlpError_t Evaluate( NODE *node, const size_t gid, Data<T> & potentials, const 
  *
  **/
 template<typename TREE, typename T>
-hmlpError_t Evaluate( TREE &tree, const size_t gid, Data<T> & potentials, const evaluateOption_t option )
+hmlpError_t evaluateAtGlobalIndex( TREE &tree, const size_t gid, Data<T>& potentials, const evaluateOption_t option )
 {
   /* Put gid itself into the neighbor list. */
-  vector<size_t> neighbors( 1, gid );
   auto &w = *tree.setup.w;
   /* Clean up and properly initialize the output vector. */
   potentials.clear();
@@ -2970,22 +3083,28 @@ hmlpError_t Evaluate( TREE &tree, const size_t gid, Data<T> & potentials, const 
     {
       auto & all_neighbors = *tree.setup.NN;
       /* Get the number of neighbors. */
-      size_t kappa = all_neighbors.row();
-      neighbors.reserve( kappa + 1 );
+      sizeType num_neighbors = all_neighbors.row();
+      /* The pruning list contains all neighbors. */
+      std::vector<indexType> pruning_list;
       /* Insert all neighbor gids into neighbors. */
-      for ( size_t i = 0; i < kappa; i ++ )
+      for ( sizeType i = 0; i < num_neighbors; i ++ )
       {
-        neighbors.push_back( all_neighbors( i, gid ).second );
+        pruning_list.push_back( all_neighbors( i, gid ).second );
       }
-      return Evaluate( tree.treelist[ 0 ], gid, potentials, neighbors );
+      /* Top-down recursive traverasl. */
+      return evaluateWithPruning( tree.getLocalRoot(), gid, potentials, pruning_list );
     }
     case EVALUATE_OPTION_SELF_PRUNING:
     {
-      return Evaluate( tree.treelist[ 0 ], gid, potentials, neighbors );
+      /* The pruning list only contain { gid }. */
+      std::vector<indexType> pruning_list( 1, gid );
+      /* Top-down recursive traverasl. */
+      return evaluateWithPruning( tree.getLocalRoot(), gid, potentials, pruning_list );
     }
     case EVALUATE_OPTION_EXACT:
     {
-      return HMLP_ERROR_INVALID_VALUE;
+      /* Top-down recursive traverasl. */
+      return evaluateWithPruning( tree.getLocalRoot(), gid, potentials, tree.getOwnedIndices() );
     }
     default:
     {
@@ -2993,21 +3112,17 @@ hmlpError_t Evaluate( TREE &tree, const size_t gid, Data<T> & potentials, const 
     }
   }
   return HMLP_ERROR_INVALID_VALUE;
-}; /* end Evaluate() */
+}; /* end evaluateAtGlobalIndex() */
 
 
 /**
  *  @brief ComputeAll
  */ 
-template<
-  bool     USE_RUNTIME = true, 
-  bool     USE_OMP_TASK = false, 
-  bool     NNPRUNE = true, 
-  bool     CACHE = true, 
-  typename TREE, 
-  typename T>
-Data<T> Evaluate( TREE &tree, Data<T> &weights )
+template<typename TREE, typename T>
+Data<T> Evaluate(TREE & tree, Data<T> & weights)
 {
+  const bool NNPRUNE = true;
+  const bool CACHE = true; 
   const bool AUTO_DEPENDENCY = true;
 
   /** get type NODE = TREE::NODE */
@@ -3019,7 +3134,7 @@ Data<T> Evaluate( TREE &tree, Data<T> &weights )
   double forward_permute_time, backward_permute_time;
 
   /** clean up all r/w dependencies left on tree nodes */
-  tree.DependencyCleanUp();
+  HANDLE_ERROR( tree.dependencyClean() );
 
   /** n-by-nrhs initialize potentials */
   size_t n    = weights.row();
@@ -3037,12 +3152,13 @@ Data<T> Evaluate( TREE &tree, Data<T> &weights )
     printf( "Forward permute ...\n" ); fflush( stdout );
   }
   beg = omp_get_wtime();
-  int n_nodes = ( 1 << tree.getDepth() );
-  auto level_beg = tree.treelist.begin() + n_nodes - 1;
+  int n_nodes = ( 1 << tree.getLocalHeight() );
+  //auto level_beg = tree.treelist.begin() + n_nodes - 1;
   #pragma omp parallel for
   for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
   {
-    auto *node = *(level_beg + node_ind);
+    //auto *node = *(level_beg + node_ind);
+    auto *node = tree.getLocalNodeAt( tree.getLocalHeight(), node_ind );
 
 
     auto &gids = node->gids;
@@ -3096,67 +3212,19 @@ Data<T> Evaluate( TREE &tree, Data<T> &weights )
     SKELTOSKELTASK  skeltoskeltask;
     SKELTONODETASK  skeltonodetask;
 
-
-//    if ( USE_OMP_TASK )
-//    {
-//      assert( !USE_RUNTIME );
-//      tree.template TraverseLeafs<false, false>( leaftoleaftask1 );
-//      tree.template TraverseLeafs<false, false>( leaftoleaftask2 );
-//      tree.template TraverseLeafs<false, false>( leaftoleaftask3 );
-//      tree.template TraverseLeafs<false, false>( leaftoleaftask4 );
-//      tree.template UpDown<true, true, true>( nodetoskeltask, skeltoskeltask, skeltonodetask );
-//    }
-//    else
-//    {
-//      assert( !USE_OMP_TASK );
-//
-//#ifdef HMLP_USE_CUDA
-//      tree.template TraverseLeafs<AUTO_DEPENDENCY, USE_RUNTIME>( leaftoleafver2task );
-//#else
-//      tree.template TraverseLeafs<AUTO_DEPENDENCY, USE_RUNTIME>( leaftoleaftask1 );
-//      tree.template TraverseLeafs<AUTO_DEPENDENCY, USE_RUNTIME>( leaftoleaftask2 );
-//      tree.template TraverseLeafs<AUTO_DEPENDENCY, USE_RUNTIME>( leaftoleaftask3 );
-//      tree.template TraverseLeafs<AUTO_DEPENDENCY, USE_RUNTIME>( leaftoleaftask4 );
-//#endif
-//
-//      /** check scheduler */
-//      //hmlp_get_runtime_handle()->scheduler->ReportRemainingTime();
-//      tree.template TraverseUp       <AUTO_DEPENDENCY, USE_RUNTIME>( nodetoskeltask );
-//      tree.template TraverseUnOrdered<AUTO_DEPENDENCY, USE_RUNTIME>( skeltoskeltask );
-//      tree.template TraverseDown     <AUTO_DEPENDENCY, USE_RUNTIME>( skeltonodetask );
-//      /** check scheduler */
-//      //hmlp_get_runtime_handle()->scheduler->ReportRemainingTime();
-//
-//      if ( USE_RUNTIME ) hmlp_run();
-//
-//
-//
-//#ifdef HMLP_USE_CUDA
-//      hmlp::Device *device = hmlp_get_device( 0 );
-//      for ( int stream_id = 0; stream_id < 10; stream_id ++ )
-//        device->wait( stream_id );
-//      //potentials.PrefetchD2H( device, 0 );
-//      potentials.FetchD2H( device );
-//#endif
-//    }
-
-
-
-
     /** CPU-GPU hybrid uses a different kind of L2L task */
 #ifdef HMLP_USE_CUDA
-    tree.TraverseLeafs( leaftoleafver2task );
+    tree.traverseLeafs( leaftoleafver2task );
 #else
-    tree.TraverseLeafs( leaftoleaftask1 );
-    tree.TraverseLeafs( leaftoleaftask2 );
-    tree.TraverseLeafs( leaftoleaftask3 );
-    tree.TraverseLeafs( leaftoleaftask4 );
+    tree.traverseLeafs( leaftoleaftask1 );
+    tree.traverseLeafs( leaftoleaftask2 );
+    tree.traverseLeafs( leaftoleaftask3 );
+    tree.traverseLeafs( leaftoleaftask4 );
 #endif
-    tree.TraverseUp( nodetoskeltask );
-    tree.TraverseUnOrdered( skeltoskeltask );
-    tree.TraverseDown( skeltonodetask );
+    tree.traverseUp( nodetoskeltask );
+    tree.traverseUnOrdered( skeltoskeltask );
+    tree.traverseDown( skeltonodetask );
     tree.ExecuteAllTasks();
-    //if ( USE_RUNTIME ) hmlp_run();
 
 
     double d2h_beg_t = omp_get_wtime();
@@ -3176,7 +3244,7 @@ Data<T> Evaluate( TREE &tree, Data<T> &weights )
     #pragma omp parallel for
     for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
     {
-      auto *node = *(level_beg + node_ind);
+      auto *node = tree.getLocalNodeAt( tree.getLocalHeight(), node_ind );
       auto &u_leaf = node->data.u_leaf[ 0 ];
       /** reduce all u_leaf[0:4] */
       for ( size_t p = 1; p < 20; p ++ )
@@ -3211,7 +3279,7 @@ Data<T> Evaluate( TREE &tree, Data<T> &weights )
   #pragma omp parallel for
   for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
   {
-    auto *node = *(level_beg + node_ind);
+    auto *node = tree.getLocalNodeAt( tree.getLocalHeight(), node_ind );
     auto &amap = node->gids;
     auto &u_leaf = node->data.u_leaf[ 0 ];
 
@@ -3258,12 +3326,11 @@ Data<T> Evaluate( TREE &tree, Data<T> &weights )
 
 
   /** clean up all r/w dependencies left on tree nodes */
-  tree.DependencyCleanUp();
+  HANDLE_ERROR( tree.dependencyClean() );
 
-  /** return nrhs-by-N outputs */
+  /* Return nrhs-by-N outputs. */
   return potentials;
-
-}; /** end Evaluate() */
+};
 
 
 
@@ -3275,14 +3342,14 @@ Data<pair<T, size_t>> FindNeighbors( SPDMATRIX &K, SPLITTER splitter,
   {
     /** Instantiation for the randomisze tree. */
     using DATA  = gofmm::NodeData<T>;
-    using SETUP = gofmm::Setup<SPDMATRIX, SPLITTER, T>;
+    using SETUP = gofmm::Argument<SPDMATRIX, SPLITTER, T>;
     using TREE  = tree::Tree<SETUP, DATA>;
     /** Derive type NODE from TREE. */
     using NODE  = typename TREE::NODE;
     /** Get all user-defined parameters. */
     DistanceMetric metric = config.MetricType();
     size_t n = config.ProblemSize();
-	  size_t k = config.NeighborSize(); 
+    size_t k = config.NeighborSize(); 
     /** Iterative all nearnest-neighbor (ANN). */
     pair<T, size_t> init( numeric_limits<T>::max(), n );
     gofmm::NeighborsTask<NODE, T> NEIGHBORStask;
@@ -3294,8 +3361,7 @@ Data<pair<T, size_t>> FindNeighbors( SPDMATRIX &K, SPLITTER splitter,
   }
   catch ( const exception & e )
   {
-    cout << e.what() << endl;
-    exit( -1 );
+    HANDLE_EXCEPTION( e );
   }
 }; /** end FindNeighbors() */
 
@@ -3304,13 +3370,13 @@ Data<pair<T, size_t>> FindNeighbors( SPDMATRIX &K, SPLITTER splitter,
  *  @brielf template of the compress routine
  */ 
 template<typename SPLITTER, typename RKDTSPLITTER, typename T, typename SPDMATRIX>
-tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
+tree::Tree< gofmm::Argument<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
 *Compress( SPDMATRIX &K, Data<pair<T, size_t>> &NN, 
     SPLITTER splitter, RKDTSPLITTER rkdtsplitter, Configuration<T> &config )
 {
   try
   {
-    /** Get all user-defined parameters. */
+    /* Get all user-defined parameters. */
     DistanceMetric metric = config.MetricType();
     size_t n = config.ProblemSize();
     size_t m = config.getLeafNodeSize();
@@ -3324,7 +3390,7 @@ tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
     const bool CACHE     = true;
 
     /** instantiation for the Spd-Askit tree */
-    using SETUP = gofmm::Setup<SPDMATRIX, SPLITTER, T>;
+    using SETUP = gofmm::Argument<SPDMATRIX, SPLITTER, T>;
     using DATA  = gofmm::NodeData<T>;
     using TREE  = tree::Tree<SETUP, DATA>;
     /** Derive type NODE from TREE. */
@@ -3354,10 +3420,10 @@ tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
 
     if ( REPORT_COMPRESS_STATUS )
     {
-      printf( "TreePartitioning ...\n" ); fflush( stdout );
+      printf( "partitioning ...\n" ); fflush( stdout );
     }
     beg = omp_get_wtime();
-    tree.TreePartition();
+    HANDLE_ERROR( tree.partition() );
     tree_time = omp_get_wtime() - beg;
 
 
@@ -3383,9 +3449,9 @@ tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
 
     /** Build near interaction lists. */ 
     NearSamplesTask<NODE, T> NEARSAMPLEStask;
-    tree.DependencyCleanUp();
+    HANDLE_ERROR( tree.dependencyClean() );
     printf( "Dependency clean up\n" ); fflush( stdout );
-    tree.TraverseLeafs( NEARSAMPLEStask );
+    tree.traverseLeafs( NEARSAMPLEStask );
     tree.ExecuteAllTasks();
     //hmlp_run();
     printf( "Finish NearSamplesTask\n" ); fflush( stdout );
@@ -3403,13 +3469,13 @@ tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
     gofmm::SkeletonKIJTask<NNPRUNE, NODE, T> GETMTXtask;
     gofmm::SkeletonizeTask<NODE, T> SKELtask;
     gofmm::InterpolateTask<NODE> PROJtask;
-    tree.DependencyCleanUp();
-    tree.TraverseUp( GETMTXtask, SKELtask );
-    tree.TraverseUnOrdered( PROJtask );
+    HANDLE_ERROR( tree.dependencyClean() );
+    tree.traverseUp( GETMTXtask, SKELtask );
+    tree.traverseUnOrdered( PROJtask );
     if ( CACHE )
     {
       gofmm::CacheNearNodesTask<NNPRUNE, NODE> KIJtask;
-      tree.template TraverseLeafs( KIJtask );
+      tree.template traverseLeafs( KIJtask );
     }
     other_time += omp_get_wtime() - beg;
     hmlp_run();
@@ -3451,7 +3517,7 @@ tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
       printf( "GOFMM compression phase\n" );
       printf( "========================================================\n");
       printf( "NeighborSearch ------------------------ %5.2lfs (%5.1lf%%)\n", ann_time, ann_time * time_ratio );
-      printf( "TreePartitioning ---------------------- %5.2lfs (%5.1lf%%)\n", tree_time, tree_time * time_ratio );
+      printf( "partitioning ---------------------- %5.2lfs (%5.1lf%%)\n", tree_time, tree_time * time_ratio );
       printf( "Skeletonization ----------------------- %5.2lfs (%5.1lf%%)\n", skel_time, skel_time * time_ratio );
       printf( "MergeFarNodes ------------------------- %5.2lfs (%5.1lf%%)\n", mergefarnodes_time, mergefarnodes_time * time_ratio );
       printf( "CacheFarNodes ------------------------- %5.2lfs (%5.1lf%%)\n", cachefarnodes_time, cachefarnodes_time * time_ratio );
@@ -3462,16 +3528,16 @@ tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
     }
 
     /** Clean up all r/w dependencies left on tree nodes. */
-    tree_ptr->DependencyCleanUp();
+    HANDLE_ERROR( tree_ptr->dependencyClean() );
     /** Return the hierarhical compreesion of K as a binary tree. */
     return tree_ptr;
   }
   catch ( const exception & e )
   {
-    cout << e.what() << endl;
-    exit( -1 );
+    std::cerr << "[EXCEPTION]: encounter exception in gofmm::Compress().\n";
+    HANDLE_EXCEPTION( e );
   }
-}; /** end Compress() */
+}; /* end Compress() */
 
 
 
@@ -3518,58 +3584,53 @@ tree::Tree< gofmm::Setup<SPDMATRIX, SPLITTER, T>, gofmm::NodeData<T>>
  */ 
 template<typename T, typename SPDMATRIX>
 tree::Tree<
-  gofmm::Setup<SPDMATRIX, centersplit<SPDMATRIX, 2, T>, T>, 
-  gofmm::NodeData<T>>
-*Compress( SPDMATRIX &K, T stol, T budget, size_t m, size_t k, size_t s,bool sec_acc=true)
+gofmm::Argument<SPDMATRIX, centersplit<SPDMATRIX, 2, T>, T>, gofmm::NodeData<T>>
+*Compress( SPDMATRIX &K, T stol, T budget, size_t m, size_t k, size_t s )
 {
+  
   using SPLITTER     = centersplit<SPDMATRIX, 2, T>;
   using RKDTSPLITTER = randomsplit<SPDMATRIX, 2, T>;
   Data<pair<T, size_t>> NN;
-	/** GOFMM tree splitter */
+  /** GOFMM tree splitter */
   SPLITTER splitter( K );
   splitter.Kptr = &K;
-	splitter.metric = ANGLE_DISTANCE;
-	/** randomized tree splitter */
+  splitter.metric = ANGLE_DISTANCE;
+  /** randomized tree splitter */
   RKDTSPLITTER rkdtsplitter( K );
   rkdtsplitter.Kptr = &K;
-	rkdtsplitter.metric = ANGLE_DISTANCE;
+  rkdtsplitter.metric = ANGLE_DISTANCE;
   size_t n = K.row();
 
-	/** creatgin configuration for all user-define arguments */
-	Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget,sec_acc );
-	//Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget,false );
+  /** creating configuration for all user-define arguments */
+  Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget );
 
-	/** call the complete interface and return tree_ptr */
+  /** call the complete interface and return tree_ptr */
   return Compress<SPLITTER, RKDTSPLITTER>
-         ( K, NN, //ANGLE_DISTANCE, 
-					 splitter, rkdtsplitter, //n, m, k, s, stol, budget, 
-					 config );
+    ( K, NN, //ANGLE_DISTANCE, 
+      splitter, rkdtsplitter, //n, m, k, s, stol, budget, 
+      config );
+
 }; /** end Compress */
 
 
 
-
-
-
-
-
 /**
  *  @brielf A simple template for the compress routine.
  */ 
 template<typename T, typename SPDMATRIX>
 tree::Tree<
-  gofmm::Setup<SPDMATRIX, centersplit<SPDMATRIX, 2, T>, T>, 
+  gofmm::Argument<SPDMATRIX, centersplit<SPDMATRIX, 2, T>, T>, 
   gofmm::NodeData<T>>
 *Compress( SPDMATRIX &K, T stol, T budget )
 {
   using SPLITTER     = centersplit<SPDMATRIX, 2, T>;
   using RKDTSPLITTER = randomsplit<SPDMATRIX, 2, T>;
   Data<pair<T, std::size_t>> NN;
-	/** GOFMM tree splitter */
+  /** GOFMM tree splitter */
   SPLITTER splitter( K );
   splitter.Kptr = &K;
   splitter.metric = ANGLE_DISTANCE;
-	/** randomized tree splitter */
+  /** randomized tree splitter */
   RKDTSPLITTER rkdtsplitter( K );
   rkdtsplitter.Kptr = &K;
   rkdtsplitter.metric = ANGLE_DISTANCE;
@@ -3600,13 +3661,13 @@ tree::Tree<
     s = 512;
   }
 
-	/** creatgin configuration for all user-define arguments */
-	Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget );
+  /** creatgin configuration for all user-define arguments */
+  Configuration<T> config( ANGLE_DISTANCE, n, m, k, s, stol, budget );
 
-	/** call the complete interface and return tree_ptr */
+  /** call the complete interface and return tree_ptr */
   return Compress<SPLITTER, RKDTSPLITTER>
-         ( K, NN, //ANGLE_DISTANCE, 
-					 splitter, rkdtsplitter, config );
+    ( K, NN, //ANGLE_DISTANCE, 
+      splitter, rkdtsplitter, config );
 
 }; /** end Compress() */
 
@@ -3615,17 +3676,12 @@ tree::Tree<
  */ 
 template<typename T>
 tree::Tree<
-  gofmm::Setup<SPDMatrix<T>, centersplit<SPDMatrix<T>, 2, T>, T>, 
+gofmm::Argument<SPDMatrix<T>, centersplit<SPDMatrix<T>, 2, T>, T>, 
   gofmm::NodeData<T>>
 *Compress( SPDMatrix<T> &K, T stol, T budget )
 {
-	return Compress<T, SPDMatrix<T>>( K, stol, budget );
+  return Compress<T, SPDMatrix<T>>( K, stol, budget );
 }; /** end Compress() */
-
-
-
-
-
 
 
 template<typename NODE, typename T>
@@ -3642,7 +3698,7 @@ void ComputeError( NODE *node, Data<T> potentials )
   auto Kab = K( amap, bmap );
 
   auto nrm2 = hmlp_norm( potentials.row(), potentials.col(), 
-                         potentials.data(), potentials.row() ); 
+      potentials.data(), potentials.row() ); 
 
   xgemm
   (
@@ -3713,18 +3769,34 @@ hmlpError_t SelfTesting( TREE &tree, size_t ntest, size_t nrhs )
   /** Derive type T from TREE. */
   using T = typename TREE::T;
   /** Size of right hand sides. */
-  size_t n = tree.n;
+  size_t n = tree.getGlobalProblemSize();
   /** Shrink ntest if ntest > n. */
   if ( ntest > n ) ntest = n;
-  /** all_rhs = [ 0, 1, ..., nrhs - 1 ]. */
-  vector<size_t> all_rhs( nrhs );
-  for ( size_t rhs = 0; rhs < nrhs; rhs ++ ) all_rhs[ rhs ] = rhs;
+  /** all_right_hand_sides = [ 0, 1, ..., nrhs - 1 ]. */
+  std::vector<indexType> all_right_hand_sides( nrhs );
+  for ( indexType rhs = 0; rhs < nrhs; rhs ++ )
+  {
+    all_right_hand_sides[ rhs ] = rhs;
+  }
+
+  /*
+   * logs[ 0 ]: sqaure 2-norm || u ||_2^2
+   * logs[ 1 ]: elementwise ASKIT error (off-diagonal with sparse correction)
+   * logs[ 2 ]: ASKIT SSE || u' - u ||_2^2
+   * logs[ 3 ]: elementwise   HSS error (off-diagonal low-rank)
+   * logs[ 4 ]: HSS   SSE || u' - u ||_2^2
+   * logs[ 5 ]: elementwise GOFMM error (off-diagonal with blocked sparse correction)
+   * logs[ 6 ]: GOFMM SSE || u' - u ||_2^2
+   */
+  hmlp::Data<double> logs( ntest, 7, 0 );
+
+
 
   //auto A = tree.CheckAllInteractions();
 
   /** Evaluate u ~ K * w. */
   Data<T> w( n, nrhs ); w.rand();
-  auto u = Evaluate<true, false, true, true>( tree, w );
+  auto u = Evaluate( tree, w );
 
   /** Examine accuracy with 3 setups, ASKIT, HODLR, and GOFMM. */
   T nnerr_avg = 0.0;
@@ -3735,80 +3807,91 @@ hmlpError_t SelfTesting( TREE &tree, size_t ntest, size_t nrhs )
   printf( "========================================================\n");
   for ( size_t i = 0; i < ntest; i ++ )
   {
-    //size_t tar = i * n / ntest;
-    size_t tar = i * 1000;
-    Data<T> potentials;
-    /** ASKIT treecode with NN pruning. */
-    RETURN_IF_ERROR( Evaluate( tree, tar, potentials, EVALUATE_OPTION_NEIGHBOR_PRUNING ) );
-    auto nnerr = ComputeError( tree, tar, potentials );
-    /** ASKIT treecode without NN pruning. */
-    RETURN_IF_ERROR( Evaluate( tree, tar, potentials, EVALUATE_OPTION_SELF_PRUNING ) );
-    auto nonnerr = ComputeError( tree, tar, potentials );
-    /** Get results from GOFMM */
-    //potentials = u( vector<size_t>( i ), all_rhs );
-    for ( size_t p = 0; p < potentials.col(); p ++ )
-    {
-      potentials[ p ] = u( tar, p );
-    }
-    auto fmmerr = ComputeError( tree, tar, potentials );
+    size_t tar = i * n / ntest;
+
+    Data<T> u_ref, u_askit, u_hodlr, u_gofmm;
+    /* Evaluate the exact K(tar,:) * w(:,:). */
+    RETURN_IF_ERROR( evaluateAtGlobalIndex( tree, tar, u_ref, EVALUATE_OPTION_EXACT ) );
+    /* Compute the squared Frobenius norm of the reference. */ 
+    logs( i, 0 ) = u_ref.squaredFrobeniusNorm();
+    /* ASKIT treecode with NN pruning. */
+    RETURN_IF_ERROR( evaluateAtGlobalIndex( tree, tar, u_askit, EVALUATE_OPTION_NEIGHBOR_PRUNING ) );
+    /* Compute the relatve error for ASKIT. */
+    logs( i, 1 ) = u_askit.relativeError( u_ref );
+    /* Compute ASKIT's square summation error (SSE). */
+    logs( i, 2 ) = u_askit.sumOfSquaredError( u_ref );
+    /* ASKIT treecode without NN pruning (HSS). */
+    RETURN_IF_ERROR( evaluateAtGlobalIndex( tree, tar, u_hodlr, EVALUATE_OPTION_SELF_PRUNING ) );
+    /* Compute the relatve error for HSS. */
+    logs( i, 3 ) = u_hodlr.relativeError( u_ref );
+    /* Compute HSS's square summation error (SSE). */
+    logs( i, 4 ) = u_hodlr.sumOfSquaredError( u_ref );
+    /* Get results from GOFMM */
+    u_gofmm = u( std::vector<indexType>( 1, tar ), all_right_hand_sides );
+    /* Compute the relatve error for GOFMM. */
+    logs( i, 5 ) = u_gofmm.relativeError( u_ref );
+    /* Compute GOFMM's square summation error (SSE). */
+    logs( i, 6 ) = u_gofmm.sumOfSquaredError( u_ref );
 
     /** Only print 10 values. */
     if ( i < 10 )
     {
-      printf( "gid %6lu, ASKIT %3.1E, HODLR %3.1E, GOFMM %3.1E\n", 
-          tar, nnerr, nonnerr, fmmerr );
+      printf( "gid %6lu, ASKIT %3.1E, HODLR %3.1E, GOFMM %3.1E\n", tar, logs( i, 1 ), logs( i, 3 ), logs( i, 5 ) );
     }
-    nnerr_avg += nnerr;
-    nonnerr_avg += nonnerr;
-    fmmerr_avg += fmmerr;
+    nnerr_avg += logs( i, 1 );
+    nonnerr_avg += logs( i, 3 );
+    fmmerr_avg += logs( i, 5 );
   }
   printf( "========================================================\n");
-  printf( "            ASKIT %3.1E, HODLR %3.1E, GOFMM %3.1E\n", 
-      nnerr_avg / ntest , nonnerr_avg / ntest, fmmerr_avg / ntest );
+  printf( "Elementwise ASKIT %3.1E, HODLR %3.1E, GOFMM %3.1E\n", 
+        nnerr_avg / ntest , nonnerr_avg / ntest, fmmerr_avg / ntest );
   printf( "========================================================\n");
 
+  /* HSS ULV factorization currently does not support level-restriction.  */ 
   if ( !tree.setup.SecureAccuracy() )
   {
-    /** Factorization */
+    /* Regularization parameter. */
     T lambda = 5.0;
+    /** HSS ULV factorization. */
     RETURN_IF_ERROR( gofmm::Factorize( tree, lambda ) );
-    /** Compute error. */
+    /** Compute the error. */
     gofmm::ComputeError( tree, lambda, w, u );
   }
-
+  /* Return with no error. */
   return HMLP_ERROR_SUCCESS;
 }; /** end SelfTesting() */
 
 
 /** 
- *  \brief Instantiate the splitters here. 
+ *  \brief The LaunchHelper creates splitters and configuration from the
+ *         command line inputs.
+ *  \param [in] K the matrix that inheritates VirtualMatrix.
+ *  \param [in] cmd the command line inputs.
+ *  \return the error code.
  */ 
 template<typename SPDMATRIX>
 hmlpError_t LaunchHelper( SPDMATRIX &K, CommandLineHelper &cmd )
 {
+  /* Short hand for the datatype. */
   using T = typename SPDMATRIX::T;
-
+  /* Use a binary tree (TODO: probably should not allow any other stuff). */
   const int N_CHILDREN = 2;
-  /** Use geometric-oblivious splitters. */
+  /** Use the geometric-oblivious splitter from the metric ball tree. */
   using SPLITTER     = gofmm::centersplit<SPDMATRIX, N_CHILDREN, T>;
+  /** Use the geometric-oblivious splitter from the randomized tree. */
   using RKDTSPLITTER = gofmm::randomsplit<SPDMATRIX, N_CHILDREN, T>;
-  /** GOFMM tree splitter. */
-  SPLITTER splitter( K );
-  splitter.Kptr = &K;
-  splitter.metric = cmd.metric;
-  /** Randomized tree splitter. */
-  RKDTSPLITTER rkdtsplitter( K );
-  rkdtsplitter.Kptr = &K;
-  rkdtsplitter.metric = cmd.metric;
-	/** Create configuration for all user-define arguments. */
+  /** GOFMM metric ball tree splitter (for the matrix partition). */
+  SPLITTER splitter( K, cmd.metric );
+  /** Randomized matric tree splitter (for nearest neighbor). */
+  RKDTSPLITTER rkdtsplitter( K, cmd.metric );
+  /** Create configuration for all user-define arguments. */
   gofmm::Configuration<T> config( cmd.metric, 
       cmd.n, cmd.m, cmd.k, cmd.s, cmd.stol, cmd.budget, cmd.secure_accuracy );
   /** (Optional) provide neighbors, leave uninitialized otherwise. */
   Data<pair<T, size_t>> NN;
   /** Compress K. */
-  //auto *tree_ptr = gofmm::Compress( X, K, NN, splitter, rkdtsplitter, config );
   auto *tree_ptr = gofmm::Compress( K, NN, splitter, rkdtsplitter, config );
-	auto &tree = *tree_ptr;
+  auto &tree = *tree_ptr;
   /** Examine accuracies. */
   auto error = gofmm::SelfTesting( tree, 100, cmd.nrhs );
 
@@ -3818,7 +3901,7 @@ hmlpError_t LaunchHelper( SPDMATRIX &K, CommandLineHelper &cmd )
 //  tree.Summary( summary );
 //  summary.Print();
 
-	/** delete tree_ptr */
+  /** delete tree_ptr */
   delete tree_ptr;
 
   /* Return with no error. */
@@ -3867,7 +3950,7 @@ class SimpleGOFMM
 
     /** GOFMM tree */
     tree::Tree<
-      gofmm::Setup<SPDMATRIX, centersplit<SPDMATRIX, 2, T>, T>, 
+      gofmm::Argument<SPDMATRIX, centersplit<SPDMATRIX, 2, T>, T>, 
       gofmm::NodeData<T>> *tree_ptr = NULL; 
 
 }; /** end class SimpleGOFMM */
@@ -3891,10 +3974,10 @@ class SimpleGOFMM
 typedef SPDMatrix<double> dSPDMatrix_t;
 typedef SPDMatrix<float > sSPDMatrix_t;
 
-typedef hmlp::gofmm::Setup<SPDMatrix<double>, 
+typedef hmlp::gofmm::Argument<SPDMatrix<double>, 
     centersplit<SPDMatrix<double>, 2, double>, double> dSetup_t;
 
-typedef hmlp::gofmm::Setup<SPDMatrix<float>, 
+typedef hmlp::gofmm::Argument<SPDMatrix<float>, 
     centersplit<SPDMatrix<float >, 2,  float>,  float> sSetup_t;
 
 typedef tree::Tree<dSetup_t, gofmm::NodeData<double>> dTree_t;

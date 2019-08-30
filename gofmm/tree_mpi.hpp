@@ -36,170 +36,6 @@ namespace hmlp
 namespace mpitree
 {
 
-
-
-///**
-// *  @brief This is the default ball tree splitter. Given coordinates,
-// *         compute the direction from the two most far away points.
-// *         Project all points to this line and split into two groups
-// *         using a median select.
-// *
-// *  @para
-// *
-// *  @TODO  Need to explit the parallelism.
-// */ 
-//template<int N_SPLIT, typename T>
-//struct centersplit
-//{
-//  // closure
-//  Data<T> *Coordinate;
-//
-//  inline vector<vector<size_t> > operator()
-//  ( 
-//    vector<size_t>& gids
-//  ) const 
-//  {
-//    assert( N_SPLIT == 2 );
-//
-//    Data<T> &X = *Coordinate;
-//    size_t d = X.row();
-//    size_t n = gids.size();
-//
-//    T rcx0 = 0.0, rx01 = 0.0;
-//    size_t x0, x1;
-//    vector<vector<size_t> > split( N_SPLIT );
-//
-//
-//    vector<T> centroid = combinatorics::Mean( d, n, X, gids );
-//    vector<T> direction( d );
-//    vector<T> projection( n, 0.0 );
-//
-//    //printf( "After Mean\n" );
-//
-//    // Compute the farest x0 point from the centroid
-//    for ( int i = 0; i < n; i ++ )
-//    {
-//      T rcx = 0.0;
-//      for ( int p = 0; p < d; p ++ )
-//      {
-//        T tmp = X[ gids[ i ] * d + p ] - centroid[ p ];
-//        rcx += tmp * tmp;
-//      }
-//      //printf( "\n" );
-//      if ( rcx > rcx0 ) 
-//      {
-//        rcx0 = rcx;
-//        x0 = i;
-//      }
-//    }
-//
-//
-//    // Compute the farest point x1 from x0
-//    for ( int i = 0; i < n; i ++ )
-//    {
-//      T rxx = 0.0;
-//      for ( int p = 0; p < d; p ++ )
-//      {
-//        T tmp = X[ gids[ i ] * d + p ] - X[ gids[ x0 ] * d + p ];
-//        rxx += tmp * tmp;
-//      }
-//      if ( rxx > rx01 )
-//      {
-//        rx01 = rxx;
-//        x1 = i;
-//      }
-//    }
-//
-//    // Compute direction
-//    for ( int p = 0; p < d; p ++ )
-//    {
-//      direction[ p ] = X[ gids[ x1 ] * d + p ] - X[ gids[ x0 ] * d + p ];
-//    }
-//
-//    // Compute projection
-//    projection.resize( n, 0.0 );
-//    for ( int i = 0; i < n; i ++ )
-//      for ( int p = 0; p < d; p ++ )
-//        projection[ i ] += X[ gids[ i ] * d + p ] * direction[ p ];
-//
-//    /** Parallel median search */
-//    T median;
-//    
-//    if ( 1 )
-//    {
-//      median = hmlp::combinatorics::Select( n, n / 2, projection );
-//    }
-//    else
-//    {
-//      auto proj_copy = projection;
-//      std::sort( proj_copy.begin(), proj_copy.end() );
-//      median = proj_copy[ n / 2 ];
-//    }
-//
-//    split[ 0 ].reserve( n / 2 + 1 );
-//    split[ 1 ].reserve( n / 2 + 1 );
-//
-//
-//    /** TODO: Can be parallelized */
-//    std::vector<std::size_t> middle;
-//    for ( size_t i = 0; i < n; i ++ )
-//    {
-//      if      ( projection[ i ] < median ) split[ 0 ].push_back( i );
-//      else if ( projection[ i ] > median ) split[ 1 ].push_back( i );
-//      else                                 middle.push_back( i );
-//    }
-//
-//    for ( size_t i = 0; i < middle.size(); i ++ )
-//    {
-//      if ( split[ 0 ].size() <= split[ 1 ].size() ) split[ 0 ].push_back( middle[ i ] );
-//      else                                          split[ 1 ].push_back( middle[ i ] );
-//    }
-//
-//
-//    return split;
-//  };
-//
-//
-//  inline std::vector<std::vector<size_t> > operator()
-//  ( 
-//    std::vector<size_t>& gids,
-//    hmlp::mpi::Comm comm
-//  ) const 
-//  {
-//    std::vector<std::vector<size_t> > split( N_SPLIT );
-//
-//    return split;
-//  };
-//
-//};
-//
-//
-//
-//
-//
-//template<int N_SPLIT, typename T>
-//struct randomsplit
-//{
-//  Data<T> *Coordinate = NULL;
-//
-//  inline vector<vector<size_t> > operator() ( vector<size_t>& gids ) const 
-//  {
-//    vector<vector<size_t> > split( N_SPLIT );
-//    return split;
-//  };
-//
-//  inline vector<vector<size_t> > operator() ( vector<size_t>& gids, mpi::Comm comm ) const 
-//  {
-//    vector<vector<size_t> > split( N_SPLIT );
-//    return split;
-//  };
-//};
-//
-
-
-
-
-
 template<typename NODE>
 class DistSplitTask : public Task
 {
@@ -207,7 +43,7 @@ class DistSplitTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       arg = user_arg;
       name = string( "DistSplit" );
@@ -222,31 +58,37 @@ class DistSplitTask : public Task
       cost = mops / 1E+9;
       /** "HIGH" priority */
       priority = true;
+      return HMLP_ERROR_SUCCESS;
     };
 
 
-    void DependencyAnalysis()
+    hmlpError_t DependencyAnalysis()
     {
       arg->DependencyAnalysis( R, this );
 
-      if ( !arg->isleaf )
+      if ( !arg->isLeaf() )
       {
         if ( arg->GetCommSize() > 1 )
         {
-					assert( arg->child );
+          assert( arg->child );
           arg->child->DependencyAnalysis( RW, this );
         }
         else
         {
-					assert( arg->lchild && arg->rchild );
+          assert( arg->lchild && arg->rchild );
           arg->lchild->DependencyAnalysis( RW, this );
           arg->rchild->DependencyAnalysis( RW, this );
         }
       }
       this->TryEnqueue();
-		};
+      return HMLP_ERROR_SUCCESS;
+    };
 
-    void Execute( Worker* user_worker ) { arg->Split(); };
+    hmlpError_t Execute( Worker* user_worker ) 
+    { 
+      arg->Split(); 
+      return HMLP_ERROR_SUCCESS;
+    };
 
 }; /** end class DistSplitTask */
 
@@ -257,71 +99,24 @@ class DistSplitTask : public Task
  *  @brief Data and setup that are shared with all nodes.
  */ 
 template<typename SPLITTER, typename DATATYPE>
-class Setup
+class ArgumentBase
 {
   public:
 
     typedef DATATYPE T;
 
-    Setup() {};
+    ArgumentBase() {};
 
-    ~Setup() {};
-
-
-
-
-    /**
-     *  @brief Check if this node contain any query using morton.
-		 *         Notice that queries[] contains gids; thus, morton[]
-		 *         needs to be accessed using gids.
-     *
-     */ 
-		vector<size_t> ContainAny( vector<size_t> &queries, size_t target )
-    {
-			vector<size_t> validation( queries.size(), 0 );
-
-      if ( !morton.size() )
-      {
-        printf( "Morton id was not initialized.\n" );
-        exit( 1 );
-      }
-
-      for ( size_t i = 0; i < queries.size(); i ++ )
-      {
-				/** notice that setup->morton only contains local morton ids */
-        //auto it = this->setup->morton.find( queries[ i ] );
-
-				//if ( it != this->setup->morton.end() )
-				//{
-        //  if ( tree::IsMyParent( *it, this->morton ) ) validation[ i ] = 1;
-				//}
-
-
-       if ( MortonHelper::IsMyParent( morton[ queries[ i ] ], target ) ) 
-				 validation[ i ] = 1;
-
-      }
-      return validation;
-
-    }; /** end ContainAny() */
-
-
-
-
-    /** maximum leaf node size */
-    //size_t m;
+    ~ArgumentBase() {};
 
     /** neighbors<distance, gid> (accessed with gids) */
     DistData<STAR, CBLK, pair<T, size_t>> *NN_cblk = NULL;
     DistData<STAR, CIDS, pair<T, size_t>> *NN      = NULL;
 
-    /** morton ids */
-    vector<size_t> morton;
-
     /** tree splitter */
     SPLITTER splitter;
 
-}; /** end class Setup */
+}; /** end class ArgumentBase */
 
 
 
@@ -332,29 +127,24 @@ class DistIndexPermuteTask : public Task
 
     NODE *arg = NULL;
 
-    void Set( NODE *user_arg )
+    hmlpError_t Set( NODE *user_arg )
     {
       name = std::string( "Permutation" );
       arg = user_arg;
       // Need an accurate cost model.
       cost = 1.0;
+      return HMLP_ERROR_SUCCESS;
     };
 
-    void DependencyAnalysis() { arg->DependOnChildren( this ); };
-    //{
-    //  arg->DependencyAnalysis( hmlp::ReadWriteType::RW, this );
-    //  if ( !arg->isleaf && !arg->child )
-    //  {
-    //    arg->lchild->DependencyAnalysis( hmlp::ReadWriteType::R, this );
-    //    arg->rchild->DependencyAnalysis( hmlp::ReadWriteType::R, this );
-    //  }
-    //  this->TryEnqueue();
-    //};
+    hmlpError_t DependencyAnalysis() 
+    { 
+      arg->DependOnChildren( this );
+      return HMLP_ERROR_SUCCESS;
+    };
 
-
-    void Execute( Worker* user_worker )
+    hmlpError_t Execute( Worker* user_worker )
     {
-      if ( !arg->isleaf && !arg->child )
+      if ( !arg->isLeaf() && !arg->child )
       {
         auto &gids = arg->gids; 
         auto &lgids = arg->lchild->gids;
@@ -362,6 +152,7 @@ class DistIndexPermuteTask : public Task
         gids = lgids;
         gids.insert( gids.end(), rgids.begin(), rgids.end() );
       }
+      return HMLP_ERROR_SUCCESS;
     };
 
 }; /** end class IndexPermuteTask */
@@ -393,18 +184,17 @@ class Node : public tree::Node<SETUP, NODEDATA>
     /** Deduce data type from SETUP. */
     typedef typename SETUP::T T;
 
+    typedef tree::Node<SETUP, NODEDATA> NODE;
+
     static const int N_CHILDREN = 2;
 
     /** Inherit all parameters from tree::Node */
 
 
     /** (Default) constructor for inner nodes (gids and n unassigned) */
-    Node( SETUP *setup, size_t n, size_t l, 
-        Node *parent,
-        unordered_map<size_t, tree::Node<SETUP, NODEDATA>*> *morton2node,
-        Lock *treelock, mpi::Comm comm ) 
-      : tree::Node<SETUP, NODEDATA>( setup, n, l, 
-          parent, morton2node, treelock ) 
+    Node( SETUP *setup, size_t n, size_t l, Node *parent,
+        tree::Info<NODE>* info, mpi::Comm comm ) 
+      : tree::Node<SETUP, NODEDATA>( setup, n, l, parent, info ) 
     {
       /** Local communicator */
       this->comm = comm;
@@ -414,12 +204,9 @@ class Node : public tree::Node<SETUP, NODEDATA>
     };
 
     /** (Default) constructor for root. */
-    Node( SETUP *setup, size_t n, size_t l, vector<size_t> &gids, 
-        Node *parent, 
-        unordered_map<size_t, tree::Node<SETUP, NODEDATA>*> *morton2node,
-        Lock *treelock, mpi::Comm comm ) 
-      : Node<SETUP, NODEDATA>( setup, n, l, parent, 
-          morton2node, treelock, comm ) 
+    Node( SETUP *setup, size_t n, size_t l, vector<size_t> &gids, Node *parent, 
+        tree::Info<NODE>* info, mpi::Comm comm ) 
+      : Node<SETUP, NODEDATA>( setup, n, l, parent, info, comm ) 
     {
       /** Notice that "gids.size() < n". */
       this->gids = gids;
@@ -617,12 +404,15 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
 
     typedef typename SETUP::T T;
 
+    typedef tree::Tree<SETUP, NODEDATA> LOCALTREE;
+
+
     /** 
-     *  Inherit parameters n, m, and depth; local treelists and morton2node map.
+     *  Inherit parameters n, m, and depth; local treelists and morton_to_node_ map.
      *
-     *  Explanation for the morton2node map in the distributed tree:
+     *  Explanation for the morton_to_node_ map in the distributed tree:
      *
-     *  morton2node has type map<size_t, tree::Node>, but it actually contains
+     *  morton_to_node_ has type map<size_t, tree::Node>, but it actually contains
      *  "three" different kinds of tree nodes.
      *
      *  1. Local tree nodes (exactly in type tree::Node)
@@ -635,7 +425,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
 
     /** 
      *  Define local tree node type as NODE. Notice that all pointers in the
-     *  interaction lists and morton2node map will be in this type.
+     *  interaction lists and morton_to_node_ map will be in this type.
      */
     typedef tree::Node<SETUP, NODEDATA> NODE;
 
@@ -695,9 +485,14 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
       if ( this->treelist.size() )
       {
         for ( size_t i = 0; i < this->treelist.size(); i ++ )
-          if ( this->treelist[ i ] ) delete this->treelist[ i ];
+        {
+          if ( this->treelist_[ i ] ) 
+          {
+            delete this->treelist_[ i ];
+          }
+        }
       }
-      this->treelist.clear();
+      this->treelist_.clear();
 
       /** Free all distributed tree nodes */
       if ( mpitreelists.size() )
@@ -709,68 +504,6 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
 
     }; /** end CleanUp() */
 
-
-    /** @breif Allocate all distributed tree nodse. */
-    void AllocateNodes( vector<size_t> &gids )
-    {
-      /** Decide the depth of the distributed tree according to mpi size. */
-      //auto mycomm  = comm;
-      auto mycomm  = this->GetComm();
-      //int mysize  = size;
-      int mysize  = this->GetCommSize();
-      //int myrank  = rank;
-      int myrank  = this->GetCommRank();
-      int mycolor = 0;
-      size_t mylevel = 0;
-
-      /** Allocate root( setup, n = 0, l = 0, parent = NULL ). */
-      auto *root = new MPINODE( &(this->setup), 
-          this->n, mylevel, gids, NULL, 
-          &(this->morton2node), &(this->lock), mycomm );
-
-      /** Push root to the mpi treelist. */
-      mpitreelists.push_back( root );
-
-      /** Recursively spliiting the communicator. */
-      while ( mysize > 1 )
-      {
-        mpi::Comm childcomm;
-
-        /** Increase level. */
-        mylevel += 1;
-        /** Left color = 0, right color = 1. */
-        mycolor = ( myrank < mysize / 2 ) ? 0 : 1;
-        /** Split and assign the subcommunicators for children. */
-        ierr = mpi::Comm_split( mycomm, mycolor, myrank, &(childcomm) );
-        /** Update mycomm, mysize, and myrank to proceed to the next iteration. */
-        mycomm = childcomm;
-        mpi::Comm_size( mycomm, &mysize );
-        mpi::Comm_rank( mycomm, &myrank );
-
-        /** Create the child node. */
-        auto *parent = mpitreelists.back();
-        auto *child  = new MPINODE( &(this->setup), 
-            (size_t)0, mylevel, parent, 
-            &(this->morton2node), &(this->lock), mycomm );
-
-        /** Create the sibling in type NODE but not MPINODE. */
-        child->sibling = new NODE( (size_t)0 ); // Node morton is computed later.
-        /** Setup parent's children */
-        //parent->SetupChild( child );
-        parent->kids[ 0 ] = child;
-        parent->child = child;
-        /** Push to the mpi treelist */
-        mpitreelists.push_back( child );
-      }
-      /** Global synchronization. */
-      this->Barrier();
-
-			/** Allocate local tree nodes. */
-      auto *local_tree_root = mpitreelists.back();
-      //tree::Tree<SETUP, NODEDATA>::allocateNodes( local_tree_root );
-      HANDLE_ERROR( this->allocateNodes( local_tree_root ) );
-
-    }; /* end AllocateNodes() */
 
 
 
@@ -805,8 +538,8 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
     {
       mpi::PrintProgress( "[BEG] NeighborSearch ...", this->GetComm() );
 
-      /** Get the problem size from setup->K->row(). */
-      this->n = n;
+      /** Set the problem size from setup->K->row(). */
+      this->glb_num_of_indices_ = n;
       /** k-by-N, column major. */
       DistData<STAR, CBLK, pair<T, size_t>> NN( k, n, initNN, this->GetComm() );
       /** Use leaf size = 4 * k.  */
@@ -843,7 +576,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
         gids[ i ] = i * this->GetCommSize() + this->GetCommRank();
 
       /** Allocate distributed tree nodes in advance. */
-      AllocateNodes( gids );
+      HANDLE_ERROR( allocateNodes_( gids ) );
 
 
       /** Metric tree partitioning. */
@@ -856,14 +589,15 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
         ExecuteAllTasks();
         
         /** Query neighbors computed in CIDS distribution.  */
-        DistData<STAR, CIDS, pair<T, size_t>> Q_cids( k, this->n, this->treelist[ 0 ]->gids, initNN, this->GetComm() );
+        DistData<STAR, CIDS, pair<T, size_t>> Q_cids( k, this->getGlobalProblemSize(), 
+            this->getLocalRoot()->gids, initNN, this->GetComm() );
         /** Pass in neighbor pointer. */
         this->setup.NN = &Q_cids;
         LocaTraverseLeafs( dummy );
         ExecuteAllTasks();
 
         /** Queries computed in CBLK distribution */
-        DistData<STAR, CBLK, pair<T, size_t>> Q_cblk( k, this->n, this->GetComm() );
+        DistData<STAR, CBLK, pair<T, size_t>> Q_cblk( k, this->getGlobalProblemSize(), this->GetComm() );
         /** Redistribute from CIDS to CBLK */
         Q_cblk = Q_cids;
         /** Merge Q_cblk into NN (sort and remove duplication) */
@@ -949,27 +683,33 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
     
 
 
-    /** @brief partition n points using a distributed binary tree. */ 
-    void TreePartition() 
+    /** 
+     *  \brief partition n points using a distributed binary tree. 
+     *  \returns the error code
+     */ 
+    hmlpError_t TreePartition() 
     {
       mpi::PrintProgress( "[BEG] TreePartitioning ...", this->GetComm() );
 
-      /** Set up total problem size n and leaf node size m. */
-      this->n = this->setup.ProblemSize();
-      //this->m = this->setup.getLeafNodeSize();
-
-      /** Initial gids distribution (asssuming Round-Robin). */
-      //for ( size_t i = rank; i < this->n; i += size ) 
-      for ( size_t i = this->GetCommRank(); i < this->n; i += this->GetCommSize() ) 
-        this->global_indices.push_back( i );
-      /** Local problem size (assuming Round-Robin). */
-      num_points_owned = this->global_indices.size();
-      /** Allocate distributed tree nodes in advance. */
-      AllocateNodes( this->global_indices );
+      /* Set up total problem size n and leaf node size m. */
+      this->glb_num_of_indices_ = this->setup.ProblemSize();
 
 
+      /* Clean up global_index_distribution_. */
+      this->global_index_distribution_.clear();
+      /* Initial gids distribution (asssuming Round-Robin). */
+      for ( size_t i = this->GetCommRank(); i < this->getGlobalProblemSize(); i += this->GetCommSize() )
+      {
+        this->global_index_distribution_.push_back( i );
+      }
+      /* Local problem size (assuming Round-Robin). */
+      num_points_owned = this->global_index_distribution_.size();
+      /* Allocate distributed and local tree nodes in advance. */
+      RETURN_IF_ERROR( allocateNodes_( this->global_index_distribution_ ) );
 
-      DependencyCleanUp();
+
+
+      RETURN_IF_ERROR( dependencyClean() );
 
 
 
@@ -992,32 +732,52 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
 
 
       /** Allocate space for point MortonID. */
-      (this->setup).morton.resize( this->n );
+      //(this->setup).morton.resize( this->getGlobalProblemSize() );
+      this->gid_to_morton_.resize( this->getGlobalProblemSize() );
 
       /** Compute Morton ID for both distributed and local trees. */
       RecursiveMorton( mpitreelists[ 0 ], MortonHelper::Root() );
 
       /** Clean up the map. */
-      this->morton2node.clear();
+      this->morton_to_node_.clear();
 
-      /** Construct morton2node map for the local tree. */
-      for ( auto node : this->treelist ) this->morton2node[ node->morton ] = node;
-
-      /**Construc morton2node map for the distributed tree. */ 
-      for ( auto node : this->mpitreelists ) 
+      /** Construct morton_to_node_ map for the local tree. */
+      for ( auto node : this->treelist_ )
       {
-        this->morton2node[ node->morton ] = node;
-        auto *sibling = node->sibling;
-        if ( node->l ) this->morton2node[ sibling->morton ] = sibling;
+        this->morton_to_node_[ node->getMortonID() ] = node;
       }
 
-      this->Barrier();
+      /**Construc morton_to_node_ map for the distributed tree. */ 
+      for ( auto node : this->mpitreelists ) 
+      {
+        this->morton_to_node_[ node->getMortonID() ] = node;
+        auto *sibling = node->sibling;
+        if ( node->getGlobalDepth() ) 
+        {
+          this->morton_to_node_[ sibling->getMortonID() ] = sibling;
+        }
+      }
+
+      RETURN_IF_ERROR( this->Barrier() );
       mpi::PrintProgress( "[END] TreePartitioning ...", this->GetComm() ); 
+      /* Return with no error. */
+      return HMLP_ERROR_SUCCESS;
     }; /** end TreePartition() */
 
 
+    NODE* createLocalEssentialNodeWithMortonID( mortonType morton )
+    {
+      /* The target LET node does not exist. */
+      if ( !this->morton_to_node_.count( morton ) )
+      {
+        /** Create a LET node. */
+        this->morton_to_node_[ morton ] = new NODE( morton );
+      }
+      return this->morton_to_node_[ morton ];
+    };
+
     /** Assign MortonID to each node recursively. */
-    void RecursiveMorton( MPINODE *node, MortonHelper::Recursor r ) 
+    hmlpError_t RecursiveMorton( MPINODE *node, MortonHelper::Recursor r ) 
     {
       /** MPI Support. */ 
       int comm_size = this->GetCommSize();
@@ -1026,27 +786,28 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
       int node_rank = node->GetCommRank(); 
 
       /** Set the node MortonID. */
-      node->morton = MortonHelper::MortonID( r );
+      node->setMortonID( MortonHelper::MortonID( r ) );
       /** Set my sibling's MortonID. */
       if ( node->sibling )
-        node->sibling->morton = MortonHelper::SiblingMortonID( r );
-
+      {
+        node->sibling->setMortonID( MortonHelper::SiblingMortonID( r ) );
+      }
       if ( node_size < 2 )
       {
         /** Compute MortonID recursively for the local tree. */
         tree::Tree<SETUP, NODEDATA>::RecursiveMorton( node, r );
         /** Prepare to exchange all <gid,MortonID> pairs. */
-        auto &gids = this->treelist[ 0 ]->gids;
+        auto &gids = this->getLocalRoot()->gids;
         vector<int> recv_size( comm_size, 0 );
         vector<int> recv_disp( comm_size, 0 );
         vector<pair<size_t, size_t>> send_pairs;
-        vector<pair<size_t, size_t>> recv_pairs( this->n );
+        vector<pair<size_t, size_t>> recv_pairs( this->getGlobalProblemSize() );
 
         /** Gather pairs I own. */ 
         for ( auto it : gids ) 
         {
           send_pairs.push_back( 
-              pair<size_t, size_t>( it, this->setup.morton[ it ]) );
+              pair<size_t, size_t>( it, this->gid_to_morton_[ it ]) );
         }
 
         /** Exchange send_pairs.size(). */
@@ -1063,12 +824,15 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
         {
           total_gids += recv_size[ p ];
         }
-        assert( total_gids == this->n );
+        if ( total_gids != this->getGlobalProblemSize() )
+        {
+          return HMLP_ERROR_INTERNAL_ERROR;
+        }
         /** Exchange all pairs. */
         mpi::Allgatherv( send_pairs.data(), send_size, 
             recv_pairs.data(), recv_size.data(), recv_disp.data(), this->GetComm() );
         /** Fill in all MortonIDs. */
-        for ( auto it : recv_pairs ) this->setup.morton[ it.first ] = it.second;
+        for ( auto it : recv_pairs ) this->gid_to_morton_[ it.first ] = it.second;
       }
       else
       {
@@ -1081,7 +845,9 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
           RecursiveMorton( node->child, MortonHelper::RecurRight( r ) );
         }
       }
-    }; /** end RecursiveMorton() */
+      /* Return with no error. */
+      return HMLP_ERROR_SUCCESS;
+    }; /* end RecursiveMorton() */
 
 
 
@@ -1089,16 +855,16 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
     Data<int> CheckAllInteractions()
     {
       /** Get the total depth of the tree. */
-      int total_depth = this->treelist.back()->l;
+      int total_depth = this->treelist_.back()->getGlobalDepth();
       /** Number of total leaf nodes. */
       int num_leafs = 1 << total_depth;
       /** Create a 2^l-by-2^l table to check all interactions. */
       Data<int> A( num_leafs, num_leafs, 0 );
       Data<int> B( num_leafs, num_leafs, 0 );
       /** Now traverse all tree nodes (excluding the root). */
-      for ( int t = 1; t < this->treelist.size(); t ++ )
+      for ( int t = 1; t < this->getLocalNodeSize(); t ++ )
       {
-        auto *node = this->treelist[ t ];
+        auto *node = this->getLocalNodeAt( t );
         ///** Loop over all near interactions. */
         //for ( auto it : node->NNNearNodeMortonIDs )
         //{
@@ -1116,11 +882,11 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
 
         for ( int p = 0; p < this->GetCommSize(); p ++ )
         {
-          if ( node->isleaf )
+          if ( node->isLeaf() )
           {
             for ( auto & it : node->DistNear[ p ] )
             {
-              auto I = MortonHelper::Morton2Offsets( node->morton, total_depth );
+              auto I = MortonHelper::Morton2Offsets( node->getMorton(), total_depth );
               auto J = MortonHelper::Morton2Offsets(   it.first, total_depth );
               for ( auto i : I ) for ( auto j : J ) 
               {
@@ -1131,7 +897,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
           }
           for ( auto & it : node->DistFar[ p ] )
           {
-            auto I = MortonHelper::Morton2Offsets( node->morton, total_depth );
+            auto I = MortonHelper::Morton2Offsets( node->getMortonID(), total_depth );
             auto J = MortonHelper::Morton2Offsets(   it.first, total_depth );
             for ( auto i : I ) for ( auto j : J ) 
             {
@@ -1160,11 +926,11 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
         //}
         for ( int p = 0; p < this->GetCommSize(); p ++ )
         {
-          if ( node->isleaf )
+          if ( node->isLeaf() )
           {
           for ( auto & it : node->DistNear[ p ] )
           {
-            auto I = MortonHelper::Morton2Offsets( node->morton, total_depth );
+            auto I = MortonHelper::Morton2Offsets( node->getMortonID(), total_depth );
             auto J = MortonHelper::Morton2Offsets(   it.first, total_depth );
             for ( auto i : I ) for ( auto j : J ) 
             {
@@ -1175,7 +941,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
           }
           for ( auto & it : node->DistFar[ p ] )
           {
-            auto I = MortonHelper::Morton2Offsets( node->morton, total_depth );
+            auto I = MortonHelper::Morton2Offsets( node->getMortonID(), total_depth );
             auto J = MortonHelper::Morton2Offsets(   it.first, total_depth );
             for ( auto i : I ) for ( auto j : J ) 
             {
@@ -1221,7 +987,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
 
     int Index2Rank( size_t gid )
     {
-       return Morton2Rank( this->setup.morton[ gid ] );
+       return Morton2Rank( this->gid_to_morton_[ gid ] );
     }; /** end Morton2Rank() */
 
 
@@ -1229,11 +995,8 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
 
 
     template<typename TASK, typename... Args>
-    void LocaTraverseUp( TASK &dummy, Args&... args )
+    hmlpError_t LocaTraverseUp( TASK &dummy, Args&... args )
     {
-      /** contain at lesat one tree node */
-      assert( this->treelist.size() );
-
       /** 
        *  traverse the local tree without the root
        *
@@ -1241,26 +1004,22 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
        *  IMPORTANT: here l must be int, size_t will wrap over 
        *
        */
-
-			//printf( "depth %lu\n", this->depth ); fflush( stdout );
-
-      for ( int l = this->getDepth(); l >= 1; l -- )
+      for ( int l = this->getLocalHeight(); l >= 1; l -- )
       {
         size_t n_nodes = 1 << l;
-        auto level_beg = this->treelist.begin() + n_nodes - 1;
-
         /** loop over each node at level-l */
         for ( size_t node_ind = 0; node_ind < n_nodes; node_ind ++ )
         {
-          auto *node = *(level_beg + node_ind);
+          auto *node = this->getLocalNodeAt( l, node_ind );
           RecuTaskSubmit( node, dummy, args... );
         }
       }
-    }; /** end LocaTraverseUp() */
+      return HMLP_ERROR_SUCCESS;
+    }; /* end LocaTraverseUp() */
 
 
     template<typename TASK, typename... Args>
-    void DistTraverseUp( TASK &dummy, Args&... args )
+    hmlpError_t DistTraverseUp( TASK &dummy, Args&... args )
     {
       MPINODE *node = mpitreelists.back();
       while ( node )
@@ -1270,15 +1029,13 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
         /** move to its parent */
         node = (MPINODE*)node->parent;
       }
+      return HMLP_ERROR_SUCCESS;
     }; /** end DistTraverseUp() */
 
 
     template<typename TASK, typename... Args>
-    void LocaTraverseDown( TASK &dummy, Args&... args )
+    hmlpError_t LocaTraverseDown( TASK &dummy, Args&... args )
     {
-      /** contain at lesat one tree node */
-      assert( this->treelist.size() );
-
       /** 
        *  traverse the local tree without the root
        *
@@ -1286,30 +1043,30 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
        *  IMPORTANT: here l must be int, size_t will wrap over 
        *
        */
-      for ( int l = 1; l <= this->getDepth(); l ++ )
+      for ( int l = 1; l <= this->getLocalHeight(); l ++ )
       {
         size_t n_nodes = 1 << l;
-        auto level_beg = this->treelist.begin() + n_nodes - 1;
-
         for ( size_t node_ind = 0; node_ind < n_nodes; node_ind ++ )
         {
-          auto *node = *(level_beg + node_ind);
+          auto *node = this->getLocalNodeAt( l, node_ind );
           RecuTaskSubmit( node, dummy, args... );
         }
       }
+
+      return HMLP_ERROR_SUCCESS;
     }; /** end LocaTraverseDown() */
 
 
     template<typename TASK, typename... Args>
-    void DistTraverseDown( TASK &dummy, Args&... args )
+    hmlpError_t DistTraverseDown( TASK &dummy, Args&... args )
     {
       auto *node = mpitreelists.front();
       while ( node )
       {
-				//printf( "now at level %lu\n", node->l ); fflush( stdout );
+        //printf( "now at level %lu\n", node->l ); fflush( stdout );
         if ( this->DoOutOfOrder() ) RecuTaskSubmit(  node, dummy, args... );
         else                        RecuTaskExecute( node, dummy, args... );
-				//printf( "RecuTaskSubmit at level %lu\n", node->l ); fflush( stdout );
+        //printf( "RecuTaskSubmit at level %lu\n", node->l ); fflush( stdout );
 
         /** 
          *  move to its child 
@@ -1317,23 +1074,23 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
          */
         node = node->child;
       }
+
+      return HMLP_ERROR_SUCCESS;
     }; /** end DistTraverseDown() */
 
 
     template<typename TASK, typename... Args>
-    void LocaTraverseLeafs( TASK &dummy, Args&... args )
+    hmlpError_t LocaTraverseLeafs( TASK &dummy, Args&... args )
     {
-      /** contain at lesat one tree node */
-      assert( this->treelist.size() );
-
-      int n_nodes = 1 << this->getDepth();
-      auto level_beg = this->treelist.begin() + n_nodes - 1;
+      int n_nodes = 1 << this->getLocalHeight();
+      //auto level_beg = this->treelist.begin() + n_nodes - 1;
 
       for ( int node_ind = 0; node_ind < n_nodes; node_ind ++ )
       {
-        auto *node = *(level_beg + node_ind);
+        auto *node = this->getLocalNodeAt( this->getLocalHeight(), node_ind );
         RecuTaskSubmit( node, dummy, args... );
       }
+      return HMLP_ERROR_SUCCESS;
     }; /** end LocaTraverseLeaf() */
 
 
@@ -1342,9 +1099,9 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
      *         downward traversal.
      */ 
     template<typename TASK, typename... Args>
-    void LocaTraverseUnOrdered( TASK &dummy, Args&... args )
+    hmlpError_t LocaTraverseUnOrdered( TASK &dummy, Args&... args )
     {
-      LocaTraverseDown( dummy, args... );
+      return LocaTraverseDown( dummy, args... );
     }; /** end LocaTraverseUnOrdered() */
 
 
@@ -1353,16 +1110,16 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
      *         downward traversal.
      */ 
     template<typename TASK, typename... Args>
-    void DistTraverseUnOrdered( TASK &dummy, Args&... args )
+    hmlpError_t DistTraverseUnOrdered( TASK &dummy, Args&... args )
     {
-      DistTraverseDown( dummy, args... );
+      return DistTraverseDown( dummy, args... );
     }; /** end DistTraverseUnOrdered() */
 
 
 
 
 
-    void DependencyCleanUp()
+    hmlpError_t dependencyClean()
     {
       for ( auto node : mpitreelists ) node->DependencyCleanUp();
       //for ( size_t i = 0; i < mpitreelists.size(); i ++ )
@@ -1370,7 +1127,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
       //  mpitreelists[ i ]->DependencyCleanUp();
       //}
 
-      tree::Tree<SETUP, NODEDATA>::DependencyCleanUp();
+      RETURN_IF_ERROR( LOCALTREE::dependencyClean() );
 
 
 
@@ -1380,17 +1137,18 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
       for ( auto p : NearRecvFrom ) p.DependencyCleanUp();
       for ( auto p :  FarRecvFrom ) p.DependencyCleanUp();
 
-      /** TODO also clean up the LET node */
-
-    }; /** end DependencyCleanUp() */
+      /* Return with no error. */
+      return HMLP_ERROR_SUCCESS;
+    }; /* end dependencyClean() */
 
 
     /** @brief */
-    void ExecuteAllTasks()
+    hmlpError_t ExecuteAllTasks()
     {
       hmlp_run();
       this->Barrier();
-      DependencyCleanUp();
+      dependencyClean();
+      return HMLP_ERROR_SUCCESS;
     }; /** end ExecuteAllTasks() */
 
     /** @brief */
@@ -1399,7 +1157,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
       /** Describe the dependencies of rank p. */
       for ( auto it : NearSentToRank[ p ] )
       {
-        auto *node = this->morton2node[ it ];
+        auto *node = this->morton_to_node_[ it ];
         node->DependencyAnalysis( R, task );
       }
       /** Try to enqueue if there is no dependency. */
@@ -1412,7 +1170,7 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
       /** Describe the dependencies of rank p. */
       for ( auto it : FarSentToRank[ p ] )
       {
-        auto *node = this->morton2node[ it ];
+        auto *node = this->morton_to_node_[ it ];
         node->DependencyAnalysis( R, task );
       }
       /** Try to enqueue if there is no dependency. */
@@ -1443,9 +1201,73 @@ class Tree : public tree::Tree<SETUP, NODEDATA>,
     /** n = sum( num_points_owned ) from all MPI processes. */
     size_t num_points_owned = 0;
 
+  protected:
+
+    /** 
+     *  \breif Allocate all distributed and local tree nodes.
+     *  \returns the error code
+     *  \retval HMLP_ERROR_SUCCESS if no error is reported
+     *  \retval
+     */
+    hmlpError_t allocateNodes_( vector<size_t> &gids )
+    {
+      /* Decide the depth of the distributed tree according to mpi size. */
+      auto my_comm = this->GetComm();
+      auto my_size = this->GetCommSize();
+      auto my_rank = this->GetCommRank();
+      int my_color = 0;
+      depthType my_depth = 0;
+      /** Allocate root( setup, n = 0, l = 0, parent = NULL ). */
+      auto *root = new MPINODE( &(this->setup), 
+          this->getGlobalProblemSize(), my_depth, gids, nullptr, 
+          &(this->info), my_comm );
+      /* Fail to allocate memory. Return with error. */
+      if ( root == nullptr )
+      {
+        return HMLP_ERROR_ALLOC_FAILED;
+      }
+      /** Push root to the mpi treelist. */
+      mpitreelists.push_back( root );
+      /** Recursively spliiting the communicator. */
+      while ( my_size > 1 )
+      {
+        mpi::Comm child_comm;
+        /* Increase level. */
+        my_depth += 1;
+        /* Left color = 0, right color = 1. */
+        my_color = ( my_rank < my_size / 2 ) ? 0 : 1;
+        /** Split and assign the subcommunicators for children. */
+        RETURN_IF_ERROR( mpi::Comm_split( my_comm, my_color, my_rank, &(child_comm) ) );
+        /** Update mycomm, mysize, and myrank to proceed to the next iteration. */
+        my_comm = child_comm;
+        RETURN_IF_ERROR( mpi::Comm_size( my_comm, &my_size ) );
+        RETURN_IF_ERROR( mpi::Comm_rank( my_comm, &my_rank ) );
+        /** Create the child node. */
+        auto *parent = mpitreelists.back();
+        auto *child  = new MPINODE( &(this->setup), 
+            (size_t)0, my_depth, parent, 
+            &(this->info), my_comm );
+        /* Fail to allocate memory. Return with error. */
+        if ( child == nullptr )
+        {
+          return HMLP_ERROR_ALLOC_FAILED;
+        }
+        /** Create the sibling in type NODE but not MPINODE. */
+        child->sibling = new NODE( (size_t)0 ); // Node morton is computed later.
+        /** Setup parent's children */
+        //parent->SetupChild( child );
+        parent->kids[ 0 ] = child;
+        parent->child = child;
+        /** Push to the mpi treelist */
+        mpitreelists.push_back( child );
+      }
+      /* TODO: is this necessary? Global synchronization. */
+      RETURN_IF_ERROR( this->Barrier() );
+      /* Allocate local tree nodes. */
+      return LOCALTREE::allocateNodes_( mpitreelists.back() );
+    }; /* end allocateNodes_() */
+
 }; /** end class Tree */
-
-
 }; /** end namespace mpitree */
 }; /** end namespace hmlp */
 

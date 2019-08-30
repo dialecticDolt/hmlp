@@ -72,7 +72,7 @@ def makeExtension(extName):
         libraries = ['hmlp'],
         library_dirs = lib_dirs,
         runtime_library_dirs = lib_dirs,
-        extra_compile_args=["-std=c++11","-O3","-qopenmp","-m64", "-DUSE_INTEL", "-DUSE_VML", "-DMKL_ILP64", "-mavx", "-DHMLP_USE_MPI", "-I/opt/apps/sysnet/intel/17.0/mkl/include"],
+        extra_compile_args=["-std=c++11","-O3","-qopenmp","-m64", "-DUSE_INTEL", "-DUSE_VML", "-DMKL_ILP64", "-mavx", "-DHMLP_USE_MPI", "-I/opt/apps/sysnet/intel/17.0/mkl/include", "-Wno-sign-compare"],
         extra_link_args=["-lpthread","-qopenmp","-mkl=parallel", "-lm", "-L/opt/apps/sysnet/intel/17.0/mkl/lib/intel64/", "-lmkl_rt", "-lpthread", "-lm", "-ldl", "-mavx"]
     )
 

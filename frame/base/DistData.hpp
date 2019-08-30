@@ -228,8 +228,8 @@ class DistDataBase : public Data<T, Allocator>, public mpi::MPIObject
     int GetRank() { return comm_rank; };
 
     /** Get total row and column numbers across all MPI ranks */
-    size_t row() { return global_m; };
-    size_t col() { return global_n; };
+    size_t row() const noexcept { return global_m; };
+    size_t col() const noexcept { return global_n; };
 
     /** Get row and column numbers owned by this MPI rank */
     size_t row_owned() { return Data<T>::row(); };
@@ -451,42 +451,56 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
     DistData<STAR, CBLK, T>( size_t m, size_t n, mpi::Comm comm, string &filename ) 
       : DistData<STAR, CBLK, T>( m, n, comm )
     {
-      read( m, n, filename );
+      try
+      {
+        HANDLE_ERROR( read( m, n, filename ) );
+      }
+      catch ( const std::exception & e )
+      {
+        HANDLE_EXCEPTION( e );
+      }
     };
 
     /**
      *  read a dense column-major matrix 
      */ 
-    void read( size_t m, size_t n, string &filename )
+    hmlpError_t read( size_t m, size_t n, string &filename )
     {
-      assert( this->row() == m );
-      assert( this->col() == n );
+      if ( this->row() != m || this->col() != n )
+      {
+        std::cerr << "ERROR: mismatching height or width" << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      if ( filename.size() == 0 )
+      {
+        std::cerr << "ERROR: the filename cannot be empty" << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      else
+      {
+        /* Print out filename. */
+        std::cout << filename << endl;
+      }
 
       /** MPI */
       int size = this->GetSize();
       int rank = this->GetRank();
 
-      /** print out filename */
-      cout << filename << endl;
+      std::ifstream file( filename.data(), std::ios::in|std::ios::binary|std::ios::ate );
 
-      std::ifstream file( filename.data(), 
-          std::ios::in|std::ios::binary|std::ios::ate );
-
-      if ( file.is_open() )
+      if ( !file.is_open() )
       {
-        auto size = file.tellg();
-        assert( size == m * n * sizeof(T) );
-
-        //for ( size_t j = rank; j < n; j += size )
-        //{
-        //  size_t byte_offset = j * m * sizeof(T);
-        //  file.seekg( byte_offset, std::ios::beg );
-        //  file.read( (char*)this->columndata( j / size ), m * sizeof(T) );
-        //}
-
-
-        file.close();
+        std::cerr << "ERROR: fail to open " << filename << std::endl;
+        return HMLP_ERROR_INVALID_VALUE;
       }
+
+      if ( file.tellg() != m * n * sizeof(T) )
+      {
+        std::cerr << "ERROR: only " << file.tellg() << " bytes, expecting " << m * n * sizeof(T) << std::endl;
+        file.close();
+        return HMLP_ERROR_INVALID_VALUE;
+      }
+      file.close();
 
       #pragma omp parallel
       {
@@ -504,13 +518,10 @@ class DistData<STAR, CBLK, T> : public DistDataBase<T>
           }
           ompfile.close();
         }
-      } /** end omp parallel */
+      } /* end omp parallel */
 
-
-
-
-
-    }; /** end void read() */
+      return HMLP_ERROR_SUCCESS;
+    }; /* end void read() */
 
 
 
@@ -1759,6 +1770,44 @@ class DistData<RIDS, STAR, T> : public DistDataBase<T>
 
 
 }; /** end class DistData<RIDS, STAR, T> */
+
+
+template<typename T>
+hmlpError_t elementwise(const T alpha, const hmlp::DistData<RIDS,STAR,T> & A, const T beta, hmlp::DistData<RIDS,STAR,T> & B)
+{
+  if (A.row() != B.row() || A.col() != B.col())
+  {
+    return HMLP_ERROR_INVALID_VALUE;
+  }
+  auto itA = A.begin();
+  auto itB = B.begin();
+  for (; itA != A.end() && itB != B.end(); itA ++, itB ++)
+  {
+    (*itB) = alpha * (*itA) + beta * (*itB);
+  }
+  return HMLP_ERROR_SUCCESS;
+}
+
+template<typename T>
+hmlpError_t dotProduct(const T alpha, const hmlp::DistData<RIDS,STAR,T> & A, const hmlp::DistData<RIDS,STAR,T> & B, T & output)
+{
+  if (A.row() != B.row() || A.col() != B.col())
+  {
+    return HMLP_ERROR_INVALID_VALUE;
+  }
+  /* Zero-out output. */
+  output = 0;
+  /* Get the iterator or A and B. */
+  auto itA = A.begin();
+  auto itB = B.begin();
+  for (; itA != A.end() && itB != B.end(); itA ++, itB ++)
+  {
+    output += (*itB) * (*itA);
+  }
+  /* Scale alpha before return. */
+  output *= alpha;
+  return HMLP_ERROR_SUCCESS;
+}
 
 
 
