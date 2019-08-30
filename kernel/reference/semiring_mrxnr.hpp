@@ -38,7 +38,7 @@ struct semiring_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] += a[ p * MR + i ] * b[ p * NR + j ];
     }
@@ -49,7 +49,7 @@ struct semiring_mrxnr
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
       {
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ ) 
         {
           v_list[ t ][ j * ldv + i ] += alpha_list[ t ] * regV[ j * MR + i ];
@@ -74,7 +74,7 @@ struct semiring_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = initV;
     }
@@ -82,7 +82,7 @@ struct semiring_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = v[ j * cs_c + i * rs_c ];
     }
@@ -92,7 +92,7 @@ struct semiring_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = 
             op1( regV[ j * MR + i ], op2( a[ p * MR + i ], b[ p * NR + j ] ) );
@@ -102,7 +102,7 @@ struct semiring_mrxnr
     // store back
     #pragma unroll
     for ( int j = 0; j < NR; j ++ )
-      #pragma simd
+      #pragma omp simd
       for ( int i = 0; i < MR; i ++ )
         v[ j * cs_c + i * rs_c ] = regV[ j * MR + i ];
 

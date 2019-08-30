@@ -38,7 +38,7 @@ struct gkmm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = initV;
     }
@@ -46,7 +46,7 @@ struct gkmm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = v[ j * ldv + i ];
     }
@@ -56,7 +56,7 @@ struct gkmm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = 
             op1( regV[ j * MR + i ], op2( a[ p * MR + i ], b[ p * NR + j ] ) );
@@ -65,7 +65,7 @@ struct gkmm_mrxnr
     // kernel transformation and store back
     #pragma unroll
     for ( int j = 0; j < NR; j ++ )
-      #pragma simd
+      #pragma omp simd
       for ( int i = 0; i < MR; i ++ )
         c[ j * ldc + i ] = opkernel( regV[ j * MR + i ], aux->i, aux->j, aux->b );
   };
@@ -86,7 +86,7 @@ struct gkmm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = initV;
     }
@@ -94,7 +94,7 @@ struct gkmm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = v[ j * cs_c + i * rs_c ];
     }
@@ -104,7 +104,7 @@ struct gkmm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = 
             op1( regV[ j * MR + i ], op2( a[ p * MR + i ], b[ p * NR + j ] ) );
@@ -113,7 +113,7 @@ struct gkmm_mrxnr
     // kernel transformation and store back
     #pragma unroll
     for ( int j = 0; j < NR; j ++ )
-      #pragma simd
+      #pragma omp simd
       for ( int i = 0; i < MR; i ++ )
         v[ j * cs_c + i * rs_c ] = opkernel( regV[ j * MR + i ], aux->i, aux->j, aux->b );
   };
@@ -156,7 +156,7 @@ struct gkrm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = initV;
     }
@@ -164,7 +164,7 @@ struct gkrm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = v[ j * ldv + i ];
     }
@@ -174,21 +174,21 @@ struct gkrm_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = 
             op1( regV[ j * MR + i ], op2( a[ p * MR + i ], b[ p * NR + j ] ) );
     }
 
     // Initialize
-    #pragma simd
+    #pragma omp simd
     for ( int i = 0; i < MR; i ++ )
       regC[ i ] = initC;
 
     // kernel transformation and reduction
     #pragma unroll
     for ( int j = 0; j < NR; j ++ )
-      #pragma simd
+      #pragma omp simd
       for ( int i = 0; i < MR; i ++ )
         regC[ i ] = opreduce( regC[ i ], opkernel( regV[ j * MR + i ], aux->i, aux->j, aux->b ), aux->i, aux->j, aux->b );
 
@@ -259,14 +259,14 @@ struct gnbx_mrxnr
     {
       #pragma unroll
       for ( int j = 0; j < NR; j ++ )
-        #pragma simd
+        #pragma omp simd
         for ( int i = 0; i < MR; i ++ )
           regV[ j * MR + i ] = op1( regV[ j * MR + i ], op2( a[ p * MR + i ], b[ p * NR + j ] ) );
     }
 
     #pragma unroll
     for ( int j = 0; j < NR; j ++ )
-      #pragma simd
+      #pragma omp simd
       for ( int i = 0; i < MR; i ++ )
         regC[ j * MR + i ] = opkernel( regV[ j * MR + i ], aux->i + i, aux->j + j, aux->b );
 
