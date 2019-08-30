@@ -121,7 +121,7 @@ ELSEIF("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
   #SET(HMLP_PYTHON_LINKER_FLAGS "-lhmlp\",\"-lpthread\",\"-qopenmp\", \"-lm\" ,\"-mkl=parallel")
   SET(HMLP_PYTHON_LINKER_FLAGS "-lpthread\",\"-qopenmp\",\"-mkl=parallel\", \"-lm")
 
-  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -qopenmp -lm")
+  SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lpthread -qopenmp")
 ELSE()
   MESSAGE(FATAL_ERROR "Unsupported compiler type ${CMAKE_C_COMPILER_ID}")
 ENDIF()
@@ -173,7 +173,7 @@ if ($ENV{HMLP_ARCH_MAJOR} MATCHES "arm")
   set (CMAKE_AR               aarch64-linux-android-ar    )
   set (CMAKE_RANLIB           aarch64-linux-android-ranlib)
   set (HMLP_CFLAGS            "-std=c++1y -O3 -fopenmp -fPIC -fPIE")
-  set (CMAKE_EXE_LINKER_FLAGS "-fopenmp -lm -pie -llog")
+  set (CMAKE_EXE_LINKER_FLAGS "-fopenmp -pie -llog -lm")
   set (CMAKE_OSX_SYSROOT      "")
   set (CMAKE_C_LINK_FLAGS     "")
   set (CMAKE_CXX_LINK_FLAGS   "")
@@ -233,65 +233,15 @@ if(NOT CVENV)
 endif()
 
 if(CVENV)
-  #set(INSTA_SH_IN ${hmlp_SOURCE_DIR}/python/install.in.sh)
-  #set(INSTA_SH    ${CMAKE_BINARY_DIR}/python/install.sh)
-  #senfigure_file(${INSTA_SH_IN} ${INSTA_SH})
-
-  #set(HMLP_PYX_IN ${hmlp_SOURCE_DIR}/python/hmlp.py)
-  #set(HMLP_PYX    ${CMAKE_BINARY_DIR}/python/hmlp.pyx)
-  #configure_file(${HMLP_PYX_IN} ${HMLP_PYX})
-
-  #set(GOFMM_PYX_IN ${hmlp_SOURCE_DIR}/python/gofmm.py)
-  #set(GOFMM_PYX    ${CMAKE_BINARY_DIR}/python/gofmm.pyx)
-  #configure_file(${GOFMM_PYX_IN} ${GOFMM_PYX})
-
-
-  set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/new_python)
-  set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/new_python)
-  set(SETUP_PY    ${PYTHON_BUILD_DIR}/setup.py)
-  file(GLOB pySRCs RELATIVE ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py)
-  foreach(pyFILE ${pySRCs})
-    set(pyFILE_PATH ${PYTHON_SRC_DIR}/${pyFILE})
-    if(NOT IS_DIRECTORY ${pyFILE_PATH})
-      message(STATUS "Configuring file ${pyFILE}")
-      if(${pyFILE} STREQUAL "setup.in.py")
-        configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/setup.py)
-      else()
-        configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/${pyFILE})
-      endif()
-    endif()
-  endforeach()
-
-  set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python_MPI)
-  set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python_MPI)
-  set(SETUP_PY_MPI    ${PYTHON_BUILD_DIR}/setup.py)
-  file(GLOB pySRCs RELATIVE ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
-    ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py)
-  foreach(pyFILE ${pySRCs})
-    set(pyFILE_PATH ${PYTHON_SRC_DIR}/${pyFILE})
-    if(NOT IS_DIRECTORY ${pyFILE_PATH})
-      message(STATUS "Configuring file ${pyFILE}")
-      if(${pyFILE} STREQUAL "setup.in.py")
-        configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/setup.py)
-      else()
-        configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/${pyFILE})
-      endif()
-    endif()
-  endforeach()
-
-  set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python)
-  set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python)
-  set(SETUP_PY_MPI_TRUE    ${PYTHON_BUILD_DIR}/setup.py)
-  file(GLOB_RECURSE pySRCs RELATIVE
+    set(PYTHON_SRC_DIR ${hmlp_SOURCE_DIR}/python)
+    set(PYTHON_BUILD_DIR ${CMAKE_BINARY_DIR}/python)
+    set(SETUP_PY_MPI_TRUE    ${PYTHON_BUILD_DIR}/setup.py)
+    file(GLOB_RECURSE pySRCs RELATIVE
     ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pxd
     ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.pyx
     ${PYTHON_SRC_DIR} ${PYTHON_SRC_DIR}/*.py
-
     )
-  foreach(pyFILE ${pySRCs})
+    foreach(pyFILE ${pySRCs})
     set(pyFILE_PATH ${PYTHON_SRC_DIR}/${pyFILE})
     if(NOT IS_DIRECTORY ${pyFILE_PATH})
         message(STATUS "Recurse -- configuring file ${pyFILE}")
@@ -301,74 +251,31 @@ if(CVENV)
            configure_file(${pyFILE_PATH} ${PYTHON_BUILD_DIR}/${pyFILE})
         endif()
     endif()
-  endforeach()
+    endforeach()
 
-  #set(SETUP_PY_IN ${hmlp_SOURCE_DIR}/new_python/setup.in.py)
-  #set(SETUP_PY    ${CMAKE_BINARY_DIR}/new_python/setup.py)
-  #configure_file(${SETUP_PY_IN} ${SETUP_PY})
+    IF(NOT EXISTS "${CMAKE_BINARY_DIR}/bin/python")
+      message(STATUS "Going to install python in build directory..")
+      install(CODE "execute_process(COMMAND ${CVENV} --system-site-packages ${CMAKE_BINARY_DIR}/bin/python)")
+      set(VPYTHON, ${CMAKE_BINARY_DIR}/bin/python/python3)
+      set(VPIP, ${CMAKE_BINARY_DIR}/bin/python/pip3)
+      install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/bin/python/pip3 install cython)")
+      install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/bin/python/pip3 install numpy)")
+      install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/bin/python/pip3 install mpi4py)")
+      install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/bib/python/pip3 install petsc4py)")
+    endif()
 
-  #set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/PyData.pyx)
-  #set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/PyData.pyx)
-  #configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
-
-  #set(DATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/Data.pxd)
-  #set(DATA_PXD ${CMAKE_BINARY_DIR}/new_python/Data.pxd)
-  #configure_file(${DATA_PXD_IN} ${DATA_PXD})
-  #
-  #set(PYDATA_PXD_IN ${hmlp_SOURCE_DIR}/new_python/config.pxd)
-  #set(PYDATA_PXD ${CMAKE_BINARY_DIR}/new_python/config.pxd)
-  #configure_file(${PYDATA_PXD_IN} ${PYDATA_PXD})
-
-  #set(PYDATA_PYX_IN ${hmlp_SOURCE_DIR}/new_python/pyconfig.pyx)
-  #set(PYDATA_PYX ${CMAKE_BINARY_DIR}/new_python/pyconfig.pyx)
-  #configure_file(${PYDATA_PYX_IN} ${PYDATA_PYX})
-  #
-  #set(TEST_SCRIPT_IN ${hmlp_SOURCE_DIR}/new_python/test_interface.py)
-  #set(TEST_SCRIPT ${CMAKE_BINARY_DIR}/new_python/test_interface.py)
-  #configure_file(${TEST_SCRIPT_IN} ${TEST_SCRIPT})
-
-  #Install virtualenv for python2.7, install cython, and hopefully compile our test cases
-
-IF(NOT EXISTS "${CMAKE_BINARY_DIR}/new_python/bin/python")
-  message(STATUS "Going to install python in build directory..")
-  install(CODE "execute_process(COMMAND ${CVENV} --system-site-packages ${CMAKE_BINARY_DIR}/new_python)")
-  set(VPYTHON, ${CMAKE_BINARY_DIR}/python/bin/python3)
-  set(VPIP, ${CMAKE_BINARY_DIR}/python/bin/pip3)
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install cython)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install numpy==1.11.3)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install mpi4py)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/pip3 install petsc4py)")
+    install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/python/bin/python ${SETUP_PY_MPI_TRUE} build_ext --build-lib ${CMAKE_BINARY_DIR}/python/)")
 endif()
-	## Jump to the virtual environment.
-	#install(CODE "execute_process(COMMAND cd ${CMAKE_BINARY_DIR}/python)")
-	## Active the virtual environment (bash shell).
-	#install(CODE "execute_process(COMMAND source ./bin/activate)")
-	#install(CODE "execute_process(COMMAND source ${CMAKE_BINARY_DIR}/python/bin/activate)")
-	## Ensure pip ≥8.1 is installed.
-	#install(CODE "execute_process(COMMAND easy_install -U pip)")
-	## Install Cython.
-	#install(CODE "execute_process(COMMAND pip install Cython)")
-
-
-
-	#install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --prefix=${CMAKE_BINARY_DIR})")
-    #install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY} build_ext --build-lib ${CMAKE_BINARY_DIR}/new_python/)")
-  #install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY_MPI} build_ext --build-lib ${CMAKE_BINARY_DIR}/python_MPI/)")
-  install(CODE "execute_process(COMMAND ${CMAKE_BINARY_DIR}/new_python/bin/python  ${SETUP_PY_MPI_TRUE} build_ext --build-lib ${CMAKE_BINARY_DIR}/python/)")
-endif()
-
-
-
 
 
 # ---[ (OPTIONAL) MPI configurations
 if ($ENV{HMLP_USE_MPI} MATCHES "true")
-  message("MPI is enable")
+  message("MPI is enabled")
   find_package(MPI REQUIRED)
   include_directories(${MPI_CXX_INCLUDE_PATH})
   set(HMLP_CFLAGS          "${HMLP_CFLAGS} -DHMLP_USE_MPI")
 else ()
-  message("MPI is disable")
+  message("MPI is disabled")
 endif ()
 
 
@@ -380,9 +287,6 @@ endif ()
 #message(${CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS})
 set (CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 set (CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
-
-
-
 
 
 # (OPTIONAL) GPU Compiler sptions
@@ -425,11 +329,6 @@ SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS} -g")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${HMLP_CFLAGS} -std=c++11")
 SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -g")
 
-
-
-
-
-
 # Headers
 # ---------------------------
 #include_directories ("include" "frame" "gofmm")
@@ -470,8 +369,6 @@ FILE(GLOB CU_SRC
 # Public Headers
 # ---------------------------
 LIST(APPEND INC include)
-
-
 
 
 ## Build the shared library.
@@ -567,8 +464,8 @@ FOREACH(src ${TEST_CXX_SRC})
     #IF(DEFINED ${LAPACK_LIBRARIES})
     TARGET_LINK_LIBRARIES(${exe} hmlp ${LAPACK_LIBRARIES})
     #ENDIF()
-  SET_TARGET_PROPERTIES(${exe} PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
-  SET_TARGET_PROPERTIES(${exe} PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
+    #SET_TARGET_PROPERTIES(${exe} PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
+    #SET_TARGET_PROPERTIES(${exe} PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   IF($ENV{HMLP_USE_CUDA} MATCHES "true")
     TARGET_LINK_LIBRARIES(${exe} cudart cublas nvToolsExt)
     TARGET_INCLUDE_DIRECTORIES(${exe} BEFORE PUBLIC "${CUDA_TOOLKIT_ROOT_DIR}/include")
@@ -577,6 +474,8 @@ FOREACH(src ${TEST_CXX_SRC})
   IF($ENV{HMLP_USE_MAGMA} MATCHES "true")
     TARGET_LINK_LIBRARIES(${exe} magma)
   ENDIF()
+  SET_TARGET_PROPERTIES(${exe} PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
+  SET_TARGET_PROPERTIES(${exe} PROPERTIES LINK_FLAGS "${MPI_LINK_FLAGS}")
   INSTALL(TARGETS ${exe} DESTINATION bin)
 ENDFOREACH()
 
