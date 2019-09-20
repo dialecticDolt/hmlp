@@ -81,7 +81,7 @@ for lam in bandwidths:
         end_c = MPI.Wtime()
 
         classes = np.asarray(classes, dtype='int32').flatten()
-        
+
         if rank == 0:
                 results.write("\nB: "+str(lam)+"\n")
                 results.write("NMI: "+str(alg.NMI(comm, true_classes, classes, nclasses))+"\n")
@@ -98,7 +98,7 @@ for lam in bandwidths:
                         results.write("Lookup Matricies: "+str(np_time)+"\n")
                         results.write("Update Classes: "+str(sim_time)+"\n")
                         results.write("Communication Time: "+str(com_time)+"\n")
-                                
+
         print("Bandwidth", lam)
         print(alg.NMI(comm, true_classes, classes, nclasses))
         print("Setup: ", end_s - start_s)
