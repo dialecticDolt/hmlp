@@ -21,7 +21,7 @@ parser.add_argument('-truth', type=str, required=False, default=None, help="Spec
 
 parser.add_argument('-N', type=int, required=False, default= 10000, help="Specify the size of the random dataset. Set --scaling strong or weak")
 
-parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N, strong=N*p")
+parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N*p, strong=N")
 
 parser.add_argument('-nclasses', type=int, required=False, default=2, help="Specify the number of classes to generate")
 
@@ -57,9 +57,9 @@ else:
     #Option 2: Construct a random point set
 
     if args.scaling=='strong':
-        N = args.N*nprocs
-    elif args.scaling=='weak':
         N = args.N
+    elif args.scaling=='weak':
+        N = args.N*nprocs
 
     d = args.d
 

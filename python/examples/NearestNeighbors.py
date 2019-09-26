@@ -16,7 +16,7 @@ parser.add_argument('-N', type=int, required=False, default= 10000, help="Specif
 parser.add_argument('-leaf', type=int, required=False, default = 128, help="Specify the leaf size of the kd-tree for nearest neighbor approximation")
 parser.add_argument('-k', type=int, required=False, default=64, help="Specify the number of neighbors to search for")
 parser.add_argument('-d', type=int, required=False, default = 5, help="Specify the dimension of the random point set")
-parser.add_argument('--scaling', dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N, strong=N*p")
+parser.add_argument('--scaling', dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N*p, strong=N")
 
 args = parser.parse_args()
 
@@ -32,9 +32,9 @@ else:
     #Option 2: Construct a random point set
     #Number of points in dataset. Setup for strong scaling
     if args.scaling == 'strong':
-        N = args.N*nprocs;
-    elif args.scaling == 'weak':
         N = args.N
+    elif args.scaling == 'weak':
+        N = args.N*nprocs
 
     d = args.d
 

@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description='Perform a matvec and solve using P
 
 parser.add_argument('-N', type=int, required=False, default= 10000, help="Specify the size of the random dataset. Set --scaling strong or weak")
 
-parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N, strong=N*p")
+parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N*p, strong=N")
 
 parser.add_argument('-d', type=int, required=False, default = 5, help="Specify the dimension of the random point set")
 
