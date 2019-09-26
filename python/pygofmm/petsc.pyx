@@ -247,6 +247,9 @@ cdef class Kernel_Handler(object):
                     length = len(x)
                     for i in prange(length, nogil=True):
                         normedx[i] = 1/sqrt(npD[i, 0]) * c_x[i]
+
+                    #for i in range(length):
+                    #    normedx[i] = 1/sqrt(npD[i, 0]) * c_x[i]
                     
                     GOFMM_x = PyGOFMM.DistData_RIDS(self.comm, m=self.size, n=nrhs, tree=self.K.get_tree(), arr=normedx)
                     GOFMM_y = self.K.evaluate(GOFMM_x)
@@ -255,6 +258,9 @@ cdef class Kernel_Handler(object):
                     length = len(y)
                     for i in prange(length, nogil=True):
                             c_y[i] = 1/sqrt(npD[i, 0]) * res[i, 0]
+
+            #        for i in range(length):
+            #                y[i] = 1/sqrt(npD[i, 0]) * res[i, 0]
         else:
             with X as x:
                 with Y as y:
@@ -359,9 +365,8 @@ def PETSC_Handler(handler, petsc_comm):
     cdef int N, n_local
     N = handler.getSize();
     n_local = handler.getLocal();
-    A = PETSc.Mat().createPython([N, N], comm = petsc_comm)
+    A = PETSc.Mat().createPython(((n_local, N), (n_local, N)), comm = petsc_comm)
     A.setPythonContext(handler)
-    A.setSizes( ( (n_local, N), (n_local, N) ) )
     A.setUp()
     return A
 
