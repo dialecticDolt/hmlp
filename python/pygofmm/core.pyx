@@ -501,7 +501,7 @@ cdef class DistData_CBLK:
 
     def to_array(self, copy=False, flatten=False):
         cdef float* data_ptr = self.c_data.rowdata(0)
-        cdef float[:] mv = <float[:self.size()]> data_ptr
+        cdef float[:] mv = <float[:(self.local_rows() * self.local_cols())]> data_ptr
         np_arr = np.asarray(mv, order='F', dtype='float32')
         if not flatten:
             np_arr = np_arr.reshape((self.local_rows(), self.local_cols()), order='F')

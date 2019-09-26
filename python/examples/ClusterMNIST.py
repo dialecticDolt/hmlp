@@ -8,7 +8,8 @@ import argparse
 import sys
 
 from sklearn.preprocessing import normalize
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+from mlxtend.data import loadlocal_mnist
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -24,20 +25,9 @@ comm = MPI.Comm.Clone(MPI.COMM_WORLD)
 nprocs = comm.Get_size()
 rank = comm.Get_rank()
 
-parser = argparse.ArgumentParser(description='Cluster with Kernel K-Means')
-
-parser.add_argument('-file', type=str, required=False, default=None,
-        help="Specify the file to load the data")
-
-parser.add_argument('-truth', type=str, required=False, default=None, help="Specify the file to load truth values")
-
-parser.add_argument('-N', type=int, required=False, default= 10000, help="Specify the size of the random dataset. Set --scaling strong or weak")
-
-parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N, strong=N*p")
+parser = argparse.ArgumentParser(description='Cluster MNIST')
 
 parser.add_argument('-nclasses', type=int, required=False, default=2, help="Specify the number of classes to generate")
-
-parser.add_argument('-d', type=int, required=False, default = 5, help="Specify the dimension of the random point set")
 
 parser.add_argument('-leaf', type=int, required=False, default = 128, help="Specify the leaf size of the kd-tree")
 
@@ -70,58 +60,21 @@ budget = args.budget
 rt = PyGOFMM.Runtime()
 rt.initialize(comm)
 
-if args.file:
-    #Option 1: Load a data set
-    N = 10
-else:
-    #Option 2: Construct a random point set
+point_set, truth_set = loadlocal_mnist(images_path='/workspace/will/dev/datasets/MNIST60k/train-images-idx3-ubyte', labels_path='/workspace/will/dev/datasets/MNIST60k/train-labels-idx1-ubyte')
 
-    if args.scaling=='strong':
-        N = args.N
-    elif args.scaling=='weak':
-        N = args.N*nprocs
+point_set = point_set.T
+d = point_set.shape[0]
+N = point_set.shape[1]
 
-    d = args.d
+truth_set = truth_set + 1
+point_set = PyGOFMM.reformat(point_set)
+truth_set = PyGOFMM.reformat(truth_set)
 
-    print(N)
-    #Construct the point set
-    np.random.seed(20)
-    width = 0.01
-    radius_range = 10
-    extra = (N % args.nclasses)
-    for i in range(args.nclasses):
-        if(extra):
-            split = 1
-            extra= extra -1
-        else:
-            split = 0
-        new_class =  np.random.randn(d, (int)(np.floor(N/args.nclasses))+split)
-        new_class =  normalize(new_class, axis=0, norm='l2', copy=False)
-        new_class =  new_class*(1/(i+1))
-        new_class =  np.add( new_class, width * np.random.randn(d, (int)(np.floor(N/args.nclasses)) + split) )
-        print(new_class.shape[1])
-        new_truth = np.ones((int)(np.floor(N/args.nclasses))+split) + i
-        if i == 0:
-            point_set = new_class
-            truth_set = new_truth
-        else:
-            point_set = np.concatenate((point_set, new_class), axis=1)
-            truth_set = np.concatenate((truth_set, new_truth), axis=0)
+#Redistribute points to cyclic partition
+start_s = MPI.Wtime()
+sources, gids_owned = PyGOFMM.distribute_cblk(comm, point_set)
 
-    point_set = PyGOFMM.reformat(point_set)
-    print(point_set)
-    truth_set = PyGOFMM.reformat(truth_set)
-
-
-    starting_assignment = np.copy(truth_set)
-#    plt.scatter(point_set[0, :], point_set[1, :])
-#    plt.show()
-
-    #point_set = normalize(point_set, axis=1, norm='max')
-
-    #Redistribute points to cyclic partition
-    start_s = MPI.Wtime()
-    sources, gids_owned = PyGOFMM.distribute_cblk(comm, point_set)
+starting_assignment = starting_assignment[gids_owned]
 
 #Setup and compress the kernel matrix
 setup_time = MPI.Wtime()
@@ -137,10 +90,6 @@ compress_time = MPI.Wtime() - compress_time
 clustering_time = MPI.Wtime()
 if args.cluster == 'sc':
     clustering_output = FMML.SpectralCluster(K, args.nclasses, gids=gids_owned, init=args.init)
-    spectral_points = clustering_output.rids_points
-    spectral_classes = clustering_output.rids_classes
-    #plt.scatter(spectral_points[0, :], spectral_points[1, :], c=spectral_classes)
-    #plt.show()
 else:
     clustering_output = FMML.KernelKMeans(K,  args.nclasses, gids=gids_owned, init=args.init, maxiter=args.maxiter)
 
@@ -148,21 +97,9 @@ clustering_time = MPI.Wtime() - clustering_time
 
 local_class_assignments = clustering_output.classes
 
-#classes, gids = FMML.gather_points(test)
-#points = test_points[:, gids].T
-
 truth_set = np.asarray(truth_set[gids_owned], dtype='int32').flatten()
 local_class_assignments = np.asarray(local_class_assignments, dtype='int32').flatten()
-print(truth_set)
-print(local_class_assignments)
-nmi = FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses)
-print("NMI:", nmi)
 
-if nmi>1:
-    np.save("truth.dat", truth_set)
-    np.save("class.dat", local_class_assignments)
-
-#plt.scatter(point_set[0, gids_owned], point_set[1, gids_owned], c=local_class_assignments)
-#plt.show()
+print(FMML.ChenhanNMI(comm, truth_set, local_class_assignments, 10, args.nclasses))
 
 rt.finalize()

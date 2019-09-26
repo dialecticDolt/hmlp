@@ -37,6 +37,14 @@ parser.add_argument("-tolerance", type=float, required=False, default = 1e-3, he
 
 parser.add_argument("-budget", type=float, required=False, default = 0, help="Specify the budget of the exact evaulation close neighbor list")
 
+parser.add_argument("-iter", type=int, dest="maxiter", required=False, default=20, help="Specify the maximum number of iterations for kmeans")
+
+parser.add_argument("-kmeans_init", type=str, dest="init", required=False, default="random", choices=['random', '++'], help="Specify the initialization of k-means. Used in Kernel K-Means or in the post processing of Spectral Clustering")
+
+parser.add_argument("-secure", type=str2bool, required=False, default=True, help="Set Secure Accuracy (i.e. use level restriction)")
+
+parser.add_argument("-bandwidth", type=float, required=False, default = 1, help="Specify the bandwidth for the similarity function")
+
 args = parser.parse_args()
 
 leaf_node_size = args.leaf
@@ -55,9 +63,9 @@ else:
     #Option 2: Construct a random point set
 
     if args.scaling=='strong':
-        N = args.N*nprocs
-    elif args.scaling=='weak':
         N = args.N
+    elif args.scaling=='weak':
+        N = args.N*nprocs
 
     d = args.d
 
@@ -91,8 +99,8 @@ else:
 
 #Setup and compress the kernel matrix
 setup_time = MPI.Wtime()
-config = PyGOFMM.Config("GEOMETRY_DISTANCE", N, leaf_node_size, neighbors, maximum_rank, tol, budget, False)
-K = PyGOFMM.KernelMatrix(comm, sources, config=config, bandwidth=1.3)
+config = PyGOFMM.Config("GEOMETRY_DISTANCE", N, leaf_node_size, neighbors, maximum_rank, tol, budget, args.secure)
+K = PyGOFMM.KernelMatrix(comm, sources, config=config, bandwidth=args.bandwidth)
 setup_time = MPI.Wtime() - setup_time
 
 compress_time = MPI.Wtime()
@@ -114,5 +122,6 @@ truth_set = np.asarray(truth_set[0, gids_owned], dtype='int32').flatten()
 local_class_assignments = np.asarray(local_class_assignments, dtype='int32').flatten()
 
 print(FMML.NMI(comm, truth_set, local_class_assignments, args.nclasses))
+print(FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
 
 rt.finalize()

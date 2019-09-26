@@ -354,8 +354,10 @@ def KMeans(MPI.Comm comm, float[:, :] points, int nclasses, classvec = None, max
     cdef float[:, :] temp_centroids = np.zeros([d, nclasses], dtype='float32')
 
     s_tinit = MPI.Wtime()
+
     if init == "random":
         for i in range(nclasses):
+            u = 0
             if rank ==0:
                 u = np.random.randint(0, nprocs)
             u = share_number(comm, u, 0)
@@ -363,9 +365,9 @@ def KMeans(MPI.Comm comm, float[:, :] points, int nclasses, classvec = None, max
                 index = np.random.randint(0, n_local)
                 temp_centroids[:, i] = points[:, index]
         comm.Allreduce(temp_centroids, centroids, op=MPI.SUM)
-
     elif init == "++":
         centroids = distributed_kmeans_pp(comm, points, nclasses)
+
     e_tinit= MPI.Wtime()
 
     center_time = 0
@@ -445,6 +447,85 @@ cdef compute_centers(MPI.Comm comm, float[:, :] points, int[:] classes, int ncla
     comm.Allreduce(centroids_local, centroids, op=MPI.SUM)
     return centroids
 
+
+
+
+
+def computeConfusion(MPI.Comm comm, int[:] truth, int[:] classes, int nclass, int ncluster):
+    cdef int n = len(truth)
+    #assert len(truth) == len(classes)
+    cdef int[:, :] confusion_local = np.zeros([ncluster+1, nclass+1], dtype='int32')
+    for i in range(n):
+        icluster = classes[i] - 1
+        iclass = truth[i] - 1
+        confusion_local[icluster, iclass] = confusion_local[icluster, iclass] + 1
+    
+    #Reduce confusion matrix
+    cdef int [:, :] confusion = np.zeros([ncluster+1, nclass+1], dtype='int32')
+    comm.Allreduce(confusion_local, confusion, op=MPI.SUM)
+
+    for q in range(nclass):
+        for p in range(ncluster):
+            Cpq = confusion[p, q]
+            confusion[p, nclass] = confusion[p, nclass] + Cpq
+            confusion[ncluster, q] = confusion[ncluster, q] + Cpq
+            confusion[ncluster, nclass] = confusion[ncluster, nclass] + Cpq
+    
+    #confusion_local = np.copy(confusion)
+    #confusion = np.zeros([ncluster+1, nclass+1], dtype='int32')
+
+    #comm.Allreduce(confusion_local, confusion, op=MPI.SUM)
+
+    return confusion
+
+
+def ChenhanNMI(MPI.Comm comm, int[:] truth, int[:] classes, int nclass, int ncluster):
+    nmi = 0.0;
+    nmi_a = 0.0;
+    nmi_c = 0.0;
+
+    n_local = np.array(len(truth), dtype='int32')
+    n = np.array(0, dtype='int32')
+    comm.Allreduce(n_local, n, op=MPI.SUM)
+    
+    #assert len(truth) == len(classes)
+
+    confusion = computeConfusion(comm, truth, classes, nclass, ncluster)
+
+    print(np.asarray(confusion))
+
+    #antecendent part
+    for q in range(nclass):
+        for p in range(ncluster):
+            Cpq = confusion[p, q];
+            Cp = confusion[p, nclass]
+            Cq = confusion[ncluster, q]
+
+            if Cpq > 0.0:
+                nmi_a += -2 * (Cpq/n) * log2(n*Cpq/(Cp*Cq))
+
+    #consequent part
+    for q in range(nclass):
+        Cq = confusion[ncluster, q]
+        nmi_c += (Cq/n) * log2(Cq/n)
+
+    for p in range(ncluster):
+        Cp = confusion[p, nclass];
+        nmi_c += (Cp/n) * log2(Cp/n)
+
+    local_nmi_a = np.array(nmi_a)
+    local_nmi_c = np.array(nmi_c)
+    nmi_a = np.array(nmi_a)
+    nmi_c = np.array(nmi_c)
+
+    comm.Allreduce(local_nmi_a, nmi_a, op=MPI.SUM)
+    comm.Allreduce(local_nmi_c, nmi_c, op=MPI.SUM)
+
+    print(nmi_a)
+    print(nmi_c)
+
+    return nmi_a/nmi_c
+    
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -505,8 +586,9 @@ def NMI(MPI.Comm comm, int[:] truth, int[:] clusters, int nclasses):
     for i in xrange(nclasses):
         h_yc -= cluster_counts[i]/N_total * I[i]
     end_time = MPI.Wtime()
+
     print(end_time)
-    return ( (2*(h_y - h_yc)/(h_y + h_c)), end_time - start_time )
+    return ( (2*(h_y - h_yc)/(h_y + h_c)), end_time - start_time)
 
 
 @cython.boundscheck(False)
@@ -919,7 +1001,7 @@ def TestKDE(PyGOFMM.KernelMatrix K, int nclasses, int [:] gids, float[:] classve
     # return
     return density_test.to_array()
 
-def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
+def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="random"):
         
     cdef int N, n_local
     cdef int c, i, j, k, p, itr
@@ -938,9 +1020,7 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     gofmm = Kernel_Handler(K, normalize=True)
     petsc4py.init(comm=comm)
     comm_petsc = MPI.COMM_WORLD
-    print(N)
-    A = PETSc.Mat().createPython([N, N], comm = comm_petsc)
-    A.setSizes( ( (n_local, N), (n_local, N) ) )
+    A = PETSc.Mat().createPython(( (n_local, N), (n_local, N) ), comm = comm_petsc)
     A.setPythonContext(gofmm)
     A.setUp()
 
@@ -953,7 +1033,7 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     E.create()
     E.setOperators(A)
     E.setProblemType(SLEPc.EPS.ProblemType.HEP)
-    E.setDimensions(nclasses)
+    E.setDimensions(nclasses+1) #Currently getting one more than needed to see if it helps with clustering
     E.setDeflationSpace(x)
     stime = MPI.Wtime()
     E.solve()
@@ -968,6 +1048,9 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
     vr, wr = A.getVecs()
     vi, wi = A.getVecs()
 
+
+    print("Number of Converged Eigenvalues:", nconv)
+    print("Number of iterations (bugged in petsc4py)", its)
     #get eigenvector solution
     eigvecs = []
     evals = []
@@ -978,6 +1061,7 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
         print(res.real)
 
     #turn eigenvectors into [nclasses x N] point cloud in reduced space
+    #normalize for spherical k-means
     spectral_points = np.empty([nclasses, len(rids)], dtype='float32', order='F')
     i = 0
     cdef float norm
@@ -986,9 +1070,9 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids):
         with vec as v:
             spectral_points[i, :] = v/norm
         i = i + 1
-
+    
     #Run K Means on Spectral Domain. Note these points are in RIDS/TREE ordering
-    output  = KMeans(comm, spectral_points, nclasses, maxiter=20, init="++")
+    output  = KMeans(comm, spectral_points, nclasses, maxiter=40, init=init)
     classes = output.classes
     center_time = output.center_time
     update_time = output.update_time

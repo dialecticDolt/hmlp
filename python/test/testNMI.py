@@ -11,7 +11,7 @@ comm = MPI.COMM_WORLD
 nprocs = comm.Get_size()
 rank = comm.Get_rank()
 
-rt = PyGOFMM.PyRuntime()
+rt = PyGOFMM.Runtime()
 rt.init_with_MPI(comm)
 
 N = 300
@@ -22,5 +22,7 @@ b[10] = 2
 b[20] = 1
 
 ans = alg.NMI(comm, a, b, nclasses)
+print(ans)
 
+ans = alg.ChenhanNMI(comm, a, b, nclasses, nclasses)
 print(ans)
