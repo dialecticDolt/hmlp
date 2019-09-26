@@ -33,7 +33,7 @@ parser.add_argument('-truth', type=str, required=False, default=None, help="Spec
 
 parser.add_argument('-N', type=int, required=False, default= 10000, help="Specify the size of the random dataset. Set --scaling strong or weak")
 
-parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N, strong=N*p")
+parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N*p, strong=N")
 
 parser.add_argument('-nclasses', type=int, required=False, default=2, help="Specify the number of classes to generate")
 
@@ -54,6 +54,8 @@ parser.add_argument("-bandwidth", type=float, required=False, default = 1, help=
 parser.add_argument("-cluster", type=str, required=False, default="sc", help="Specify which clustering method to use")
 
 parser.add_argument("-iter", type=int, dest="maxiter", required=False, default=20, help="Specify the maximum number of iterations for kmeans")
+
+parser.add_argument("-slack", type=int, dest="slack", required=False, default=0, help="Specify how many extra (total: nclasses+slack) eigenvectors to keep for spectral clustering")
 
 parser.add_argument("-kmeans_init", type=str, dest="init", required=False, default="random", choices=['random', '++'], help="Specify the initialization of k-means. Used in Kernel K-Means or in the post processing of Spectral Clustering")
 
@@ -136,7 +138,7 @@ compress_time = MPI.Wtime() - compress_time
 #Run kernel k-means
 clustering_time = MPI.Wtime()
 if args.cluster == 'sc':
-    clustering_output = FMML.SpectralCluster(K, args.nclasses, gids=gids_owned, init=args.init)
+    clustering_output = FMML.SpectralCluster(K, args.nclasses, gids=gids_owned, init=args.init, slack=args.slack, itr=args.iter)
     spectral_points = clustering_output.rids_points
     spectral_classes = clustering_output.rids_classes
     #plt.scatter(spectral_points[0, :], spectral_points[1, :], c=spectral_classes)
@@ -158,9 +160,10 @@ print(local_class_assignments)
 nmi = FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses)
 print("NMI:", nmi)
 
-if nmi>1:
-    np.save("truth.dat", truth_set)
-    np.save("class.dat", local_class_assignments)
+ari = FMML.ARI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses)
+print("ARI:", ari)
+
+print("Time:", clustering_time)
 
 #plt.scatter(point_set[0, gids_owned], point_set[1, gids_owned], c=local_class_assignments)
 #plt.show()

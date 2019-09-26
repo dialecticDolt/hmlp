@@ -74,8 +74,6 @@ truth_set = PyGOFMM.reformat(truth_set)
 start_s = MPI.Wtime()
 sources, gids_owned = PyGOFMM.distribute_cblk(comm, point_set)
 
-starting_assignment = starting_assignment[gids_owned]
-
 #Setup and compress the kernel matrix
 setup_time = MPI.Wtime()
 config = PyGOFMM.Config("GEOMETRY_DISTANCE", N, leaf_node_size, neighbors, maximum_rank, tol, budget, args.secure)

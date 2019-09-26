@@ -8,6 +8,16 @@ import argparse
 import sys
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 comm = MPI.Comm.Clone(MPI.COMM_WORLD)
 nprocs = comm.Get_size()
 rank = comm.Get_rank()
@@ -38,6 +48,8 @@ parser.add_argument("-tolerance", type=float, required=False, default = 1e-3, he
 parser.add_argument("-budget", type=float, required=False, default = 0, help="Specify the budget of the exact evaulation close neighbor list")
 
 parser.add_argument("-bandwidth", type=float, required=False, default = 1, help = "Specify the bandwidth")
+
+parser.add_argument("-secure", type=str2bool, required=False, default=True, help="Set Secure Accuracy (i.e. use level restriction)")
 
 args = parser.parse_args()
 
@@ -93,7 +105,7 @@ else:
 
 #Setup and compress the kernel matrix
 setup_time = MPI.Wtime()
-config = PyGOFMM.Config("GEOMETRY_DISTANCE", N, leaf_node_size, neighbors, maximum_rank, tol, budget, False)
+config = PyGOFMM.Config("GEOMETRY_DISTANCE", N, leaf_node_size, neighbors, maximum_rank, tol, budget, args.secure)
 K = PyGOFMM.KernelMatrix(comm, sources, config=config, bandwidth=args.bandwidth)
 setup_time = MPI.Wtime() - setup_time
 
@@ -115,5 +127,6 @@ truth_set = np.asarray(truth_set[0, gids_owned], dtype='int32').flatten()
 local_class_assignments = np.asarray(local_class_assignments, dtype='int32').flatten()
 
 print(FMML.NMI(comm, truth_set, local_class_assignments, args.nclasses))
+print(FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
 
 rt.finalize()
