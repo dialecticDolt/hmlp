@@ -47,7 +47,7 @@ parser.add_argument("-tolerance", type=float, required=False, default = 1e-3, he
 
 parser.add_argument("-budget", type=float, required=False, default = 0, help="Specify the budget of the exact evaulation close neighbor list")
 
-parser.add_argument("-iter", type=int, dest="maxiter", required=False, default=20, help="Specify the maximum number of iterations for kmeans")
+parser.add_argument("-iter", type=int, dest="iter", required=False, default=20, help="Specify the maximum number of iterations for kmeans")
 
 parser.add_argument("-kmeans_init", type=str, dest="init", required=False, default="random", choices=['random', '++'], help="Specify the initialization of k-means. Used in Kernel K-Means or in the post processing of Spectral Clustering")
 

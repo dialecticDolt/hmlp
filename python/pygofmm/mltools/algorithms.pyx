@@ -1068,7 +1068,7 @@ def TestKDE(PyGOFMM.KernelMatrix K, int nclasses, int [:] gids, float[:] classve
     # return
     return density_test.to_array()
 
-def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="random", eigensolver='ks', slack=0, itr=40):
+def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="random", eigensolver='ks', slack=0, maxiter=40):
         
     cdef int N, n_local
     cdef int c, i, j, k, p, itr
@@ -1149,7 +1149,7 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="ran
         i = i + 1
     
     #Run K Means on Spectral Domain. Note these points are in RIDS/TREE ordering
-    output  = KMeans(comm, spectral_points, nclasses, maxiter=iter, init=init)
+    output  = KMeans(comm, spectral_points, nclasses, maxiter=maxiter, init=init)
     classes = output.classes
     center_time = output.center_time
     update_time = output.update_time

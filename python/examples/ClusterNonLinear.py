@@ -8,7 +8,7 @@ import argparse
 import sys
 
 from sklearn.preprocessing import normalize
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -33,7 +33,7 @@ parser.add_argument('-truth', type=str, required=False, default=None, help="Spec
 
 parser.add_argument('-N', type=int, required=False, default= 10000, help="Specify the size of the random dataset. Set --scaling strong or weak")
 
-parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N*p, strong=N")
+parser.add_argument('--scaling', type=str, dest='scaling', choices=['strong', 'weak'],default='weak', help="Scaling of the point set size. weak = N, strong=N*p")
 
 parser.add_argument('-nclasses', type=int, required=False, default=2, help="Specify the number of classes to generate")
 
@@ -88,7 +88,7 @@ else:
     print(N)
     #Construct the point set
     np.random.seed(20)
-    width = 0.01
+    width = 0
     radius_range = 10
     extra = (N % args.nclasses)
     for i in range(args.nclasses):
@@ -97,11 +97,12 @@ else:
             extra= extra -1
         else:
             split = 0
-        new_class =  np.random.randn(d, (int)(np.floor(N/args.nclasses))+split)
-        new_class =  normalize(new_class, axis=0, norm='l2', copy=False)
-        new_class =  new_class*(1/(i+1))
-        new_class =  np.add( new_class, width * np.random.randn(d, (int)(np.floor(N/args.nclasses)) + split) )
-        print(new_class.shape[1])
+        if i == 0:
+            new_class = np.random.randn(d, (int)(np.floor(N/args.nclasses))+split)
+        else:
+            new_class =  np.random.randn(d, (int)(np.floor(N/args.nclasses))+split)
+            new_class =  normalize(new_class, axis=0, norm='l2', copy=False) * (5 + 1.4*(i))
+            new_class =  np.add( new_class, width * np.random.randn(d, (int)(np.floor(N/args.nclasses)) + split) )
         new_truth = np.ones((int)(np.floor(N/args.nclasses))+split) + i
         if i == 0:
             point_set = new_class
@@ -116,8 +117,8 @@ else:
 
 
     starting_assignment = np.copy(truth_set)
-#    plt.scatter(point_set[0, :], point_set[1, :])
-#    plt.show()
+    plt.scatter(point_set[0, :], point_set[1, :])
+    plt.show()
 
     #point_set = normalize(point_set, axis=1, norm='max')
 
@@ -165,7 +166,7 @@ print("ARI:", ari)
 
 print("Time:", clustering_time)
 
-#plt.scatter(point_set[0, gids_owned], point_set[1, gids_owned], c=local_class_assignments)
-#plt.show()
+plt.scatter(point_set[0, gids_owned], point_set[1, gids_owned], c=local_class_assignments)
+plt.show()
 
 rt.finalize()
