@@ -662,6 +662,8 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
     #create local numpy copies to use shared memory parallelism 
     cdef float[:] npD = D.to_array().flatten()
 
+    cdef float init_time = MPI.Wtime()
+
     #intialize every point to a random class
     if classvec is None and init == "random":
         classvec = np.zeros([n_local], order='F', dtype='float32')
@@ -669,6 +671,7 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
             classvec[i] = np.random.randint(1, nclasses+1)
 
     #choose random points and make clusters based on distances in the kernel space (not weighted)
+    #TODO: Parallelize This
     if classvec is None and init =="random_centers":
         t = 1000 * MPI.Wtime() # current time in milliseconds
         np.random.seed(int(t) % 2**32)
@@ -678,10 +681,6 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
         else:
             start = (rank - nclasses % nprocs)*(nclasses/nprocs) + (nclasses % nprocs) * (nclasses/nprocs + 1)
             end = start + (nclasses/nprocs)
-        
-        print(start)
-        print(end)
-        sys.stdout.flush()
         
         for i in range(start, end):
             center_ind_local[i] = np.random.randint(0, n_local)
@@ -701,6 +700,7 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
             classvec[j] = c + 1
 
     #Kernel K-Means ++ initializization (weighted)
+    #TODO: Parallelize This (Better)
     if classvec is None and init=="++":
         t = 1000 * MPI.Wtime()
         np.random.seed(int(t) %2**32)
@@ -781,8 +781,8 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
     for i in xrange(n_local):
         H_local[i, <int>(GOFMM_classes[rids[i], 0] -1)] = 1.0
 
-    print("Made class indicator block")
-    sys.stdout.flush()
+    init_time = MPI.Wtime() - init_time
+
     #copy class indicator block to DistData object
     H = PyGOFMM.DistData_RIDS(comm, N, nclasses, iset=rids, darr=H_local)
 
@@ -813,7 +813,11 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
     cdef float matvec_time = 0;
     cdef float com_time = 0;
     cdef float nrmlz = 0
+    cdef float main_loop_time = 0;
+    cdef float update_class_time = 0
+    cdef float compute_matrix_time = 0
 
+    main_loop_time = MPI.Wtime()
     for itr in xrange(maxiter):
 
         #update DKH, HKH, HDH
@@ -859,13 +863,13 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
         HKH = np.zeros([nclasses, nclasses], dtype='float32', order='F')
         HDH = np.zeros([nclasses, nclasses], dtype='float32', order='F')
 
+    
         comm.Allreduce(HKH_local, HKH, op=MPI.SUM)
         comm.Allreduce(HDH_local, HDH, op=MPI.SUM)
 
-        np_time += MPI.Wtime() - time
+        compute_matrix_time += (MPI.Wtime() - time)
         
         time = MPI.Wtime()
-
         #update similarity
         for i in prange(n_local, nogil=True):
             for p in xrange(nclasses):
@@ -930,15 +934,18 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
         """
         #copy class indicator matrix to DistData object
         H = PyGOFMM.DistData_RIDS(comm, N, nclasses, iset=rids, darr=H_local)
-        sim_time += MPI.Wtime() - time
+        update_class_time += (MPI.Wtime() - time)
 
     #end main loop
-    time = MPI.Wtime()
+    main_loop_time = MPI.Wtime() - main_loop_time
+    
+    com_time = MPI.Wtime()
     classes = PyGOFMM.DistData_RIDS(comm, m=N, n=1, iset=gids)
     classes.redistribute(GOFMM_classes)
-    com_time = MPI.Wtime() - time
-    KMeansOutput = namedtuple('KMeansOutput', 'classes, matvec_time, numpy_time, similarity_time, communication_time')
-    output = KMeansOutput(classes.to_array(), matvec_time, np_time, sim_time, com_time)
+    com_time = MPI.Wtime() - com_time
+
+    KMeansOutput = namedtuple('KMeansOutput', 'classes, init_time, loop_time, matrix_time, update_time, comm_time')
+    output = KMeansOutput(classes.to_array(), init_time, loop_time, compute_matrix_time, update_class_time, com_time)
     return output
         
 @cython.boundscheck(False)
@@ -1110,7 +1117,7 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="ran
     stime = MPI.Wtime()
     E.solve()
     etime = MPI.Wtime()
-    eig_time= stime - etime
+    eig_time= etime - stime
     
     its = E.getIterationNumber()
     eps_type = E.getType()
@@ -1151,14 +1158,16 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="ran
     init_time = output.init_time
 
     #rearrange from rids->CBLK ordering. 
+    cdef float comm_time = 0
+    comm_time = MPI.Wtime()
     classes = np.asarray(classes, dtype='float32')
     GIDS_Owned = PyGOFMM.get_cblk_ownership(N, rank, nprocs)
     CBLK_classes = PyGOFMM.DistData_RIDS(comm, N, 1, iset=GIDS_Owned)
     RIDS_classes = PyGOFMM.DistData_RIDS(comm, N, 1, iset=rids, arr=classes)
     CBLK_classes.redistribute(RIDS_classes)
-
-    SpectralClusterOutput= namedtuple("SpectralClusterOutput", 'classes, eigensolver_time, center_time, update_time, init_time, rids_points, rids_classes')
-    output = SpectralClusterOutput(CBLK_classes.to_array(), eig_time, center_time, update_time, init_time, spectral_points, classes)
+    comm_time = MPI.Wtime() - comm_time
+    SpectralClusterOutput= namedtuple("SpectralClusterOutput", 'classes, eigensolver_time, center_time, update_time, init_time, comm_time, rids_points, rids_classes')
+    output = SpectralClusterOutput(CBLK_classes.to_array(), eig_time, center_time, update_time, init_time, comm_time, spectral_points, classes)
     return output
 
 def DiffusionMap(PyGOFMM.KernelMatrix K, float eps, int[:] gids):
