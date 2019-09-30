@@ -827,6 +827,7 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
         npH = H.to_array();
 
         '''
+        #Note: This version doesn't work with reduction as expected. 
         HDH_local = np.zeros([nclasses, nclasses], dtype='float32')
         HKH_local = np.zeros([nclasses, nclasses], dtype='float32')
 
@@ -850,9 +851,6 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
                 for r in range(n_local):
                     HKH_local[i, j] += npH[r, j]*npKH[r, i]
                     HDH_local[i, j] += npH[r, j]*npD[r]*npH[r, i]
-
-        print(np.asarray(HKH_local))
-        print(np.asarray(HDH_local))
 
         for i in prange(n_local, nogil=True):
             for j in xrange(nclasses):
@@ -879,7 +877,6 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
                 else:
                     Similarity[i, p] = -2*(DKH[i, p]/nrmlz) + (HKH[p, p]/(nrmlz*nrmlz))
 
-
         #update classvector
         c_classes = GOFMM_classes.to_array()
         for i in prange(n_local, nogil=True):
@@ -889,15 +886,16 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
         for i in prange(nclasses, nogil=True):
             class_counts[i] = 0
     
-        #count classes
-        for i in prange(n_local, nogil=True):
+        #count points in each class
+        #TODO: Parallelize This
+        for i in range(n_local):
             c = <int>(c_classes[i, 0]) - 1
             class_counts[c] = <int>(class_counts[c]) + 1
 
-        print(np.asarray(class_counts))
+        #randomly readd a class if it disappears. 
+        #TODO: Parallelize This
         for c in range(nclasses):
             if class_counts[c] == 0:
-                print("Randomly adding point")
                 #change random point to class c
                 ind = np.random.randint(0, n_local)
                 c_classes[ind, 0] = <float>(c) + 1
@@ -935,7 +933,6 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
         sim_time += MPI.Wtime() - time
 
     #end main loop
-
     time = MPI.Wtime()
     classes = PyGOFMM.DistData_RIDS(comm, m=N, n=1, iset=gids)
     classes.redistribute(GOFMM_classes)
@@ -944,7 +941,6 @@ def KernelKMeans(PyGOFMM.KernelMatrix K, int nclasses, gids, classvec=None, maxi
     output = KMeansOutput(classes.to_array(), matvec_time, np_time, sim_time, com_time)
     return output
         
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
@@ -958,7 +954,6 @@ cdef int amin(float[:] arr, int n) nogil:
             min_value = arr[i]
             indx = i
     return indx
-
 
 # Get vector for KDE multiply
 @cython.boundscheck(False)
@@ -1068,7 +1063,7 @@ def TestKDE(PyGOFMM.KernelMatrix K, int nclasses, int [:] gids, float[:] classve
     # return
     return density_test.to_array()
 
-def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="random", eigensolver='ks', slack=0, maxiter=40):
+def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="random", eigensolver='ks', slack=0, itrs=40):
         
     cdef int N, n_local
     cdef int c, i, j, k, p, itr
@@ -1149,7 +1144,7 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="ran
         i = i + 1
     
     #Run K Means on Spectral Domain. Note these points are in RIDS/TREE ordering
-    output  = KMeans(comm, spectral_points, nclasses, maxiter=maxiter, init=init)
+    output  = KMeans(comm, spectral_points, nclasses, maxiter=itrs, init=init)
     classes = output.classes
     center_time = output.center_time
     update_time = output.update_time

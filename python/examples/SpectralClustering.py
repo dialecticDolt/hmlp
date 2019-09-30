@@ -22,7 +22,7 @@ comm = MPI.Comm.Clone(MPI.COMM_WORLD)
 nprocs = comm.Get_size()
 rank = comm.Get_rank()
 
-parser = argparse.ArgumentParser(description='Cluster with Kernel K-Means')
+parser = argparse.ArgumentParser(description='Cluster with Spectral Clustering')
 
 parser.add_argument('-file', type=str, required=False, default=None,
         help="Specify the file to load the data")
@@ -118,7 +118,6 @@ K.compress()
 compress_time = MPI.Wtime() - compress_time
 
 #Run spectral clustering
-print(N)
 clustering_time = MPI.Wtime()
 clustering_output = FMML.SpectralCluster(K, args.nclasses, gids_owned)
 clustering_time = MPI.Wtime() - clustering_time
@@ -131,7 +130,14 @@ local_class_assignments = clustering_output.classes
 truth_set = np.asarray(truth_set[0, gids_owned], dtype='int32').flatten()
 local_class_assignments = np.asarray(local_class_assignments, dtype='int32').flatten()
 
-print(FMML.NMI(comm, truth_set, local_class_assignments, args.nclasses))
-print(FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
+print("NMI:", FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
+print("ARI:", FMML.ARI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
+
+print("Total Time:", clustering_time)
+print("Eigensolver Time:", clustering_output.eig_time)
+print("KMeans Init Time:", clustering_output.init_time)
+print("KMeans-Centroids time:", clustering_output.center_time)
+print("KMeans-Update time:", clustering_output.update_time)
+print("Final Communication time:", clustering_output.comm_time)
 
 rt.finalize()

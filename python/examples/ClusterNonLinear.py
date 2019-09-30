@@ -8,7 +8,6 @@ import argparse
 import sys
 
 from sklearn.preprocessing import normalize
-import matplotlib.pyplot as plt
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -61,6 +60,8 @@ parser.add_argument("-kmeans_init", type=str, dest="init", required=False, defau
 
 parser.add_argument("-secure", type=str2bool, required=False, default=True, help="Set Secure Accuracy (i.e. use level restriction)")
 
+parser.add_argument("-plot", type=str2bool, required=False, default=False, help="Plot? (first two dims)")
+
 args = parser.parse_args()
 
 leaf_node_size = args.leaf
@@ -71,6 +72,9 @@ budget = args.budget
 
 rt = PyGOFMM.Runtime()
 rt.initialize(comm)
+
+if args.plot:
+    import matplotlib.pyplot as plt
 
 if args.file:
     #Option 1: Load a data set
@@ -85,7 +89,6 @@ else:
 
     d = args.d
 
-    print(N)
     #Construct the point set
     np.random.seed(20)
     width = 0
@@ -112,13 +115,13 @@ else:
             truth_set = np.concatenate((truth_set, new_truth), axis=0)
 
     point_set = PyGOFMM.reformat(point_set)
-    print(point_set)
     truth_set = PyGOFMM.reformat(truth_set)
 
-
     starting_assignment = np.copy(truth_set)
-    plt.scatter(point_set[0, :], point_set[1, :])
-    plt.show()
+
+    if args.plot:
+        plt.scatter(point_set[0, :], point_set[1, :])
+        plt.show()
 
     #point_set = normalize(point_set, axis=1, norm='max')
 
@@ -142,8 +145,10 @@ if args.cluster == 'sc':
     clustering_output = FMML.SpectralCluster(K, args.nclasses, gids=gids_owned, init=args.init, slack=args.slack, maxiter=args.iter)
     spectral_points = clustering_output.rids_points
     spectral_classes = clustering_output.rids_classes
-    #plt.scatter(spectral_points[0, :], spectral_points[1, :], c=spectral_classes)
-    #plt.show()
+
+    if args.plot:
+        plt.scatter(spectral_points[0, :], spectral_points[1, :], c=spectral_classes)
+        plt.show()
 else:
     clustering_output = FMML.KernelKMeans(K,  args.nclasses, gids=gids_owned, init=args.init, maxiter=args.iter)
 
@@ -151,22 +156,32 @@ clustering_time = MPI.Wtime() - clustering_time
 
 local_class_assignments = clustering_output.classes
 
-#classes, gids = FMML.gather_points(test)
-#points = test_points[:, gids].T
 
 truth_set = np.asarray(truth_set[gids_owned], dtype='int32').flatten()
 local_class_assignments = np.asarray(local_class_assignments, dtype='int32').flatten()
-print(truth_set)
-print(local_class_assignments)
 nmi = FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses)
 print("NMI:", nmi)
 
 ari = FMML.ARI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses)
 print("ARI:", ari)
 
-print("Time:", clustering_time)
+if args.clsuter == 'sc':
+    print("Total Time:", clustering_time)
+    print("Eigensolver Time:", clustering_output.eig_time)
+    print("KMeans Init Time:", clustering_output.init_time)
+    print("KMeans-Centroids time:", clustering_output.center_time)
+    print("KMeans-Update time:", clustering_output.update_time)
+    print("Final Communication time:", clustering_output.comm_time)
+else
+    print("Total Time:", clustering_time)
+    print("Init Time:", clustering_output.init_time)
+    print("Main Loop Time:", clustering_output.loop_time)
+    print("Compute Matrix Time:", clustering_output.matrix_time)
+    print("Update Class Time:", clustering_output.update_time)
+    print("Final Communication Time:", clustering_output.comm_time)
 
-plt.scatter(point_set[0, gids_owned], point_set[1, gids_owned], c=local_class_assignments)
-plt.show()
+if args.plot:
+    plt.scatter(point_set[0, gids_owned], point_set[1, gids_owned], c=local_class_assignments)
+    plt.show()
 
 rt.finalize()

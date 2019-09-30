@@ -51,6 +51,8 @@ parser.add_argument("-bandwidth", type=float, required=False, default = 1, help 
 
 parser.add_argument("-secure", type=str2bool, required=False, default=True, help="Set Secure Accuracy (i.e. use level restriction)")
 
+parser.add_argument("-maxiter", type=float, required=False, dest='iter', default=20, help="Set number of KMeans Iterations")
+
 args = parser.parse_args()
 
 leaf_node_size = args.leaf
@@ -76,7 +78,7 @@ else:
     d = args.d
 
     #Construct the point set
-    #np.random.seed(10)
+    np.random.seed(10)
 
     extra = (N % args.nclasses)
     for i in range(args.nclasses):
@@ -115,7 +117,7 @@ compress_time = MPI.Wtime() - compress_time
 
 #Run kernel k-means
 clustering_time = MPI.Wtime()
-clustering_output = FMML.KernelKMeans(K,  args.nclasses, maxiter=20, gids=gids_owned)
+clustering_output = FMML.KernelKMeans(K,  args.nclasses, maxiter=args.iter, gids=gids_owned)
 clustering_time = MPI.Wtime() - clustering_time
 
 local_class_assignments = clustering_output.classes
@@ -126,7 +128,14 @@ local_class_assignments = clustering_output.classes
 truth_set = np.asarray(truth_set[0, gids_owned], dtype='int32').flatten()
 local_class_assignments = np.asarray(local_class_assignments, dtype='int32').flatten()
 
-print(FMML.NMI(comm, truth_set, local_class_assignments, args.nclasses))
-print(FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
+print("NMI:",FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
+print("ARI:", FMML.ARI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
+
+print("Total Time:", clustering_time)
+print("Init Time:", clustering_output.init_time)
+print("Main Loop Time:", clustering_output.loop_time)
+print("Compute Matrix Time:", clustering_output.matrix_time)
+print("Update Class Time:", clustering_output.update_time)
+print("Final Communication Time:", clustering_output.comm_time)
 
 rt.finalize()
