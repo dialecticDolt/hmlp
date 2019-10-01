@@ -3,6 +3,7 @@ import pygofmm.mltools.algorithms as alg
 
 from mpi4py import MPI
 import numpy as np
+<<<<<<< HEAD
 import argparse
 import sys
 
@@ -65,8 +66,8 @@ nclasses = 2
 
 #Construct the point set
 np.random.seed(10)
-extra = (N%nclasses)
 offset = np.array([5, 0])
+extra = (N%nclasses)
 for i in range(nclasses):
     if(extra):
         split = 1
@@ -105,9 +106,7 @@ tol = args.tolerance
 budget = args.budget
 sec = args.secure
 
-
-results = open(t+"_clustering_tol"+str(tol)+"_budget"+str(budget)+"_MPI_"+str(nprocs)+".txt", "a")
-
+#results = open(t+"_clustering_tol"+str(tol)+"_budget"+str(budget)+"_MPI_"+str(nprocs)+".txt", "a")
 
 for lam in bandwidths:
         #Setup and compress the kernel matrix
@@ -137,5 +136,5 @@ for lam in bandwidths:
         print("Compress: ", end_co - start_co)
         print("Clustering: ", end_c - start_c)
 
-results.close()
+#results.close()
 rt.finalize()
