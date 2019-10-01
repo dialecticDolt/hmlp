@@ -134,7 +134,7 @@ print("NMI:", FMML.ChenhanNMI(comm, truth_set, local_class_assignments, args.ncl
 print("ARI:", FMML.ARI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses))
 
 print("Total Time:", clustering_time)
-print("Eigensolver Time:", clustering_output.eig_time)
+print("Eigensolver Time:", clustering_output.eigsolver_time)
 print("KMeans Init Time:", clustering_output.init_time)
 print("KMeans-Centroids time:", clustering_output.center_time)
 print("KMeans-Update time:", clustering_output.update_time)

@@ -45,9 +45,11 @@ parser.add_argument("-cluster", type=str, required=False, default="sc", help="Sp
 
 parser.add_argument("-iter", type=int, dest="maxiter", required=False, default=20, help="Specify the maximum number of iterations for kmeans")
 
-parser.add_argument("-kmeans_init", type=str, dest="init", required=False, default="random", choices=['random', '++'], help="Specify the initialization of k-means. Used in Kernel K-Means or in the post processing of Spectral Clustering")
+parser.add_argument("-init", type=str, dest="init", required=False, default="random", choices=['random', '++'], help="Specify the initialization of k-means. Used in Kernel K-Means or in the post processing of Spectral Clustering")
 
 parser.add_argument("-secure", type=str2bool, required=False, default=True, help="Set Secure Accuracy (i.e. use level restriction)")
+
+parser.add_argument("-slack", type=int, dest="slack", required=False, default=0, help="Specify how many extra (total: nclasses+slack) eigenvectors to keep for spectral clustering")
 
 args = parser.parse_args()
 
@@ -87,7 +89,7 @@ compress_time = MPI.Wtime() - compress_time
 #Run kernel k-means
 clustering_time = MPI.Wtime()
 if args.cluster == 'sc':
-    clustering_output = FMML.SpectralCluster(K, args.nclasses, gids=gids_owned, init=args.init)
+    clustering_output = FMML.SpectralCluster(K, args.nclasses, gids=gids_owned, init=args.init, slack=args.slack, maxiter=args.maxiter)
 else:
     clustering_output = FMML.KernelKMeans(K,  args.nclasses, gids=gids_owned, init=args.init, maxiter=args.maxiter)
 
@@ -98,6 +100,9 @@ local_class_assignments = clustering_output.classes
 truth_set = np.asarray(truth_set[gids_owned], dtype='int32').flatten()
 local_class_assignments = np.asarray(local_class_assignments, dtype='int32').flatten()
 
-print(FMML.ChenhanNMI(comm, truth_set, local_class_assignments, 10, args.nclasses))
+print("NMI:",FMML.ChenhanNMI(comm, truth_set, local_class_assignments, 10, args.nclasses))
+print("ARI:",FMML.ARI(comm, truth_set, local_class_assignments, 10, args.nclasses))
+print("Compress Time:", compress_time)
+print("Cluster Time:", clustering_time)
 
 rt.finalize()

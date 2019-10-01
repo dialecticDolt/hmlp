@@ -91,21 +91,26 @@ else:
 
     #Construct the point set
     np.random.seed(20)
-    width = 0
-    radius_range = 10
+    width = 0.1
+    radius_range = 30
+
     extra = (N % args.nclasses)
+    centers = np.array([0, 0, 6, 6, -5, -5])
     for i in range(args.nclasses):
         if(extra):
             split = 1
             extra= extra -1
         else:
             split = 0
-        if i == 0:
+        if i%2 == 0:
             new_class = np.random.randn(d, (int)(np.floor(N/args.nclasses))+split)
+            scale = np.random.uniform(low=0, high=1, size=np.shape(new_class))
+            new_class =  normalize(new_class, axis=0, norm='l2', copy=False)
+            new_class = np.multiply(new_class, scale) + centers[i]
         else:
             new_class =  np.random.randn(d, (int)(np.floor(N/args.nclasses))+split)
-            new_class =  normalize(new_class, axis=0, norm='l2', copy=False) * (5 + 1.4*(i))
-            new_class =  np.add( new_class, width * np.random.randn(d, (int)(np.floor(N/args.nclasses)) + split) )
+            new_class =  normalize(new_class, axis=0, norm='l2', copy=False) * (1 + 1.4)
+            new_class =  np.add( new_class, width * np.random.randn(d, (int)(np.floor(N/args.nclasses)) + split) ) + centers[i]
         new_truth = np.ones((int)(np.floor(N/args.nclasses))+split) + i
         if i == 0:
             point_set = new_class
@@ -165,14 +170,16 @@ print("NMI:", nmi)
 ari = FMML.ARI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses)
 print("ARI:", ari)
 
-if args.clsuter == 'sc':
+print("Compression Time:", compress_time)
+
+if args.cluster == 'sc':
     print("Total Time:", clustering_time)
-    print("Eigensolver Time:", clustering_output.eig_time)
+    print("Eigensolver Time:", clustering_output.eigensolver_time)
     print("KMeans Init Time:", clustering_output.init_time)
     print("KMeans-Centroids time:", clustering_output.center_time)
     print("KMeans-Update time:", clustering_output.update_time)
     print("Final Communication time:", clustering_output.comm_time)
-else
+else:
     print("Total Time:", clustering_time)
     print("Init Time:", clustering_output.init_time)
     print("Main Loop Time:", clustering_output.loop_time)

@@ -8,7 +8,6 @@ import argparse
 import sys
 
 from sklearn.preprocessing import normalize
-#import matplotlib.pyplot as plt
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -57,7 +56,7 @@ parser.add_argument("-iter", type=int, dest="iter", required=False, default=20, 
 
 parser.add_argument("-slack", type=int, dest="slack", required=False, default=0, help="Specify how many extra (total: nclasses+slack) eigenvectors to keep for spectral clustering")
 
-parser.add_argument("-kmeans_init", type=str, dest="init", required=False, default="random", choices=['random', '++'], help="Specify the initialization of k-means. Used in Kernel K-Means or in the post processing of Spectral Clustering")
+parser.add_argument("-init", type=str, dest="init", required=False, default="random", choices=['random', '++'], help="Specify the initialization of k-means. Used in Kernel K-Means or in the post processing of Spectral Clustering")
 
 parser.add_argument("-secure", type=str2bool, required=False, default=True, help="Set Secure Accuracy (i.e. use level restriction)")
 
@@ -73,6 +72,9 @@ budget = args.budget
 
 rt = PyGOFMM.Runtime()
 rt.initialize(comm)
+
+if args.plot:
+    import matplotlib.pyplot as plt
 
 if args.file:
     #Option 1: Load a data set
@@ -90,9 +92,11 @@ else:
     print(N)
     #Construct the point set
     np.random.seed(20)
-    width = 0.01
+    width = 0.02
     radius_range = 10
     extra = (N % args.nclasses)
+    space = np.arange(args.nclasses, 0, -1)
+    space = space/args.nclasses
     for i in range(args.nclasses):
         if(extra):
             split = 1
@@ -101,7 +105,7 @@ else:
             split = 0
         new_class =  np.random.randn(d, (int)(np.floor(N/args.nclasses))+split)
         new_class =  normalize(new_class, axis=0, norm='l2', copy=False)
-        new_class =  new_class*(1/(i+1))
+        new_class =  new_class*(space[i])
         new_class =  np.add( new_class, width * np.random.randn(d, (int)(np.floor(N/args.nclasses)) + split) )
         print(new_class.shape[1])
         new_truth = np.ones((int)(np.floor(N/args.nclasses))+split) + i
@@ -165,14 +169,14 @@ print("NMI:", nmi)
 ari = FMML.ARI(comm, truth_set, local_class_assignments, args.nclasses, args.nclasses)
 print("ARI:", ari)
 
-if args.clsuter == 'sc':
+if args.cluster == 'sc':
     print("Total Time:", clustering_time)
-    print("Eigensolver Time:", clustering_output.eig_time)
+    print("Eigensolver Time:", clustering_output.eigensolver_time)
     print("KMeans Init Time:", clustering_output.init_time)
     print("KMeans-Centroids time:", clustering_output.center_time)
     print("KMeans-Update time:", clustering_output.update_time)
     print("Final Communication time:", clustering_output.comm_time)
-else
+else:
     print("Total Time:", clustering_time)
     print("Init Time:", clustering_output.init_time)
     print("Main Loop Time:", clustering_output.loop_time)
