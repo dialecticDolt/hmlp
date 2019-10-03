@@ -659,6 +659,9 @@ cdef class DistData_RIDS:
         print("Cython: Running __dealloc___ for DistData Object")
         free(self.c_data)
 
+    def get_loc(self, rid):
+        return self.rid2row[rid]
+
     def rand(self, float a=0.0, float b=1.0):
         self.c_data.rand(a, b)
 

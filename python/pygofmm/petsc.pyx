@@ -246,6 +246,7 @@ cdef class Kernel_Handler(object):
                     
                     length = len(x)
                     for i in prange(length, nogil=True):
+                        normedx[i] = c_x[i]
                         normedx[i] = 1/sqrt(npD[i, 0]) * c_x[i]
 
                     #for i in range(length):
@@ -257,7 +258,8 @@ cdef class Kernel_Handler(object):
                     
                     length = len(y)
                     for i in prange(length, nogil=True):
-                            c_y[i] = 1/sqrt(npD[i, 0]) * res[i, 0]
+                        c_y[i] = 1/sqrt(npD[i, 0]) * res[i, 0]
+                        #c_y[i] = 1/npD[i, 0] * res[i, 0]
 
             #        for i in range(length):
             #                y[i] = 1/sqrt(npD[i, 0]) * res[i, 0]
@@ -265,19 +267,20 @@ cdef class Kernel_Handler(object):
             with X as x:
                 with Y as y:
 
-                    c_y = y
+                    #c_y = y
                     
                     n = len(x)
                     nrhs = 1
-                    
                     GOFMM_x = PyGOFMM.DistData_RIDS(self.comm, m=self.size, n=nrhs, tree=self.K.get_tree(), arr=x.astype('float32'))
                     GOFMM_y = self.K.evaluate(GOFMM_x)
                     res = GOFMM_y.to_array()
+                    #print(np.array(GOFMM_y.to_array()))
 
                     #TODO: Parallelize this
                     length = len(y)
-                    for i in prange(length, nogil=True):
-                        c_y[i] = res[i, 0]
+                    #for i in prange(length, nogil=True):
+                    for i in range(length):
+                        y[i] = res[i, 0]
 
         return Y
 

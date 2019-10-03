@@ -1121,9 +1121,10 @@ def SpectralCluster(PyGOFMM.KernelMatrix K, int nclasses, int[:] gids, init="ran
     if eigensolver == 'primme':
         E.setType(SLEPc.EPS.Type.PRIMME)
 
+    #E.setProblemType(SLEPc.EPS.ProblemType.NHEP) #Change to HEP if using symmetric normalization
     E.setProblemType(SLEPc.EPS.ProblemType.HEP)
     E.setDimensions(nclasses+slack) #Currently getting one more than needed to see if it helps with clustering
-    E.setDeflationSpace(x)
+    #E.setDeflationSpace(x)
     stime = MPI.Wtime()
     E.solve()
     etime = MPI.Wtime()
