@@ -133,15 +133,46 @@ else:
     start_s = MPI.Wtime()
     sources, gids_owned = PyGOFMM.distribute_cblk(comm, point_set)
 
+
+
+nearest_neighbor_list = PyGOFMM.All_Nearest_Neighbors(comm, N, 64, sources, leafnode=args.leaf)
+distances, gids = nearest_neighbor_list.to_numpy()
+distances = np.sqrt(distances)
+med = np.median(distances, axis=0)
+ma  = np.max(distances, axis=0)
+mean = np.mean(distances, axis=0)
+
+minmean = np.min(mean)
+maxmean = np.max(mean)
+mean = np.mean(mean)
+minmed = np.min(med)
+maxmed = np.max(med)
+med = np.median(med)
+minmax = np.min(ma)
+maxmax = np.max(ma)
+
+print("Nearest Neighbor Information - Dataset Scale")
+print("Mean of 64 Nearest Neighbors", mean)
+print("Median of 64 Nearest Neighbors", med)
+print("minMedian", minmed)
+print("maxMedian", maxmed)
+print("Max k-NN Distance", maxmax)
+print("Min k-NN Distance", minmax)
+
+h= args.bandwidth * med
+print(h)
+
 #Setup and compress the kernel matrix
 setup_time = MPI.Wtime()
 config = PyGOFMM.Config("GEOMETRY_DISTANCE", N, leaf_node_size, neighbors, maximum_rank, tol, budget, args.secure)
-K = PyGOFMM.KernelMatrix(comm, sources, config=config, bandwidth=args.bandwidth)
+K = PyGOFMM.KernelMatrix(comm, sources, config=config, bandwidth=h)
 setup_time = MPI.Wtime() - setup_time
 
 compress_time = MPI.Wtime()
 K.compress()
 compress_time = MPI.Wtime() - compress_time
+
+K.test_error()
 
 #Run kernel k-means
 clustering_time = MPI.Wtime()
