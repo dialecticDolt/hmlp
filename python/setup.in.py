@@ -49,7 +49,8 @@ inc_dirs = inc_dirs + ['${MKLROOT}/include']
 inc_dirs = inc_dirs + [np.get_include()]
 
 # hmlp library directory
-lib_dirs = ['${CMAKE_BINARY_DIR}/lib']
+lib_dirs = ['${CMAKE_BINARY_DIR}']
+lib_dirs = lib_dirs + ['${CMAKE_BINARY_DIR}/lib']
 lib_dirs = lib_dirs + ['${CMAKE_BINARY_DIR}/include']
 lib_dirs = lib_dirs + ['${CMAKE_BINARY_DIR}/lib/intel64']
 
