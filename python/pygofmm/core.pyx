@@ -827,7 +827,7 @@ cdef class DistDataPair:
         #Unpack pair[distance, gid]
         #TODO: Parallize this
         for i in range(local_rows):
-            for j in range(local_cols):
+            for j in range(self.get_rank(), local_cols, self.get_comm_size()):
                 mv_distances[i, j] = self[i, j][0]
                 mv_gids[i, j] = self[i, j][1]
 
@@ -1046,7 +1046,7 @@ cdef class KMTree:
         with nogil:
             SelfTesting[km_float_tree]( deref(self.c_tree), ntest, nrhs)
 
-def All_Nearest_Neighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="GEOMETRY_DISTANCE", leafnode=128):
+def All_Nearest_Neighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str metric="GEOMETRY_DISTANCE", leafnode=128, ntrees=30):
     cdef STAR_CBLK_DistData[pair[float, size_t]]* NNList
     cdef randomsplit[c_DistKernelMatrix[float, float], two, float] c_rsplit
     cdef libmpi.MPI_Comm c_comm
@@ -1060,7 +1060,7 @@ def All_Nearest_Neighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str met
         conf = Config(problem_size = n, metric_type=metric, neighbor_size = k, leaf_node_size = leafnode)
         c_comm = comm.ob_mpi
         with nogil:
-            NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
+            NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, ntrees)
         PyNNList = DistDataPair(comm, n, d);
         free(PyNNList.c_data)
         PyNNList.c_data = NNList;
@@ -1076,7 +1076,7 @@ def All_Nearest_Neighbors(MPI.Comm comm,size_t n, size_t k, localpoints, str met
         c_comm = comm.ob_mpi;
         conf = Config(problem_size = n, metric_type=metric, neighbor_size=k, leaf_node_size = leafnode)
         with nogil: 
-            NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, 10)
+            NNList = FindNeighbors_Python(deref(K.c_matrix), c_rsplit, deref(conf.c_config), c_comm, ntrees)
         PyNNList = DistDataPair(comm, n, d)
         free(PyNNList.c_data)
         PyNNList.c_data = NNList;
