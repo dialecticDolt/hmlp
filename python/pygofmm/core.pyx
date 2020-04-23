@@ -827,9 +827,10 @@ cdef class DistDataPair:
         #Unpack pair[distance, gid]
         #TODO: Parallize this
         for i in range(local_rows):
-            for j in range(self.get_rank(), local_cols, self.get_comm_size()):
-                mv_distances[i, j] = self[i, j][0]
-                mv_gids[i, j] = self[i, j][1]
+            for j in range(0, self.cols(), self.get_comm_size()):
+                idx = int(j/self.get_comm_size())
+                mv_distances[i, idx] = self[i, j][0]
+                mv_gids[i, idx] = self[i, j][1]
 
         np_distances = np.asarray(mv_distances)
         np_gids = np.asarray(mv_gids)
